@@ -140,8 +140,6 @@
                 if (m.type === 'system' || m.type === 'call-event') continue;
 
                 const t = String(m.text).trim();
-                if (t.length > 30) continue; // 太长的文字跳过
-                if (t.startsWith('【') || t.includes('[图片]')) continue;
 
                 // 弹窗
                 showTypingFloat(t);
