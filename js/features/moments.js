@@ -22,37 +22,7 @@ function getChance(key) {
 function setChance(key, val) {
     try { localStorage.setItem(CHANCE_KEYS[key], String(val)); } catch (e) {}
 }
-    
-    var CHANCE_KEYS = {
-    like: 'momentsChanceLike',
-    comment: 'momentsChanceComment',
-    reply: 'momentsChanceReply'
-};
-var CHANCE_DEFAULTS = { like: 40, comment: 40, reply: 50 };
 
-function getChance(key) {
-    var v = parseInt(localStorage.getItem(CHANCE_KEYS[key]), 10);
-    if (isNaN(v)) v = CHANCE_DEFAULTS[key];
-    return Math.max(0, Math.min(100, v)) / 100;
-}
-function setChance(key, val) {
-    try { localStorage.setItem(CHANCE_KEYS[key], String(val)); } catch (e) {}
-}
-    var CHANCE_KEYS = {
-    like: 'momentsChanceLike',
-    comment: 'momentsChanceComment',
-    reply: 'momentsChanceReply'
-};
-var CHANCE_DEFAULTS = { like: 40, comment: 40, reply: 50 };
-
-function getChance(key) {
-    var v = parseInt(localStorage.getItem(CHANCE_KEYS[key]), 10);
-    if (isNaN(v)) v = CHANCE_DEFAULTS[key];
-    return Math.max(0, Math.min(100, v)) / 100;
-}
-function setChance(key, val) {
-    try { localStorage.setItem(CHANCE_KEYS[key], String(val)); } catch (e) {}
-}
     var panelEl = null;
 
     async function load() {
