@@ -479,3 +479,92 @@ window.simulateReply = function() {
         if (id === 'decision-function') return (tryHide('advanced-modal'), tryOpen('decision-menu-modal'));
     });
 })();
+// ==================== ★ 最终修复：App 总启动器 ====================
+(function launchApp() {
+    // 1. 强行补全基础弹窗函数（防止报错 showModal is not defined）
+    window.showModal = window.showModal || function(el) {
+        if (!el) return;
+        if (el._hideTimeout) { clearTimeout(el._hideTimeout); el._hideTimeout = null; }
+        el.style.display = 'flex';
+        requestAnimationFrame(function() {
+            var c = el.querySelector('.modal-content');
+            if (c) { c.style.opacity = '1'; c.style.transform = 'translateY(0) scale(1)'; }
+        });
+    };
+    window.hideModal = window.hideModal || function(el) {
+        if (!el) return;
+        var c = el.querySelector('.modal-content');
+        if (c) { c.style.opacity = '0'; c.style.transform = 'translateY(20px) scale(0.95)'; }
+        if (el._hideTimeout) clearTimeout(el._hideTimeout);
+        el._hideTimeout = setTimeout(function() { el.style.display = 'none'; }, 300);
+    };
+
+    // 2. 强行绑定所有按钮点击事件（事件代理，绝不会漏）
+    document.addEventListener('click', function(e) {
+        var target = e.target.closest('button, .settings-card, .settings-item, .action-btn, .input-btn');
+        if (!target) return;
+        var id = target.id;
+
+        var openModal = function(modalId) {
+            var m = document.getElementById(modalId);
+            if (m) window.showModal(m);
+        };
+        var hideModal = function(modalId) {
+            var m = document.getElementById(modalId);
+            if (m) window.hideModal(m);
+        };
+
+        // 顶部图标
+        if (id === 'settings-btn') { e.preventDefault(); openModal('settings-modal'); return; }
+        if (id === 'session-manager-btn') { e.preventDefault(); openModal('session-modal'); if (typeof renderSessionList === 'function') renderSessionList(); return; }
+        if (id === 'group-chat-btn') { e.preventDefault(); openModal('group-chat-modal'); if (typeof updateGroupModeUI === 'function') updateGroupModeUI(); return; }
+        if (id === 'moments-btn') { e.preventDefault(); if (typeof window.openMomentsPanel === 'function') window.openMomentsPanel(); return; }
+        if (id === 'daily-greeting-btn') { e.preventDefault(); if (typeof window.reopenDailyGreeting === 'function') window.reopenDailyGreeting(); return; }
+        if (id === 'theme-toggle') { e.preventDefault(); if (typeof settings !== 'undefined') { settings.isDarkMode = !settings.isDarkMode; if (typeof throttledSaveData === 'function') throttledSaveData(); if (typeof updateUI === 'function') updateUI(); } return; }
+        if (id === 'attachment-btn') { e.preventDefault(); var inp = document.getElementById('image-input'); if (inp) inp.click(); return; }
+        if (id === 'combo-btn') { e.preventDefault(); var picker = document.getElementById('user-sticker-picker'); if (picker) picker.classList.toggle('active'); return; }
+
+        // 设置弹窗卡片
+        if (id === 'appearance-settings') { e.preventDefault(); hideModal('settings-modal'); openModal('appearance-modal'); if (typeof renderBackgroundGallery === 'function') renderBackgroundGallery(); return; }
+        if (id === 'chat-settings') { e.preventDefault(); hideModal('settings-modal'); openModal('chat-modal'); return; }
+        if (id === 'advanced-settings') { e.preventDefault(); hideModal('settings-modal'); openModal('advanced-modal'); return; }
+        if (id === 'data-settings') { e.preventDefault(); hideModal('settings-modal'); openModal('data-modal'); if (typeof updateStorageUsageBar === 'function') updateStorageUsageBar(); return; }
+
+        // 高级功能入口
+        if (id === 'custom-replies-function') { e.preventDefault(); hideModal('advanced-modal'); openModal('custom-replies-modal'); return; }
+        if (id === 'stats-function') { e.preventDefault(); hideModal('advanced-modal'); openModal('stats-modal'); if (typeof renderStatsContent === 'function') renderStatsContent(); return; }
+        if (id === 'anniversary-function') { e.preventDefault(); hideModal('advanced-modal'); openModal('anniversary-modal'); if (typeof renderAnniversariesList === 'function') renderAnniversariesList(); return; }
+        if (id === 'mood-function') { e.preventDefault(); hideModal('advanced-modal'); openModal('mood-modal'); if (typeof renderMoodCalendar === 'function') renderMoodCalendar(); return; }
+        if (id === 'envelope-function') { e.preventDefault(); hideModal('advanced-modal'); openModal('envelope-modal'); if (typeof loadEnvelopeData === 'function') loadEnvelopeData(); return; }
+        if (id === 'fortune-lenormand-function') { e.preventDefault(); hideModal('advanced-modal'); openModal('fortune-lenormand-modal'); if (typeof generateFortune === 'function') generateFortune(); return; }
+        if (id === 'decision-function') { e.preventDefault(); hideModal('advanced-modal'); openModal('decision-menu-modal'); return; }
+        if (id === 'avatar-exchange-function') { e.preventDefault(); hideModal('advanced-modal'); if (typeof window.openAvatarExchangePanel === 'function') window.openAvatarExchangePanel(); return; }
+        if (id === 'partner-image-function') { e.preventDefault(); hideModal('advanced-modal'); if (typeof window.openPartnerImagePanel === 'function') window.openPartnerImagePanel(); return; }
+        if (id === 'shop-function') { e.preventDefault(); hideModal('advanced-modal'); if (typeof window.openShopPanel === 'function') window.openShopPanel(); return; }
+        if (id === 'listen-music-function') { e.preventDefault(); hideModal('advanced-modal'); if (typeof window.openListenMusicPanel === 'function') window.openListenMusicPanel(); return; }
+        if (id === 'watch-movie-function') { e.preventDefault(); hideModal('advanced-modal'); if (typeof window.openWatchMoviePanel === 'function') window.openWatchMoviePanel(); return; }
+        if (id === 'recipe-function') { e.preventDefault(); hideModal('advanced-modal'); if (typeof window.openRecipePanel === 'function') window.openRecipePanel(); return; }
+        if (id === 'novel-function') { e.preventDefault(); hideModal('advanced-modal'); if (typeof window.openNovelPanel === 'function') window.openNovelPanel(); return; }
+        if (id === 'word-cards-function') { e.preventDefault(); hideModal('advanced-modal'); if (typeof window.openWordCardComposePanel === 'function') window.openWordCardComposePanel(); return; }
+        if (id === 'word-cards-manager-function') { e.preventDefault(); hideModal('advanced-modal'); if (typeof window.openWordCardsPanel === 'function') window.openWordCardsPanel(); return; }
+
+        // 弹窗关闭
+        if (id === 'cancel-settings' || id === 'close-settings') { hideModal('settings-modal'); return; }
+        if (id === 'close-appearance') { hideModal('appearance-modal'); return; }
+        if (id === 'close-chat') { hideModal('chat-modal'); return; }
+        if (id === 'close-advanced') { hideModal('advanced-modal'); return; }
+        if (id === 'close-data') { hideModal('data-modal'); return; }
+        if (id === 'close-shop-panel') { hideModal('shop-panel'); return; }
+    }, true); // 使用捕获阶段，确保优先响应
+
+    // 3. 启动数据加载（延时一点，等所有依赖脚本加载完毕）
+    setTimeout(function() {
+        if (typeof window.initializeSession === 'function') {
+            window.initializeSession().then(function() {
+                if (typeof loadData === 'function') loadData();
+            }).catch(function(e) { console.error('初始化失败:', e); });
+        } else {
+            if (typeof loadData === 'function') loadData();
+        }
+    }, 300);
+})();
