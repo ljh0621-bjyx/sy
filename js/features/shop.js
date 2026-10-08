@@ -203,3 +203,17 @@
     }
 
 })();
+// === shop.js 新增入口 ===
+window.initShopPanel = function() {
+    var btn = document.getElementById('shop-function'); // 对应 HTML 里的 ID，请确认
+    if (btn && !btn.dataset.initialized) {
+        btn.dataset.initialized = 'true';
+        btn.addEventListener('click', function() {
+            var advancedModal = document.getElementById('advanced-modal');
+            if (advancedModal && typeof hideModal === 'function') hideModal(advancedModal);
+            if (typeof window.openShopPanel === 'function') {
+                window.openShopPanel();
+            }
+        });
+    }
+};

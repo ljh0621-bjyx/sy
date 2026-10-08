@@ -344,3 +344,17 @@ function generatePartnerReply() {
     }
 
 })();
+// === recipe.js 新增入口 ===
+window.initRecipePanel = function() {
+    var btn = document.getElementById('recipe-function'); // 对应 HTML 里的 ID
+    if (btn && !btn.dataset.initialized) {
+        btn.dataset.initialized = 'true';
+        btn.addEventListener('click', function() {
+            var advancedModal = document.getElementById('advanced-modal');
+            if (advancedModal && typeof hideModal === 'function') hideModal(advancedModal);
+            if (typeof window.openRecipePanel === 'function') {
+                window.openRecipePanel();
+            }
+        });
+    }
+};
