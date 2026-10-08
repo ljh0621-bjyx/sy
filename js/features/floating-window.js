@@ -376,7 +376,5 @@
 })();
 // === floating-window.js 入口函数（供 listeners.js 调用） ===
 window.initFloatingWindow = function() {
-    // 这个文件是 IIFE 立即执行，本身已经初始化好了
-    // 这里只是为了让 listeners.js 的检查通过
-    console.log('[floating-window] 拼音组句浮窗 已就绪');
+   console.log('[floating-window] 拼音组句浮窗 已就绪');
 };
