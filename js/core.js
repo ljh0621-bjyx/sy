@@ -863,3 +863,54 @@ window.simulateReply = function() {
         }
     }, 1000);
 })();
+// ==================== ★ 最终修复：强制打开表情面板 ====================
+(function forceOpenStickerPicker() {
+    // 延迟一点执行，确保页面上的元素加载完成
+    setTimeout(function() {
+        // 1. 强行绑定表情按钮
+        var comboBtn = document.getElementById('combo-btn');
+        if (comboBtn) {
+            // 克隆一遍，剔除之前所有可能失效的旧绑定
+            var newBtn = comboBtn.cloneNode(true);
+            comboBtn.parentNode.replaceChild(newBtn, comboBtn);
+
+            newBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                var picker = document.getElementById('user-sticker-picker');
+                if (picker) {
+                    // 切换显示 / 隐藏
+                    if (picker.classList.contains('active')) {
+                        picker.classList.remove('active');
+                    } else {
+                        picker.classList.add('active');
+                    }
+                }
+            });
+        }
+
+        // 2. 强行绑定表情面板里的“齿轮”设置按钮
+        var stickerSetBtn = document.getElementById('sticker-settings-btn');
+        if (stickerSetBtn) {
+            var newSetBtn = stickerSetBtn.cloneNode(true);
+            stickerSetBtn.parentNode.replaceChild(newSetBtn, stickerSetBtn);
+
+            newSetBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                // 关闭表情面板
+                var picker = document.getElementById('user-sticker-picker');
+                if (picker) picker.classList.remove('active');
+                
+                // 尝试打开表情设置
+                if (typeof window.openMyStickerSettings === 'function') {
+                    window.openMyStickerSettings();
+                } else {
+                    // 如果函数没加载，就直接打开自定义回复弹窗
+                    var m = document.getElementById('custom-replies-modal');
+                    if (m && typeof window.showModal === 'function') window.showModal(m);
+                }
+            });
+        }
+    }, 1500); // 延迟 1.5 秒执行
+})();
