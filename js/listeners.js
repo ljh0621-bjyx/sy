@@ -1,27 +1,32 @@
 function setupEventListeners() {
-    var tasks = [
-    ['initCoreListeners', typeof initCoreListeners === 'function' ? initCoreListeners : null],
-    ['initModalListeners', typeof initModalListeners === 'function' ? initModalListeners : null],
-    ['initChatActionListeners', typeof initChatActionListeners === 'function' ? initChatActionListeners : null],
-    ['initHeaderAndSettingsListeners', typeof initHeaderAndSettingsListeners === 'function' ? initHeaderAndSettingsListeners : null],
-    ['initDataManagementListeners', typeof initDataManagementListeners === 'function' ? initDataManagementListeners : null],
-    ['initNewFeatureListeners', typeof initNewFeatureListeners === 'function' ? initNewFeatureListeners : null],
-    ['setupTutorialListeners', typeof setupTutorialListeners === 'function' ? setupTutorialListeners : null],
-    ['initMoodListeners', typeof initMoodListeners === 'function' ? initMoodListeners : null],
-    ['initDecisionModule', typeof initDecisionModule === 'function' ? initDecisionModule : null],
-    ['initAnniversaryModule', typeof initAnniversaryModule === 'function' ? initAnniversaryModule : null],
-    ['initThemeEditor', typeof initThemeEditor === 'function' ? initThemeEditor : null],
-    ['initThemeSchemes', typeof initThemeSchemes === 'function' ? initThemeSchemes : null],
-    ['initComboMenu', typeof initComboMenu === 'function' ? initComboMenu : null],
+    // ★ 这里必须有变量声明，否则会报错 ★
+    let _lastTapMsgId = null;
+    let _lastTapTime = 0;
 
-    // ===== ★ 新添加的 6 个功能入口，加在最后面 =====
-    ['initNovelPanel', typeof initNovelPanel === 'function' ? initNovelPanel : null],
-    ['initShopPanel', typeof initShopPanel === 'function' ? initShopPanel : null],
-    ['initRecipePanel', typeof initRecipePanel === 'function' ? initRecipePanel : null],
-    ['initListenMusicPanel', typeof initListenMusicPanel === 'function' ? initListenMusicPanel : null],
-    ['initMomentsPanel', typeof initMomentsPanel === 'function' ? initMomentsPanel : null],
-    ['initWatchMoviePanel', typeof initWatchMoviePanel === 'function' ? initWatchMoviePanel : null]
-];
+    var tasks = [
+        ['initCoreListeners', typeof initCoreListeners === 'function' ? initCoreListeners : null],
+        ['initModalListeners', typeof initModalListeners === 'function' ? initModalListeners : null],
+        ['initChatActionListeners', typeof initChatActionListeners === 'function' ? initChatActionListeners : null],
+        ['initHeaderAndSettingsListeners', typeof initHeaderAndSettingsListeners === 'function' ? initHeaderAndSettingsListeners : null],
+        ['initDataManagementListeners', typeof initDataManagementListeners === 'function' ? initDataManagementListeners : null],
+        ['initNewFeatureListeners', typeof initNewFeatureListeners === 'function' ? initNewFeatureListeners : null],
+        ['setupTutorialListeners', typeof setupTutorialListeners === 'function' ? setupTutorialListeners : null],
+        ['initMoodListeners', typeof initMoodListeners === 'function' ? initMoodListeners : null],
+        ['initDecisionModule', typeof initDecisionModule === 'function' ? initDecisionModule : null],
+        ['initAnniversaryModule', typeof initAnniversaryModule === 'function' ? initAnniversaryModule : null],
+        ['initThemeEditor', typeof initThemeEditor === 'function' ? initThemeEditor : null],
+        ['initThemeSchemes', typeof initThemeSchemes === 'function' ? initThemeSchemes : null],
+        ['initComboMenu', typeof initComboMenu === 'function' ? initComboMenu : null],
+
+        // ===== ★ 新添加的 6 个功能入口，加在最后面 ★ =====
+        ['initNovelPanel', typeof initNovelPanel === 'function' ? initNovelPanel : null],
+        ['initShopPanel', typeof initShopPanel === 'function' ? initShopPanel : null],
+        ['initRecipePanel', typeof initRecipePanel === 'function' ? initRecipePanel : null],
+        ['initListenMusicPanel', typeof initListenMusicPanel === 'function' ? initListenMusicPanel : null],
+        ['initMomentsPanel', typeof initMomentsPanel === 'function' ? initMomentsPanel : null],
+        ['initWatchMoviePanel', typeof initWatchMoviePanel === 'function' ? initWatchMoviePanel : null]
+    ]; // ★ 这个分号必须在这里，数组才算闭合
+
     tasks.forEach(function(t) {
         var name = t[0], fn = t[1];
         if (!fn) {
