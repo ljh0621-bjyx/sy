@@ -430,13 +430,16 @@ const saveData = async () => {
     if (!SESSION_ID) return;
     const promises = [
         { key: 'chatSettings', val: () => localforage.setItem(getStorageKey('chatSettings'), settings) },
-        { key: 'customReplies', val: () => {
-    // 如果回复库是空的，就跳过保存，防止把原本有内容的库覆盖掉
-    if (!Array.isArray(customReplies) || customReplies.length === 0) {
-        console.warn('[saveData] 跳过保存空的回复库');
-        return Promise.resolve();
-    }
-    return localforage.setItem(getStorageKey('customReplies'), customReplies);
+       { key: 'customReplies', val: () => {
+    // ★ 无论是不是空，都必须写入硬盘，避免手机浏览器认为没数据不保存
+    const p1 = localforage.setItem(getStorageKey('customReplies'), customReplies);
+    // ★ 同时用 localStorage 做一份本地硬备份（防止手机清理）
+    try {
+        if (Array.isArray(customReplies) && customReplies.length > 0) {
+            localStorage.setItem('BACKUP_customReplies_v2', JSON.stringify(customReplies));
+        }
+    } catch (e) {}
+    return p1;
 }},
         { key: 'customReplyGroups', val: () => localforage.setItem(getStorageKey('customReplyGroups'), window.customReplyGroups || []) },
         { key: 'customPokeGroups', val: () => localforage.setItem(getStorageKey('customPokeGroups'), window.customPokeGroups || []) },
