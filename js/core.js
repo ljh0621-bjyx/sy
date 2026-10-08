@@ -1689,3 +1689,61 @@ document.addEventListener('DOMContentLoaded', function() {
         observer.observe(historyLoader);
     }
 });
+// ==================== ★ 紧急恢复：从 localStorage 备份读取 ====================
+(function recoverFromEmergencyBackup() {
+    setTimeout(function() {
+        try {
+            var raw = localStorage.getItem('BACKUP_V1_critical');
+            if (!raw) {
+                console.warn('没有找到紧急备份');
+                if (typeof showNotification === 'function') {
+                    showNotification('本地紧急备份为空，无法恢复', 'warning', 4000);
+                }
+                return;
+            }
+            var backup = JSON.parse(raw);
+            console.log('找到紧急备份，包含:', {
+                消息数: backup.messages ? backup.messages.length : 0,
+                有设置: !!backup.settings,
+                纪念日数: backup.anniversaries ? backup.anniversaries.length : 0
+            });
+
+            // 提示用户是否恢复
+            var msgCount = backup.messages ? backup.messages.length : 0;
+            if (msgCount === 0) {
+                if (typeof showNotification === 'function') {
+                    showNotification('紧急备份中没有消息', 'info', 3000);
+                }
+                return;
+            }
+
+            // 直接把备份数据塞回内存并保存
+            if (typeof messages !== 'undefined' && backup.messages) {
+                messages = backup.messages.map(function(m) {
+                    return Object.assign({}, m, { timestamp: new Date(m.timestamp) });
+                });
+                window.messages = messages;
+            }
+            if (typeof settings !== 'undefined' && backup.settings) {
+                Object.assign(settings, backup.settings);
+            }
+            if (typeof anniversaries !== 'undefined' && backup.anniversaries) {
+                anniversaries = backup.anniversaries;
+            }
+
+            // 重新渲染
+            if (typeof renderMessages === 'function') renderMessages();
+            if (typeof updateUI === 'function') updateUI();
+            if (typeof saveData === 'function') saveData();
+
+            if (typeof showNotification === 'function') {
+                showNotification('已从紧急备份恢复 ' + msgCount + ' 条消息', 'success', 4000);
+            }
+        } catch (e) {
+            console.error('紧急备份恢复失败:', e);
+            if (typeof showNotification === 'function') {
+                showNotification('恢复失败：' + e.message, 'error', 4000);
+            }
+        }
+    }, 2500); // 延迟 2.5 秒，等待主流程先跑完
+})();
