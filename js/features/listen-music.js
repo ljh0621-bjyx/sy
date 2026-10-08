@@ -721,3 +721,17 @@
         load();
     }
 })();
+// === listen-music.js 新增入口 ===
+window.initListenMusicPanel = function() {
+    var btn = document.getElementById('listen-music-function'); // 对应 HTML 里的 ID
+    if (btn && !btn.dataset.initialized) {
+        btn.dataset.initialized = 'true';
+        btn.addEventListener('click', function() {
+            var advancedModal = document.getElementById('advanced-modal');
+            if (advancedModal && typeof hideModal === 'function') hideModal(advancedModal);
+            if (typeof window.openListenMusicPanel === 'function') {
+                window.openListenMusicPanel();
+            }
+        });
+    }
+};
