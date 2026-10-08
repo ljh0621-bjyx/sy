@@ -774,3 +774,92 @@ window.simulateReply = function() {
         }
     }, 1000);
 })();
+// ==================== ★ 最终暴力穿透补丁：修复所有点不开的按钮 ====================
+(function finalFixAllButtons() {
+    // 1. 补全全局弹窗函数（因为原来的被精简掉了）
+    window.showModal = window.showModal || function(el) {
+        if (!el) return;
+        if (el._hideTimeout) { clearTimeout(el._hideTimeout); el._hideTimeout = null; }
+        el.style.display = 'flex';
+        requestAnimationFrame(function() {
+            var c = el.querySelector('.modal-content');
+            if (c) { c.style.opacity = '1'; c.style.transform = 'translateY(0) scale(1)'; }
+        });
+    };
+    window.hideModal = window.hideModal || function(el) {
+        if (!el) return;
+        var c = el.querySelector('.modal-content');
+        if (c) { c.style.opacity = '0'; c.style.transform = 'translateY(20px) scale(0.95)'; }
+        if (el._hideTimeout) clearTimeout(el._hideTimeout);
+        el._hideTimeout = setTimeout(function() { el.style.display = 'none'; }, 300);
+    };
+
+    // 2. 绑定点击穿透（无论点哪个图标，都能触发对应弹窗）
+    document.addEventListener('click', function(e) {
+        var target = e.target.closest('button, .settings-card, .settings-item, .action-btn, .input-btn');
+        if (!target) return;
+        var id = target.id;
+
+        var open = function(modalId, fn) {
+            var m = document.getElementById(modalId);
+            if (m) window.showModal(m);
+            if (typeof fn === 'function') fn();
+        };
+        var close = function(modalId) {
+            var m = document.getElementById(modalId);
+            if (m) window.hideModal(m);
+        };
+
+        // 顶部图标
+        if (id === 'settings-btn') { e.preventDefault(); open('settings-modal'); return; }
+        if (id === 'session-manager-btn') { e.preventDefault(); open('session-modal', () => { if (typeof renderSessionList === 'function') renderSessionList(); }); return; }
+        if (id === 'group-chat-btn') { e.preventDefault(); open('group-chat-modal', () => { if (typeof updateGroupModeUI === 'function') updateGroupModeUI(); }); return; }
+        if (id === 'moments-btn') { e.preventDefault(); if (typeof window.openMomentsPanel === 'function') window.openMomentsPanel(); return; }
+        if (id === 'daily-greeting-btn') { e.preventDefault(); if (typeof window.reopenDailyGreeting === 'function') window.reopenDailyGreeting(); return; }
+        if (id === 'theme-toggle') { e.preventDefault(); if (typeof settings !== 'undefined') { settings.isDarkMode = !settings.isDarkMode; if (typeof throttledSaveData === 'function') throttledSaveData(); if (typeof updateUI === 'function') updateUI(); } return; }
+        if (id === 'attachment-btn') { e.preventDefault(); var inp = document.getElementById('image-input'); if (inp) inp.click(); return; }
+        if (id === 'combo-btn') { e.preventDefault(); var p = document.getElementById('user-sticker-picker'); if (p) p.classList.toggle('active'); return; }
+
+        // 设置弹窗卡片
+        if (id === 'appearance-settings') { e.preventDefault(); close('settings-modal'); open('appearance-modal', () => { if (typeof renderBackgroundGallery === 'function') renderBackgroundGallery(); }); return; }
+        if (id === 'chat-settings') { e.preventDefault(); close('settings-modal'); open('chat-modal'); return; }
+        if (id === 'advanced-settings') { e.preventDefault(); close('settings-modal'); open('advanced-modal'); return; }
+        if (id === 'data-settings') { e.preventDefault(); close('settings-modal'); open('data-modal', () => { if (typeof updateStorageUsageBar === 'function') updateStorageUsageBar(); }); return; }
+
+        // 高级功能入口
+        if (id === 'custom-replies-function') { e.preventDefault(); close('advanced-modal'); open('custom-replies-modal'); return; }
+        if (id === 'stats-function') { e.preventDefault(); close('advanced-modal'); open('stats-modal', () => { if (typeof renderStatsContent === 'function') renderStatsContent(); }); return; }
+        if (id === 'anniversary-function') { e.preventDefault(); close('advanced-modal'); open('anniversary-modal', () => { if (typeof renderAnniversariesList === 'function') renderAnniversariesList(); }); return; }
+        if (id === 'mood-function') { e.preventDefault(); close('advanced-modal'); open('mood-modal', () => { if (typeof renderMoodCalendar === 'function') renderMoodCalendar(); }); return; }
+        if (id === 'envelope-function') { e.preventDefault(); close('advanced-modal'); open('envelope-modal', () => { if (typeof loadEnvelopeData === 'function') loadEnvelopeData(); }); return; }
+        if (id === 'fortune-lenormand-function') { e.preventDefault(); close('advanced-modal'); open('fortune-lenormand-modal', () => { if (typeof generateFortune === 'function') generateFortune(); }); return; }
+        if (id === 'decision-function') { e.preventDefault(); close('advanced-modal'); open('decision-menu-modal'); return; }
+        if (id === 'avatar-exchange-function') { e.preventDefault(); close('advanced-modal'); if (typeof window.openAvatarExchangePanel === 'function') window.openAvatarExchangePanel(); return; }
+        if (id === 'partner-image-function') { e.preventDefault(); close('advanced-modal'); if (typeof window.openPartnerImagePanel === 'function') window.openPartnerImagePanel(); return; }
+
+        // 弹窗关闭
+        if (id === 'cancel-settings' || id === 'close-settings') { close('settings-modal'); return; }
+        if (id === 'close-appearance') { close('appearance-modal'); return; }
+        if (id === 'close-chat') { close('chat-modal'); return; }
+        if (id === 'close-advanced') { close('advanced-modal'); return; }
+        if (id === 'close-data') { close('data-modal'); return; }
+    }, true); // ★ 捕获阶段，确保优先拦截所有点击
+
+    // 3. 修复表情面板里那个齿轮（设置）按钮
+    setTimeout(function() {
+        var stickerSetBtn = document.getElementById('sticker-settings-btn');
+        if (stickerSetBtn && !stickerSetBtn._fixed) {
+            stickerSetBtn._fixed = true;
+            stickerSetBtn.addEventListener('click', function(e) {
+                e.preventDefault(); e.stopPropagation();
+                if (typeof window.openMyStickerSettings === 'function') {
+                    window.openMyStickerSettings();
+                } else {
+                    // 兜底：直接打开自定义回复弹窗
+                    var m = document.getElementById('custom-replies-modal');
+                    if (m) window.showModal(m);
+                }
+            });
+        }
+    }, 1000);
+})();
