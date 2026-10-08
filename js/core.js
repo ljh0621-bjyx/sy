@@ -1,10 +1,10 @@
 /* ==========================================================================
-   传讯 - 完整核心逻辑 (修复数据加载 + 语音自动播放 + 转文字 + 发送图片)
+   传讯 - core.js (终极完整版)
+   包含：数据加载、消息渲染、语音转文字、自动播放、所有按钮强制绑定
    ========================================================================== */
 
-// ==================== 1. 全局工具与初始化 ====================
-// 兼容配置项 (解决 reply-library.js 报错)
-window.LIBRARY_CONFIG = {
+// ==================== 1. 全局配置与工具函数 ====================
+window.LIBRARY_CONFIG = window.LIBRARY_CONFIG || {
     reply: { title: "回复库管理", tabs: [{ id: 'custom', name: '主字卡', mode: 'list' }, { id: 'emojis', name: 'Emoji', mode: 'grid' }, { id: 'stickers', name: '表情库', mode: 'grid' }] },
     atmosphere: { title: "氛围感配置", tabs: [{ id: 'pokes', name: '拍一拍', mode: 'list' }, { id: 'statuses', name: '对方状态', mode: 'list' }, { id: 'mottos', name: '顶部格言', mode: 'list' }, { id: 'intros', name: '开场动画', mode: 'list' }] }
 };
@@ -15,6 +15,17 @@ function getStorageKey(baseKey) {
         throw new Error('SESSION_ID 未初始化，存储操作已中止');
     }
     return `${APP_PREFIX}${SESSION_ID}_${baseKey}`;
+}
+
+function getDefaultSettings() {
+    return {
+        partnerName: "梦角", myName: "我", myStatus: "在线", partnerStatus: "在线",
+        isDarkMode: false, colorTheme: "gold", soundEnabled: true, typingIndicatorEnabled: true,
+        readReceiptsEnabled: true, replyEnabled: true, lastStatusChange: Date.now(),
+        fontSize: 16, bubbleStyle: 'standard', messageFontFamily: "'Noto Serif SC', serif",
+        messageFontWeight: 400, messageLineHeight: 1.5, customSoundUrl: '',
+        soundVolume: 0.15, bottomCollapseMode: false, emojiMixEnabled: true
+    };
 }
 
 async function migrateData() {
@@ -31,17 +42,17 @@ async function migrateData() {
                         try { if (val.startsWith('{') || val.startsWith('[')) dataToStore = JSON.parse(val); } catch (e) {}
                         await localforage.setItem(key, dataToStore);
                     }
-                } catch (e) { console.error(`迁移键值 ${key} 时发生错误`, e); }
+                } catch (e) {}
             }
         }
         await localforage.setItem(APP_PREFIX + 'MIGRATION_V2_DONE', 'true');
-    } catch (e) { console.error("数据迁移过程中发生严重错误:", e); }
+    } catch (e) {}
 }
 
 async function createNewSession(switchToIt = true) {
     const newId = Date.now().toString(36) + Math.random().toString(36).substr(2);
     const newSession = { id: newId, name: `会话 ${new Date().toLocaleDateString()}`, createdAt: Date.now() };
-    sessionList.push(newSession);
+    if (typeof sessionList !== 'undefined') sessionList.push(newSession);
     await localforage.setItem(`${APP_PREFIX}sessionList`, sessionList);
     return newId;
 }
@@ -62,18 +73,7 @@ window.initializeSession = async function() {
     await localforage.setItem(`${APP_PREFIX}lastSessionId`, SESSION_ID);
 }
 
-function getDefaultSettings() {
-    return {
-        partnerName: "梦角", myName: "我", myStatus: "在线", partnerStatus: "在线",
-        isDarkMode: false, colorTheme: "gold", soundEnabled: true, typingIndicatorEnabled: true,
-        readReceiptsEnabled: true, replyEnabled: true, lastStatusChange: Date.now(),
-        fontSize: 16, bubbleStyle: 'standard', messageFontFamily: "'Noto Serif SC', serif",
-        messageFontWeight: 400, messageLineHeight: 1.5, customSoundUrl: '',
-        soundVolume: 0.15, bottomCollapseMode: false, emojiMixEnabled: true
-    };
-}
-
-// ==================== 2. 数据加载与保存 (恢复丢失的头像和回复库) ====================
+// ==================== 2. 数据加载与保存（恢复缺失的头像和回复库） ====================
 const loadData = async () => {
     try {
         settings = getDefaultSettings();
@@ -111,8 +111,6 @@ const loadData = async () => {
             messages = savedMessages.map(m => ({ ...m, timestamp: new Date(m.timestamp) }));
             window.messages = messages;
         }
-        
-        // 恢复头像
         if (savedReplies) customReplies = savedReplies;
         if (savedPokes) customPokes = savedPokes;
         if (savedStatuses) customStatuses = savedStatuses;
@@ -122,24 +120,24 @@ const loadData = async () => {
         if (savedPokeGroups) window.customPokeGroups = savedPokeGroups;
         if (savedStatusGroups) window.customStatusGroups = savedStatusGroups;
 
+        // ★ 强制恢复头像
         if (DOMElements && DOMElements.partner && DOMElements.me) {
             if (typeof updateAvatar === 'function') {
                 updateAvatar(DOMElements.partner.avatar, partnerAvatarSrc);
                 updateAvatar(DOMElements.me.avatar, myAvatarSrc);
             } else {
-                if (partnerAvatarSrc && DOMElements.partner.avatar) DOMElements.partner.avatar.innerHTML = `<img src="${partnerAvatarSrc}">`;
-                if (myAvatarSrc && DOMElements.me.avatar) DOMElements.me.avatar.innerHTML = `<img src="${myAvatarSrc}">`;
+                if (partnerAvatarSrc && DOMElements.partner.avatar) DOMElements.partner.avatar.innerHTML = '<img src="' + partnerAvatarSrc + '">';
+                if (myAvatarSrc && DOMElements.me.avatar) DOMElements.me.avatar.innerHTML = '<img src="' + myAvatarSrc + '">';
             }
         }
 
         displayedMessageCount = typeof HISTORY_BATCH_SIZE !== 'undefined' ? HISTORY_BATCH_SIZE : 20;
-
         setTimeout(() => {
             if (typeof updateUI === 'function') updateUI();
             if (typeof renderMessages === 'function') renderMessages();
             if (typeof renderReplyLibrary === 'function') renderReplyLibrary();
+            if (typeof updateDynamicNames === 'function') updateDynamicNames();
         }, 100);
-
     } catch (e) {
         console.error("LoadData 内部致命错误:", e);
         settings = getDefaultSettings();
@@ -162,7 +160,6 @@ const saveData = async () => {
         localforage.setItem(getStorageKey('customPokeGroups'), window.customPokeGroups || []),
         localforage.setItem(getStorageKey('customStatusGroups'), window.customStatusGroups || [])
     ];
-
     if (DOMElements && DOMElements.partner && DOMElements.partner.avatar) {
         const partnerImg = DOMElements.partner.avatar.querySelector('img');
         if (partnerImg) promises.push(localforage.setItem(getStorageKey('partnerAvatar'), partnerImg.src));
@@ -174,7 +171,7 @@ const saveData = async () => {
     await Promise.allSettled(promises);
 };
 
-// ==================== 3. 消息渲染 (含语音转文字) ====================
+// ==================== 3. 消息渲染（含语音转文字） ====================
 function createMessageFragment(msg, prevMsg, nextMsg, lastSenderRef) {
     const fragment = new DocumentFragment();
     const wrapper = document.createElement('div');
@@ -210,7 +207,7 @@ function createMessageFragment(msg, prevMsg, nextMsg, lastSenderRef) {
         messageHTML += `<div class="reply-indicator" style="cursor:pointer;"><span class="reply-indicator-sender">${repliedSender}</span><span class="reply-indicator-text">${repliedText}</span></div>`;
     }
 
-    // ★ 语音转文字：文字颜色修改为黑色/灰色，背景也调淡
+    // ★ 语音转文字（文字改为黑色/灰色，背景调淡）
     if (msg.type === 'voice') {
         const dur = msg.duration || Math.floor(Math.random() * 8) + 3;
         const voiceText = msg.text || '';
@@ -292,14 +289,12 @@ function createMessageFragment(msg, prevMsg, nextMsg, lastSenderRef) {
 // ==================== 4. 消息添加与语音自动播放 ====================
 const addMessage = (message) => {
     if (!(message.timestamp instanceof Date)) message.timestamp = new Date(message.timestamp);
-
     const container = DOMElements.chatContainer;
     const wasEmpty = messages.length === 0;
     const prevMsg = messages.length > 0 ? messages[messages.length - 1] : null;
-    
     messages.push(message); 
 
-    // ★ 语音自动播放逻辑
+    // ★ 语音自动播放
     if (message.type === 'voice' && message.voiceUrl) {
         if (!message._autoPlayed) {
             message._autoPlayed = true;
@@ -311,7 +306,6 @@ const addMessage = (message) => {
                     fakeEl.setAttribute('data-voice-url', message.voiceUrl);
 
                     var playPromise = window._playVoiceMessage(fakeEl);
-
                     if (playPromise && typeof playPromise.catch === 'function') {
                         playPromise.catch(function() {
                             var unlockOnce = function() {
@@ -329,13 +323,8 @@ const addMessage = (message) => {
     }
 
     if (wasEmpty && DOMElements.emptyState) DOMElements.emptyState.style.display = 'none';
-
     if (typeof renderMessages === 'function') renderMessages();
-
-    requestAnimationFrame(() => {
-        if (container) container.scrollTop = container.scrollHeight;
-    });
-
+    requestAnimationFrame(() => { if (container) container.scrollTop = container.scrollHeight; });
     if (typeof throttledSaveData === 'function') throttledSaveData();
 };
 
@@ -348,7 +337,6 @@ function renderMessages(preserveScroll = false) {
 
     container.innerHTML = '';
     const fragment = new DocumentFragment();
-    
     const spacer = document.createElement('div');
     spacer.style.flex = '1';
     fragment.appendChild(spacer);
@@ -357,35 +345,23 @@ function renderMessages(preserveScroll = false) {
     msgsToRender.forEach((msg, i) => {
         const prevMsg = i > 0 ? msgsToRender[i - 1] : (startIndex > 0 ? messages[startIndex - 1] : null);
         const nextMsg = i < msgsToRender.length - 1 ? msgsToRender[i + 1] : null;
-        const msgFragment = createMessageFragment(msg, prevMsg, nextMsg, lastSenderRef);
-        fragment.appendChild(msgFragment);
+        fragment.appendChild(createMessageFragment(msg, prevMsg, nextMsg, lastSenderRef));
     });
-
     container.appendChild(fragment);
-
-    if (!preserveScroll) {
-        requestAnimationFrame(() => {
-            container.scrollTop = container.scrollHeight;
-        });
-    }
+    if (!preserveScroll) requestAnimationFrame(() => { container.scrollTop = container.scrollHeight; });
 }
 
 // ==================== 5. 辅助工具与发送消息 ====================
 window.updateAvatar = window.updateAvatar || function(element, src) {
     if (!element) return;
-    if (src) {
-        element.innerHTML = '<img src="' + src + '" alt="avatar">';
-    } else {
-        element.innerHTML = '<i class="fas fa-user"></i>';
-    }
+    if (src) element.innerHTML = '<img src="' + src + '" alt="avatar">';
+    else element.innerHTML = '<i class="fas fa-user"></i>';
 };
 
 window.updateReplyPreview = function() {
     const container = DOMElements.replyPreviewContainer;
     if (!container) return;
-    if (!window.currentReplyTo) {
-        container.innerHTML = ''; container.style.display = 'none'; return;
-    }
+    if (!window.currentReplyTo) { container.innerHTML = ''; container.style.display = 'none'; return; }
     const senderName = window.currentReplyTo.sender === 'user' ? (settings.myName || '我') : (settings.partnerName || '对方');
     const previewText = window.currentReplyTo.text ? window.currentReplyTo.text.slice(0, 40) : '🖼 图片';
     container.style.display = 'flex';
@@ -410,10 +386,7 @@ window.sendMessage = function(textOverride = null, type = 'normal') {
     }
 
     const createMessage = (imgSrc = null) => {
-        const messageData = {
-            id: Date.now(), sender: 'user', text: text || '', timestamp: new Date(),
-            image: imgSrc, status: 'sent', favorited: false, replyTo: window.currentReplyTo || null, type: type
-        };
+        const messageData = { id: Date.now(), sender: 'user', text: text || '', timestamp: new Date(), image: imgSrc, status: 'sent', favorited: false, replyTo: window.currentReplyTo || null, type: type };
         if (type === 'system') messageData.sender = null;
         addMessage(messageData);
         if (type !== 'system' && typeof playSound === 'function') playSound('send');
@@ -432,18 +405,14 @@ window.sendMessage = function(textOverride = null, type = 'normal') {
         }
     };
 
-    if (imageFile && typeof optimizeImage === 'function') {
-        optimizeImage(imageFile).then(createMessage).catch(() => {});
-    } else { createMessage(); }
+    if (imageFile && typeof optimizeImage === 'function') optimizeImage(imageFile).then(createMessage).catch(() => {});
+    else createMessage();
     if (DOMElements.imageInput) DOMElements.imageInput.value = '';
 };
 
 window.simulateReply = function() {
     const pool = (typeof customReplies !== 'undefined' && Array.isArray(customReplies)) ? customReplies.filter(t => t && String(t).trim()) : [];
-    if (pool.length === 0) {
-        if (typeof showNotification === 'function') showNotification('回复库为空，请先到「自定义回复」中添加内容', 'info', 3500);
-        return;
-    }
+    if (pool.length === 0) { if (typeof showNotification === 'function') showNotification('回复库为空，请先到「自定义回复」中添加内容', 'info', 3500); return; }
 
     const replyText = pool[Math.floor(Math.random() * pool.length)];
     const partnerName = settings.partnerName || '对方';
@@ -457,406 +426,56 @@ window.simulateReply = function() {
         });
         return;
     }
-
     addMessage({ id: Date.now(), sender: partnerName, text: replyText, timestamp: new Date(), status: 'received', type: 'normal' });
     if (typeof playSound === 'function') playSound('message');
 };
-// ==================== ★ 万能钩子：修复功能面板无法点开的问题 ====================
-(function initUIBindings() {
-    // 1. 设置按钮 -> 打开设置弹窗
-    const settingsBtn = document.getElementById('settings-btn');
-    if (settingsBtn && !settingsBtn._hooked) {
-        settingsBtn._hooked = true;
-        settingsBtn.addEventListener('click', function() {
-            const modal = document.getElementById('settings-modal');
-            if (modal && typeof showModal === 'function') showModal(modal);
-        });
-    }
 
-    // 2. 会话管理 -> 打开会话列表
-    const sessionBtn = document.getElementById('session-manager-btn');
-    if (sessionBtn && !sessionBtn._hooked) {
-        sessionBtn._hooked = true;
-        sessionBtn.addEventListener('click', function() {
-            const modal = document.getElementById('session-modal');
-            if (modal && typeof showModal === 'function') {
-                showModal(modal);
-                if (typeof renderSessionList === 'function') renderSessionList();
-            }
-        });
-    }
+// ==================== 6. 按钮强绑定（修好所有点不开的图标） ====================
+(function forceBindAllButtons() {
+    document.addEventListener('click', function(e) {
+        var t = e.target.closest('button, .settings-card, .settings-item, .action-btn');
+        if (!t) return;
+        var id = t.id;
 
-    // 3. 群聊设置 -> 打开群聊弹窗
-    const groupBtn = document.getElementById('group-chat-btn');
-    if (groupBtn && !groupBtn._hooked) {
-        groupBtn._hooked = true;
-        groupBtn.addEventListener('click', function() {
-            const modal = document.getElementById('group-chat-modal');
-            if (modal && typeof showModal === 'function') showModal(modal);
-            if (typeof updateGroupModeUI === 'function') updateGroupModeUI();
-        });
-    }
+        var tryOpen = function(modalId, extraFn) {
+            var m = document.getElementById(modalId);
+            if (m && typeof window.showModal === 'function') window.showModal(m);
+            if (typeof extraFn === 'function') extraFn();
+        };
+        var tryHide = function(modalId) {
+            var m = document.getElementById(modalId);
+            if (m && typeof window.hideModal === 'function') window.hideModal(m);
+        };
 
-    // 4. 今日公告 -> 打开每日公告
-    const dgBtn = document.getElementById('daily-greeting-btn');
-    if (dgBtn && !dgBtn._hooked) {
-        dgBtn._hooked = true;
-        dgBtn.addEventListener('click', function() {
-            if (typeof reopenDailyGreeting === 'function') reopenDailyGreeting();
-        });
-    }
-
-    // 5. 主题切换
-    const themeBtn = document.getElementById('theme-toggle');
-    if (themeBtn && !themeBtn._hooked) {
-        themeBtn._hooked = true;
-        themeBtn.addEventListener('click', function() {
+        // 顶部图标
+        if (id === 'settings-btn') return tryOpen('settings-modal');
+        if (id === 'session-manager-btn') return tryOpen('session-modal', () => { if (typeof renderSessionList === 'function') renderSessionList(); });
+        if (id === 'group-chat-btn') return tryOpen('group-chat-modal', () => { if (typeof updateGroupModeUI === 'function') updateGroupModeUI(); });
+        if (id === 'moments-btn') return (typeof window.openMomentsPanel === 'function') && window.openMomentsPanel();
+        if (id === 'daily-greeting-btn') return (typeof window.reopenDailyGreeting === 'function') && window.reopenDailyGreeting();
+        if (id === 'theme-toggle') {
             if (typeof settings !== 'undefined') {
                 settings.isDarkMode = !settings.isDarkMode;
                 if (typeof throttledSaveData === 'function') throttledSaveData();
                 if (typeof updateUI === 'function') updateUI();
             }
-        });
-    }
-
-    // 6. 附件/图片按钮
-    const attachBtn = document.getElementById('attachment-btn');
-    if (attachBtn && !attachBtn._hooked) {
-        attachBtn._hooked = true;
-        attachBtn.addEventListener('click', function() {
-            const input = document.getElementById('image-input');
-            if (input) input.click();
-        });
-    }
-})();
-
-// 延迟重复调用一次，确保在页面完全加载后绑定（因为有些元素可能是动态生成的）
-setTimeout(function() {
-    const buttons = ['settings-btn', 'session-manager-btn', 'group-chat-btn', 'daily-greeting-btn', 'theme-toggle', 'attachment-btn'];
-    buttons.forEach(function(id) {
-        const btn = document.getElementById(id);
-        if (btn && !btn._hooked) {
-            btn._hooked = true;
-            btn.addEventListener('click', function() {
-                if (id === 'settings-btn') {
-                    const m = document.getElementById('settings-modal'); if (m && window.showModal) window.showModal(m);
-                } else if (id === 'session-manager-btn') {
-                    const m = document.getElementById('session-modal'); if (m && window.showModal) window.showModal(m);
-                    if (typeof renderSessionList === 'function') renderSessionList();
-                } else if (id === 'group-chat-btn') {
-                    const m = document.getElementById('group-chat-modal'); if (m && window.showModal) window.showModal(m);
-                    if (typeof updateGroupModeUI === 'function') updateGroupModeUI();
-                } else if (id === 'daily-greeting-btn') {
-                    if (typeof reopenDailyGreeting === 'function') reopenDailyGreeting();
-                } else if (id === 'theme-toggle') {
-                    if (typeof settings !== 'undefined') { settings.isDarkMode = !settings.isDarkMode; if (typeof throttledSaveData === 'function') throttledSaveData(); if (typeof updateUI === 'function') updateUI(); }
-                } else if (id === 'attachment-btn') {
-                    const inp = document.getElementById('image-input'); if (inp) inp.click();
-                }
-            });
+            return;
         }
-    });
-}, 1500);
-// ==================== ★ 终极修复：补齐所有按钮的点击事件 ====================
-(function bindAllMissingButtons() {
-    function safeClick(id, handler) {
-        const el = document.getElementById(id);
-        if (el && !el._hooked) {
-            el._hooked = true;
-            el.addEventListener('click', handler);
-        }
-    }
+        if (id === 'attachment-btn') { var inp = document.getElementById('image-input'); if (inp) inp.click(); return; }
 
-    // 设置按钮
-    safeClick('settings-btn', function() {
-        const m = document.getElementById('settings-modal');
-        if (m && typeof window.showModal === 'function') window.showModal(m);
-    });
+        // 设置弹窗卡片
+        if (id === 'appearance-settings') return (tryHide('settings-modal'), tryOpen('appearance-modal', () => { if (typeof renderBackgroundGallery === 'function') renderBackgroundGallery(); }));
+        if (id === 'chat-settings') return (tryHide('settings-modal'), tryOpen('chat-modal'));
+        if (id === 'advanced-settings') return (tryHide('settings-modal'), tryOpen('advanced-modal'));
+        if (id === 'data-settings') return (tryHide('settings-modal'), tryOpen('data-modal', () => { if (typeof updateStorageUsageBar === 'function') updateStorageUsageBar(); }));
 
-    // 会话管理
-    safeClick('session-manager-btn', function() {
-        const m = document.getElementById('session-modal');
-        if (m && typeof window.showModal === 'function') window.showModal(m);
-        if (typeof renderSessionList === 'function') renderSessionList();
-    });
-
-    // 群聊设置
-    safeClick('group-chat-btn', function() {
-        const m = document.getElementById('group-chat-modal');
-        if (m && typeof window.showModal === 'function') window.showModal(m);
-        if (typeof updateGroupModeUI === 'function') updateGroupModeUI();
-    });
-
-    // 朋友圈
-    safeClick('moments-btn', function() {
-        if (typeof window.openMomentsPanel === 'function') window.openMomentsPanel();
-    });
-
-    // 主题切换
-    safeClick('theme-toggle', function() {
-        if (typeof settings !== 'undefined') {
-            settings.isDarkMode = !settings.isDarkMode;
-            if (typeof throttledSaveData === 'function') throttledSaveData();
-            if (typeof updateUI === 'function') updateUI();
-        }
-    });
-
-    // 附件/图片
-    safeClick('attachment-btn', function() {
-        const inp = document.getElementById('image-input');
-        if (inp) inp.click();
-    });
-
-    // 设置弹窗里的四张卡片：外观、聊天、高级、数据
-    safeClick('appearance-settings', function() {
-        const m = document.getElementById('settings-modal');
-        if (m && typeof window.hideModal === 'function') window.hideModal(m);
-        const am = document.getElementById('appearance-modal');
-        if (am && typeof window.showModal === 'function') window.showModal(am);
-        if (typeof renderBackgroundGallery === 'function') renderBackgroundGallery();
-    });
-
-    safeClick('chat-settings', function() {
-        const m = document.getElementById('settings-modal');
-        if (m && typeof window.hideModal === 'function') window.hideModal(m);
-        const cm = document.getElementById('chat-modal');
-        if (cm && typeof window.showModal === 'function') window.showModal(cm);
-    });
-
-    safeClick('advanced-settings', function() {
-        const m = document.getElementById('settings-modal');
-        if (m && typeof window.hideModal === 'function') window.hideModal(m);
-        const am = document.getElementById('advanced-modal');
-        if (am && typeof window.showModal === 'function') window.showModal(am);
-    });
-
-    safeClick('data-settings', function() {
-        const m = document.getElementById('settings-modal');
-        if (m && typeof window.hideModal === 'function') window.hideModal(m);
-        const dm = document.getElementById('data-modal');
-        if (dm && typeof window.showModal === 'function') window.showModal(dm);
-        if (typeof updateStorageUsageBar === 'function') updateStorageUsageBar();
-    });
-
-    // 高级功能里的各项入口
-    safeClick('custom-replies-function', function() {
-        const m = document.getElementById('advanced-modal');
-        if (m && typeof window.hideModal === 'function') window.hideModal(m);
-        if (typeof window.openMyStickerSettings === 'function') return window.openMyStickerSettings();
-        const cm = document.getElementById('custom-replies-modal');
-        if (cm && typeof window.showModal === 'function') window.showModal(cm);
-    });
-
-    safeClick('stats-function', function() {
-        const m = document.getElementById('advanced-modal');
-        if (m && typeof window.hideModal === 'function') window.hideModal(m);
-        if (typeof renderStatsContent === 'function') renderStatsContent();
-        const sm = document.getElementById('stats-modal');
-        if (sm && typeof window.showModal === 'function') window.showModal(sm);
-    });
-
-    safeClick('anniversary-function', function() {
-        if (typeof window.openAnniversaryModule === 'function') return window.openAnniversaryModule();
-        const m = document.getElementById('advanced-modal');
-        if (m && typeof window.hideModal === 'function') window.hideModal(m);
-        const am = document.getElementById('anniversary-modal');
-        if (am && typeof window.showModal === 'function') window.showModal(am);
-        if (typeof renderAnniversariesList === 'function') renderAnniversariesList();
-    });
-
-    safeClick('mood-function', function() {
-        const m = document.getElementById('advanced-modal');
-        if (m && typeof window.hideModal === 'function') window.hideModal(m);
-        const mm = document.getElementById('mood-modal');
-        if (mm && typeof window.showModal === 'function') window.showModal(mm);
-        if (typeof renderMoodCalendar === 'function') renderMoodCalendar();
-    });
-
-    safeClick('envelope-function', function() {
-        const m = document.getElementById('advanced-modal');
-        if (m && typeof window.hideModal === 'function') window.hideModal(m);
-        if (typeof loadEnvelopeData === 'function') loadEnvelopeData();
-        const em = document.getElementById('envelope-modal');
-        if (em && typeof window.showModal === 'function') window.showModal(em);
-    });
-
-    safeClick('fortune-lenormand-function', function() {
-        const m = document.getElementById('advanced-modal');
-        if (m && typeof window.hideModal === 'function') window.hideModal(m);
-        if (typeof generateFortune === 'function') generateFortune();
-        const fm = document.getElementById('fortune-lenormand-modal');
-        if (fm && typeof window.showModal === 'function') window.showModal(fm);
-    });
-
-    safeClick('decision-function', function() {
-        const m = document.getElementById('advanced-modal');
-        if (m && typeof window.hideModal === 'function') window.hideModal(m);
-        const dm = document.getElementById('decision-menu-modal');
-        if (dm && typeof window.showModal === 'function') window.showModal(dm);
-    });
-
-    // 设置弹窗里的关闭按钮
-    safeClick('cancel-settings', function() {
-        const m = document.getElementById('settings-modal');
-        if (m && typeof window.hideModal === 'function') window.hideModal(m);
-    });
-
-    safeClick('close-appearance', function() {
-        const m = document.getElementById('appearance-modal');
-        if (m && typeof window.hideModal === 'function') window.hideModal(m);
-    });
-
-    safeClick('close-chat', function() {
-        const m = document.getElementById('chat-modal');
-        if (m && typeof window.hideModal === 'function') window.hideModal(m);
-    });
-
-    safeClick('close-advanced', function() {
-        const m = document.getElementById('advanced-modal');
-        if (m && typeof window.hideModal === 'function') window.hideModal(m);
-    });
-
-    safeClick('close-data', function() {
-        const m = document.getElementById('data-modal');
-        if (m && typeof window.hideModal === 'function') window.hideModal(m);
-    });
-})();
-// ==================== ★ 终极修复：补齐所有缺失的按钮点击事件 ====================
-(function bindAllMissingButtons() {
-    function safeClick(id, handler) {
-        const el = document.getElementById(id);
-        if (el && !el._hooked) {
-            el._hooked = true;
-            el.addEventListener('click', handler);
-        }
-    }
-
-    // 1. 顶部图标按钮
-    safeClick('settings-btn', function() {
-        const m = document.getElementById('settings-modal');
-        if (m && typeof window.showModal === 'function') window.showModal(m);
-    });
-    safeClick('session-manager-btn', function() {
-        const m = document.getElementById('session-modal');
-        if (m && typeof window.showModal === 'function') window.showModal(m);
-        if (typeof renderSessionList === 'function') renderSessionList();
-    });
-    safeClick('group-chat-btn', function() {
-        const m = document.getElementById('group-chat-modal');
-        if (m && typeof window.showModal === 'function') window.showModal(m);
-        if (typeof updateGroupModeUI === 'function') updateGroupModeUI();
-    });
-    safeClick('moments-btn', function() {
-        if (typeof window.openMomentsPanel === 'function') window.openMomentsPanel();
-    });
-    safeClick('theme-toggle', function() {
-        if (typeof settings !== 'undefined') {
-            settings.isDarkMode = !settings.isDarkMode;
-            if (typeof throttledSaveData === 'function') throttledSaveData();
-            if (typeof updateUI === 'function') updateUI();
-        }
-    });
-    safeClick('attachment-btn', function() {
-        const inp = document.getElementById('image-input');
-        if (inp) inp.click();
-    });
-
-    // 2. 设置弹窗里的四张卡片
-    safeClick('appearance-settings', function() {
-        const m = document.getElementById('settings-modal');
-        if (m && typeof window.hideModal === 'function') window.hideModal(m);
-        const am = document.getElementById('appearance-modal');
-        if (am && typeof window.showModal === 'function') window.showModal(am);
-        if (typeof renderBackgroundGallery === 'function') renderBackgroundGallery();
-    });
-    safeClick('chat-settings', function() {
-        const m = document.getElementById('settings-modal');
-        if (m && typeof window.hideModal === 'function') window.hideModal(m);
-        const cm = document.getElementById('chat-modal');
-        if (cm && typeof window.showModal === 'function') window.showModal(cm);
-    });
-    safeClick('advanced-settings', function() {
-        const m = document.getElementById('settings-modal');
-        if (m && typeof window.hideModal === 'function') window.hideModal(m);
-        const am = document.getElementById('advanced-modal');
-        if (am && typeof window.showModal === 'function') window.showModal(am);
-    });
-    safeClick('data-settings', function() {
-        const m = document.getElementById('settings-modal');
-        if (m && typeof window.hideModal === 'function') window.hideModal(m);
-        const dm = document.getElementById('data-modal');
-        if (dm && typeof window.showModal === 'function') window.showModal(dm);
-        if (typeof updateStorageUsageBar === 'function') updateStorageUsageBar();
-    });
-
-    // 3. 高级功能里的各入口
-    safeClick('custom-replies-function', function() {
-        const m = document.getElementById('advanced-modal');
-        if (m && typeof window.hideModal === 'function') window.hideModal(m);
-        const cm = document.getElementById('custom-replies-modal');
-        if (cm && typeof window.showModal === 'function') window.showModal(cm);
-    });
-    safeClick('stats-function', function() {
-        const m = document.getElementById('advanced-modal');
-        if (m && typeof window.hideModal === 'function') window.hideModal(m);
-        if (typeof renderStatsContent === 'function') renderStatsContent();
-        const sm = document.getElementById('stats-modal');
-        if (sm && typeof window.showModal === 'function') window.showModal(sm);
-    });
-    safeClick('anniversary-function', function() {
-        const m = document.getElementById('advanced-modal');
-        if (m && typeof window.hideModal === 'function') window.hideModal(m);
-        const am = document.getElementById('anniversary-modal');
-        if (am && typeof window.showModal === 'function') window.showModal(am);
-        if (typeof renderAnniversariesList === 'function') renderAnniversariesList();
-    });
-    safeClick('mood-function', function() {
-        const m = document.getElementById('advanced-modal');
-        if (m && typeof window.hideModal === 'function') window.hideModal(m);
-        const mm = document.getElementById('mood-modal');
-        if (mm && typeof window.showModal === 'function') window.showModal(mm);
-        if (typeof renderMoodCalendar === 'function') renderMoodCalendar();
-    });
-    safeClick('envelope-function', function() {
-        const m = document.getElementById('advanced-modal');
-        if (m && typeof window.hideModal === 'function') window.hideModal(m);
-        if (typeof loadEnvelopeData === 'function') loadEnvelopeData();
-        const em = document.getElementById('envelope-modal');
-        if (em && typeof window.showModal === 'function') window.showModal(em);
-    });
-    safeClick('fortune-lenormand-function', function() {
-        const m = document.getElementById('advanced-modal');
-        if (m && typeof window.hideModal === 'function') window.hideModal(m);
-        if (typeof generateFortune === 'function') generateFortune();
-        const fm = document.getElementById('fortune-lenormand-modal');
-        if (fm && typeof window.showModal === 'function') window.showModal(fm);
-    });
-    safeClick('decision-function', function() {
-        const m = document.getElementById('advanced-modal');
-        if (m && typeof window.hideModal === 'function') window.hideModal(m);
-        const dm = document.getElementById('decision-menu-modal');
-        if (dm && typeof window.showModal === 'function') window.showModal(dm);
-    });
-
-    // 4. 弹窗关闭按钮
-    safeClick('cancel-settings', function() {
-        const m = document.getElementById('settings-modal');
-        if (m && typeof window.hideModal === 'function') window.hideModal(m);
-    });
-    safeClick('close-appearance', function() {
-        const m = document.getElementById('appearance-modal');
-        if (m && typeof window.hideModal === 'function') window.hideModal(m);
-    });
-    safeClick('close-chat', function() {
-        const m = document.getElementById('chat-modal');
-        if (m && typeof window.hideModal === 'function') window.hideModal(m);
-    });
-    safeClick('close-advanced', function() {
-        const m = document.getElementById('advanced-modal');
-        if (m && typeof window.hideModal === 'function') window.hideModal(m);
-    });
-    safeClick('close-data', function() {
-        const m = document.getElementById('data-modal');
-        if (m && typeof window.hideModal === 'function') window.hideModal(m);
+        // 高级功能入口
+        if (id === 'custom-replies-function') return (tryHide('advanced-modal'), tryOpen('custom-replies-modal'));
+        if (id === 'stats-function') return (tryHide('advanced-modal'), tryOpen('stats-modal', () => { if (typeof renderStatsContent === 'function') renderStatsContent(); }));
+        if (id === 'anniversary-function') return (tryHide('advanced-modal'), tryOpen('anniversary-modal', () => { if (typeof renderAnniversariesList === 'function') renderAnniversariesList(); }));
+        if (id === 'mood-function') return (tryHide('advanced-modal'), tryOpen('mood-modal', () => { if (typeof renderMoodCalendar === 'function') renderMoodCalendar(); }));
+        if (id === 'envelope-function') return (tryHide('advanced-modal'), tryOpen('envelope-modal', () => { if (typeof loadEnvelopeData === 'function') loadEnvelopeData(); }));
+        if (id === 'fortune-lenormand-function') return (tryHide('advanced-modal'), tryOpen('fortune-lenormand-modal', () => { if (typeof generateFortune === 'function') generateFortune(); }));
+        if (id === 'decision-function') return (tryHide('advanced-modal'), tryOpen('decision-menu-modal'));
     });
 })();
