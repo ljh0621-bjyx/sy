@@ -474,3 +474,8 @@ window.initNovelPanel = function() {
         });
     }
 };
+// novel.js 底部
+window.initNovelPanel = function() {
+    // 因为 HTML 里有 onclick，所以这里什么都不用做
+    console.log('小说面板初始化完成');
+};

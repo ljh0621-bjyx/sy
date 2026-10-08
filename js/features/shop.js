@@ -217,3 +217,6 @@ window.initShopPanel = function() {
         });
     }
 };
+window.initShopPanel = function() {
+    console.log('[shop] 商城 已就绪');
+};
