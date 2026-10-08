@@ -18,7 +18,6 @@ function setupEventListeners() {
     ['initThemeSchemes', typeof initThemeSchemes === 'function' ? initThemeSchemes : null],
     ['initComboMenu', typeof initComboMenu === 'function' ? initComboMenu : null],
 
-    // ===== ★ 新添加的入口，加在最后面 ★ =====
     ['initNovelPanel', typeof initNovelPanel === 'function' ? initNovelPanel : null],
     ['initShopPanel', typeof initShopPanel === 'function' ? initShopPanel : null],
     ['initRecipePanel', typeof initRecipePanel === 'function' ? initRecipePanel : null],
@@ -26,7 +25,7 @@ function setupEventListeners() {
     ['initMomentsPanel', typeof initMomentsPanel === 'function' ? initMomentsPanel : null],
     ['initWatchMoviePanel', typeof initWatchMoviePanel === 'function' ? initWatchMoviePanel : null],
     ['initFloatingWindow', typeof initFloatingWindow === 'function' ? initFloatingWindow : null]
-]; 
+];
 
     tasks.forEach(function(t) {
         var name = t[0], fn = t[1];
