@@ -495,3 +495,17 @@ async function save() {
         load();
     }
 })();
+// === watch-movie.js 新增入口 ===
+window.initWatchMoviePanel = function() {
+    var btn = document.getElementById('watch-movie-function'); // 对应 HTML 里的 ID
+    if (btn && !btn.dataset.initialized) {
+        btn.dataset.initialized = 'true';
+        btn.addEventListener('click', function() {
+            var advancedModal = document.getElementById('advanced-modal');
+            if (advancedModal && typeof hideModal === 'function') hideModal(advancedModal);
+            if (typeof window.openWatchMoviePanel === 'function') {
+                window.openWatchMoviePanel();
+            }
+        });
+    }
+};
