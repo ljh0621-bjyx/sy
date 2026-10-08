@@ -721,3 +721,142 @@ setTimeout(function() {
         if (m && typeof window.hideModal === 'function') window.hideModal(m);
     });
 })();
+// ==================== ★ 终极修复：补齐所有缺失的按钮点击事件 ====================
+(function bindAllMissingButtons() {
+    function safeClick(id, handler) {
+        const el = document.getElementById(id);
+        if (el && !el._hooked) {
+            el._hooked = true;
+            el.addEventListener('click', handler);
+        }
+    }
+
+    // 1. 顶部图标按钮
+    safeClick('settings-btn', function() {
+        const m = document.getElementById('settings-modal');
+        if (m && typeof window.showModal === 'function') window.showModal(m);
+    });
+    safeClick('session-manager-btn', function() {
+        const m = document.getElementById('session-modal');
+        if (m && typeof window.showModal === 'function') window.showModal(m);
+        if (typeof renderSessionList === 'function') renderSessionList();
+    });
+    safeClick('group-chat-btn', function() {
+        const m = document.getElementById('group-chat-modal');
+        if (m && typeof window.showModal === 'function') window.showModal(m);
+        if (typeof updateGroupModeUI === 'function') updateGroupModeUI();
+    });
+    safeClick('moments-btn', function() {
+        if (typeof window.openMomentsPanel === 'function') window.openMomentsPanel();
+    });
+    safeClick('theme-toggle', function() {
+        if (typeof settings !== 'undefined') {
+            settings.isDarkMode = !settings.isDarkMode;
+            if (typeof throttledSaveData === 'function') throttledSaveData();
+            if (typeof updateUI === 'function') updateUI();
+        }
+    });
+    safeClick('attachment-btn', function() {
+        const inp = document.getElementById('image-input');
+        if (inp) inp.click();
+    });
+
+    // 2. 设置弹窗里的四张卡片
+    safeClick('appearance-settings', function() {
+        const m = document.getElementById('settings-modal');
+        if (m && typeof window.hideModal === 'function') window.hideModal(m);
+        const am = document.getElementById('appearance-modal');
+        if (am && typeof window.showModal === 'function') window.showModal(am);
+        if (typeof renderBackgroundGallery === 'function') renderBackgroundGallery();
+    });
+    safeClick('chat-settings', function() {
+        const m = document.getElementById('settings-modal');
+        if (m && typeof window.hideModal === 'function') window.hideModal(m);
+        const cm = document.getElementById('chat-modal');
+        if (cm && typeof window.showModal === 'function') window.showModal(cm);
+    });
+    safeClick('advanced-settings', function() {
+        const m = document.getElementById('settings-modal');
+        if (m && typeof window.hideModal === 'function') window.hideModal(m);
+        const am = document.getElementById('advanced-modal');
+        if (am && typeof window.showModal === 'function') window.showModal(am);
+    });
+    safeClick('data-settings', function() {
+        const m = document.getElementById('settings-modal');
+        if (m && typeof window.hideModal === 'function') window.hideModal(m);
+        const dm = document.getElementById('data-modal');
+        if (dm && typeof window.showModal === 'function') window.showModal(dm);
+        if (typeof updateStorageUsageBar === 'function') updateStorageUsageBar();
+    });
+
+    // 3. 高级功能里的各入口
+    safeClick('custom-replies-function', function() {
+        const m = document.getElementById('advanced-modal');
+        if (m && typeof window.hideModal === 'function') window.hideModal(m);
+        const cm = document.getElementById('custom-replies-modal');
+        if (cm && typeof window.showModal === 'function') window.showModal(cm);
+    });
+    safeClick('stats-function', function() {
+        const m = document.getElementById('advanced-modal');
+        if (m && typeof window.hideModal === 'function') window.hideModal(m);
+        if (typeof renderStatsContent === 'function') renderStatsContent();
+        const sm = document.getElementById('stats-modal');
+        if (sm && typeof window.showModal === 'function') window.showModal(sm);
+    });
+    safeClick('anniversary-function', function() {
+        const m = document.getElementById('advanced-modal');
+        if (m && typeof window.hideModal === 'function') window.hideModal(m);
+        const am = document.getElementById('anniversary-modal');
+        if (am && typeof window.showModal === 'function') window.showModal(am);
+        if (typeof renderAnniversariesList === 'function') renderAnniversariesList();
+    });
+    safeClick('mood-function', function() {
+        const m = document.getElementById('advanced-modal');
+        if (m && typeof window.hideModal === 'function') window.hideModal(m);
+        const mm = document.getElementById('mood-modal');
+        if (mm && typeof window.showModal === 'function') window.showModal(mm);
+        if (typeof renderMoodCalendar === 'function') renderMoodCalendar();
+    });
+    safeClick('envelope-function', function() {
+        const m = document.getElementById('advanced-modal');
+        if (m && typeof window.hideModal === 'function') window.hideModal(m);
+        if (typeof loadEnvelopeData === 'function') loadEnvelopeData();
+        const em = document.getElementById('envelope-modal');
+        if (em && typeof window.showModal === 'function') window.showModal(em);
+    });
+    safeClick('fortune-lenormand-function', function() {
+        const m = document.getElementById('advanced-modal');
+        if (m && typeof window.hideModal === 'function') window.hideModal(m);
+        if (typeof generateFortune === 'function') generateFortune();
+        const fm = document.getElementById('fortune-lenormand-modal');
+        if (fm && typeof window.showModal === 'function') window.showModal(fm);
+    });
+    safeClick('decision-function', function() {
+        const m = document.getElementById('advanced-modal');
+        if (m && typeof window.hideModal === 'function') window.hideModal(m);
+        const dm = document.getElementById('decision-menu-modal');
+        if (dm && typeof window.showModal === 'function') window.showModal(dm);
+    });
+
+    // 4. 弹窗关闭按钮
+    safeClick('cancel-settings', function() {
+        const m = document.getElementById('settings-modal');
+        if (m && typeof window.hideModal === 'function') window.hideModal(m);
+    });
+    safeClick('close-appearance', function() {
+        const m = document.getElementById('appearance-modal');
+        if (m && typeof window.hideModal === 'function') window.hideModal(m);
+    });
+    safeClick('close-chat', function() {
+        const m = document.getElementById('chat-modal');
+        if (m && typeof window.hideModal === 'function') window.hideModal(m);
+    });
+    safeClick('close-advanced', function() {
+        const m = document.getElementById('advanced-modal');
+        if (m && typeof window.hideModal === 'function') window.hideModal(m);
+    });
+    safeClick('close-data', function() {
+        const m = document.getElementById('data-modal');
+        if (m && typeof window.hideModal === 'function') window.hideModal(m);
+    });
+})();
