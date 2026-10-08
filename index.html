@@ -1,6 +1,36 @@
 <!DOCTYPE html>
 <html lang="zh-CN" data-theme="light" data-color-theme="black-white">
 <head>
+<script>
+window.onerror = function(msg, url, line, col, err) {
+    var el = document.getElementById('__err_hud__');
+    if (!el) {
+        el = document.createElement('div');
+        el.id = '__err_hud__';
+        el.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:2147483647;background:#c00;color:#fff;padding:14px;font-size:13px;font-family:monospace;line-height:1.5;word-break:break-all;max-height:45vh;overflow-y:auto;';
+        document.body ? document.body.appendChild(el) : setTimeout(function(){ document.body.appendChild(el); }, 100);
+    }
+    var shortUrl = String(url || '').split('/').slice(-1)[0];
+    el.innerHTML += '<div style="border-bottom:1px solid rgba(255,255,255,0.3);padding:4px 0;">' +
+        '<b>❌ ' + msg + '</b><br>' +
+        '<span style="opacity:0.85;">📄 ' + shortUrl + ' 第 ' + line + ' 行</span>' +
+        '</div>';
+    return false;
+};
+window.addEventListener('unhandledrejection', function(e) {
+    var el = document.getElementById('__err_hud__');
+    if (!el) {
+        el = document.createElement('div');
+        el.id = '__err_hud__';
+        el.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:2147483647;background:#c00;color:#fff;padding:14px;font-size:13px;font-family:monospace;line-height:1.5;word-break:break-all;max-height:45vh;overflow-y:auto;';
+        document.body ? document.body.appendChild(el) : setTimeout(function(){ document.body.appendChild(el); }, 100);
+    }
+    el.innerHTML += '<div style="border-bottom:1px solid rgba(255,255,255,0.3);padding:4px 0;">' +
+        '<b>⚠️ Promise 错误: ' + (e.reason && e.reason.message ? e.reason.message : e.reason) + '</b>' +
+        '</div>';
+    return false;
+});
+</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="mobile-web-app-capable" content="yes">
@@ -201,6 +231,7 @@
             <div class="header-actions">
                 <button id="session-manager-btn" class="action-btn" title="会话管理"><i class="fas fa-comments"></i></button>
                 <button id="group-chat-btn" class="action-btn" title="群聊设置"><i class="fas fa-users"></i></button>
+                <button id="moments-btn" class="action-btn" title="朋友圈" onclick="openMomentsPanel()"><i class="fas fa-camera-retro"></i></button>
                 <button id="daily-greeting-btn" class="action-btn" title="今日公告" onclick="reopenDailyGreeting()"><i class="fas fa-newspaper"></i></button>
                 <button id="theme-toggle" class="action-btn" title="切换主题"><i class="fas fa-moon"></i></button>
                 <button id="settings-btn" class="action-btn" title="设置"><i class="fas fa-cog"></i></button>
@@ -352,6 +383,7 @@
     <button class="continue-btn input-btn" id="continue-btn" title="让对方继续说"><i class="fas fa-ellipsis-h"></i></button>
         <button class="batch-btn input-btn collapse-hideable" id="batch-btn" title="批量发送模式"><i class="fas fa-layer-group"></i></button>
         <button class="send-btn input-btn" id="send-btn" title="发送消息"><i class="fas fa-paper-plane"></i></button>
+        <button class="input-btn collapse-hideable" id="survey-quick-btn" title="调查问卷" onclick="openSurveyPanel()"><i class="fas fa-clipboard-list"></i></button>
         
         <div class="sticker-picker-popover" id="user-sticker-picker">
             <div class="combo-tabs-header">
@@ -1109,6 +1141,11 @@
                             <span class="setting-pill-label">正在输入</span>
                             <div class="setting-pill-switch"><div class="setting-pill-knob"></div></div>
                         </div>
+                        <div class="setting-pill-row" id="partner-typing-anim-toggle">
+    <span class="setting-pill-icon"><i class="fas fa-spell-check"></i></span>
+    <span class="setting-pill-label">对方打字动画 <span style="font-size:11px;color:var(--text-secondary);font-weight:400;">显示拼音组句浮窗</span></span>
+    <div class="setting-pill-switch"><div class="setting-pill-knob"></div></div>
+</div>
                     </div>
 
                     <p class="cs-group-label" style="margin-top:4px;">时间戳</p>
@@ -1147,7 +1184,29 @@
                             <span class="cs-slider-val" id="reply-delay-max-value">7s</span>
                         </div>
                     </div>
-
+           <p class="cs-group-label" style="margin-top:4px;">问卷回复速度</p>
+<div class="cs-card" style="margin-bottom:10px;">
+    <div class="cs-slider-row">
+        <span class="cs-slider-label">最短等待</span>
+        <input type="number" min="1" max="600" step="1" value="30" id="survey-delay-min-input"
+            oninput="try{var v=Math.max(1,Math.min(600,parseInt(this.value)||1));settings.surveyReplyDelayMin=v*1000;if(settings.surveyReplyDelayMax<settings.surveyReplyDelayMin){settings.surveyReplyDelayMax=settings.surveyReplyDelayMin;var x=document.getElementById('survey-delay-max-input');if(x)x.value=v;}if(typeof throttledSaveData==='function')throttledSaveData();}catch(e){}"
+            style="flex:1;padding:8px 10px;border:1px solid var(--border-color);border-radius:8px;background:var(--primary-bg);color:var(--text-primary);font-size:14px;outline:none;font-family:var(--font-family);text-align:center;box-sizing:border-box;">
+        <span style="font-size:12px;color:var(--text-secondary);width:26px;flex-shrink:0;">秒</span>
+    </div>
+    <div class="cs-slider-row">
+        <span class="cs-slider-label">最长等待</span>
+        <input type="number" min="1" max="600" step="1" value="60" id="survey-delay-max-input"
+            oninput="try{var v=Math.max(1,Math.min(600,parseInt(this.value)||1));settings.surveyReplyDelayMax=v*1000;if(settings.surveyReplyDelayMin>settings.surveyReplyDelayMax){settings.surveyReplyDelayMin=settings.surveyReplyDelayMax;var x=document.getElementById('survey-delay-min-input');if(x)x.value=v;}if(typeof throttledSaveData==='function')throttledSaveData();}catch(e){}"
+            style="flex:1;padding:8px 10px;border:1px solid var(--border-color);border-radius:8px;background:var(--primary-bg);color:var(--text-primary);font-size:14px;outline:none;font-family:var(--font-family);text-align:center;box-sizing:border-box;">
+        <span style="font-size:12px;color:var(--text-secondary);width:26px;flex-shrink:0;">秒</span>
+    </div>
+    <div style="padding:0 14px 12px;display:flex;flex-wrap:wrap;gap:6px;">
+        <button onclick="try{settings.surveyReplyDelayMin=5000;settings.surveyReplyDelayMax=10000;document.getElementById('survey-delay-min-input').value=5;document.getElementById('survey-delay-max-input').value=10;if(typeof throttledSaveData==='function')throttledSaveData();if(typeof showNotification==='function')showNotification('✓ 已设为 5~10 秒','success',1500);}catch(e){}" style="padding:5px 10px;border:1px solid var(--border-color);border-radius:8px;background:var(--primary-bg);color:var(--text-secondary);font-size:11px;cursor:pointer;font-family:var(--font-family);">5-10秒</button>
+        <button onclick="try{settings.surveyReplyDelayMin=30000;settings.surveyReplyDelayMax=60000;document.getElementById('survey-delay-min-input').value=30;document.getElementById('survey-delay-max-input').value=60;if(typeof throttledSaveData==='function')throttledSaveData();if(typeof showNotification==='function')showNotification('✓ 已设为 30~60 秒','success',1500);}catch(e){}" style="padding:5px 10px;border:1px solid var(--border-color);border-radius:8px;background:var(--primary-bg);color:var(--text-secondary);font-size:11px;cursor:pointer;font-family:var(--font-family);">30秒-1分钟</button>
+        <button onclick="try{settings.surveyReplyDelayMin=60000;settings.surveyReplyDelayMax=180000;document.getElementById('survey-delay-min-input').value=60;document.getElementById('survey-delay-max-input').value=180;if(typeof throttledSaveData==='function')throttledSaveData();if(typeof showNotification==='function')showNotification('✓ 已设为 1~3 分钟','success',1500);}catch(e){}" style="padding:5px 10px;border:1px solid var(--border-color);border-radius:8px;background:var(--primary-bg);color:var(--text-secondary);font-size:11px;cursor:pointer;font-family:var(--font-family);">1-3分钟</button>
+        <button onclick="try{settings.surveyReplyDelayMin=180000;settings.surveyReplyDelayMax=300000;document.getElementById('survey-delay-min-input').value=180;document.getElementById('survey-delay-max-input').value=300;if(typeof throttledSaveData==='function')throttledSaveData();if(typeof showNotification==='function')showNotification('✓ 已设为 3~5 分钟','success',1500);}catch(e){}" style="padding:5px 10px;border:1px solid var(--border-color);border-radius:8px;background:var(--primary-bg);color:var(--text-secondary);font-size:11px;cursor:pointer;font-family:var(--font-family);">3-5分钟</button>
+    </div>
+</div>
                     <p class="cs-group-label" style="margin-top:4px;">主动发送</p>
                     <div class="cs-card">
                         <div class="setting-pill-row" id="auto-send-toggle">
@@ -1377,9 +1436,6 @@
                     <div class="settings-item" id="custom-replies-function">
                         <i class="fas fa-comment-dots"></i><span>自定义回复</span>
                     </div>
-                    <div class="settings-item" id="music-player-toggle">
-                        <i class="fas fa-music"></i><span>悬浮音乐播放器</span>
-                    </div>
                     <div class="settings-item" id="stats-function">
                         <i class="fas fa-chart-bar"></i><span>消息统计</span>
                     </div>
@@ -1399,6 +1455,36 @@
                     <div class="settings-item" id="envelope-function">
                         <i class="fas fa-envelope"></i><span>信封投递</span>
                     </div>
+                    <div class="settings-item" id="avatar-exchange-function" onclick="openAvatarExchangePanel()">
+    <i class="fas fa-exchange-alt"></i><span>互换头像</span>
+</div>
+<div class="settings-item" id="word-cards-function" onclick="openWordCardComposePanel()">
+    <i class="fas fa-layer-group"></i><span>拼字卡</span>
+</div>
+<div class="settings-item" id="word-cards-manager-function" onclick="openWordCardsPanel()">
+    <i class="fas fa-map-marker-alt"></i><span>地点 / 心情卡</span>
+</div>
+<div class="settings-item" id="partner-image-function" onclick="openPartnerImagePanel()">
+    <i class="fas fa-images"></i><span>对方图片库</span>
+</div>
+<div class="settings-item" onclick="openVoiceSettingsPanel()">
+    <i class="fas fa-microphone-alt"></i><span>语音合成设置</span>
+</div>
+<div class="settings-item" id="shop-function" onclick="openShopPanel()">
+    <i class="fas fa-shopping-bag"></i><span>商城</span>
+</div>
+<div class="settings-item" id="listen-music-function" onclick="openListenMusicPanel()">
+    <i class="fas fa-headphones"></i><span>一起听音乐</span>
+</div>
+<div class="settings-item" id="watch-movie-function" onclick="openWatchMoviePanel()">
+    <i class="fas fa-film"></i><span>一起看电影</span>
+</div>
+<div class="settings-item" id="recipe-function" onclick="openRecipePanel()">
+    <i class="fas fa-utensils"></i><span>菜谱</span>
+</div>
+<div class="settings-item" id="novel-function" onclick="openNovelPanel()">
+    <i class="fas fa-book-open"></i><span>一起看小说</span>
+</div>
                 </div>
             </div>
 
@@ -2089,7 +2175,7 @@
         </div>
     </div>
 
-    <div class="player-container" id="player">
+<div class="player-container" id="player" style="display:none !important;">
         <div class="mini-view" id="mini-view" title="点击展开">
             <div class="vinyl-record" id="vinyl-record-visual">
                 <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 13l-4-4h8l-4 4z" /></svg>
@@ -2217,6 +2303,42 @@
 </div>
 
 <div id="dg-editor-modal" style="display:none;"></div>
+
+<!-- ================= 全新的实时动作悬浮窗 ================= -->
+<div id="rt-float-window" class="rt-float-window" style="display: none;">
+    <div class="rt-header" id="rt-drag-handle">
+        <div class="rt-header-left">
+            <i class="fas fa-satellite-dish"></i>
+            <span>实时动作</span>
+        </div>
+        <div class="rt-header-right">
+            <button id="rt-btn-minimize" title="缩小/展开"><i class="fas fa-compress-alt"></i></button>
+            <button id="rt-btn-close" title="关闭浮窗"><i class="fas fa-times"></i></button>
+        </div>
+    </div>
+
+    <div class="rt-body" id="rt-body">
+        <div class="rt-left-panel">
+            <div class="rt-panel-label">自由组句</div>
+            <div class="rt-free-text" id="rt-free-text">等待输入...</div>
+        </div>
+
+        <div class="rt-right-panel">
+            <div class="rt-panel-label">拼音组句</div>
+            <div class="rt-pinyin-display" id="rt-pinyin-text"></div>
+            <div class="rt-candidates" id="rt-candidates"></div>
+        </div>
+    </div>
+
+    <div class="rt-footer" id="rt-footer" style="display: none;">
+        <div class="rt-sticker-process">
+            <div class="rt-sticker-label">挑选表情包...</div>
+            <div class="rt-sticker-grid" id="rt-sticker-grid"></div>
+        </div>
+    </div>
+
+    <div class="rt-resize-handle" id="rt-resize-handle"></div>
+</div>
     <!-- == 核心层 == -->
     <script src="js/config.js"></script>
     <script src="js/utils.js"></script>
@@ -2226,12 +2348,24 @@
 
     <!-- == 功能模块 == -->
     <script src="js/features/mood.js"></script>
-    <script src="js/features/envelope.js"></script>
+   <script src="js/features/envelope.js"></script>
+<script src="js/features/envelope-settings.js"></script>
     <script src="js/features/reply-library.js"></script>
     <script src="js/features/theme-editor.js"></script>
     <script src="js/features/group-chat.js"></script>
     <script src="js/features/call.js"></script>
-
+    <script src="js/features/avatar-exchange.js"></script>
+    <script src="js/features/word-cards.js"></script>
+    <script src="js/features/word-card-compose.js"></script>
+    <script src="js/features/partner-image.js"></script>
+    <script src="js/features/voice-engine.js"></script>
+    <script src="js/features/shop.js"></script>
+    <script src="js/features/listen-music.js?v=2026093"></script>
+   <script src="js/features/watch-movie.js?v=20261015"></script>
+    <script src="js/features/recipe.js"></script>
+    <script src="js/features/novel.js"></script>
+    <script src="js/features/moments.js"></script>
+<script src="js/features/floating-window.js?v=2026100102"></script>
     <!-- == 合并模块 == -->
     <script src="js/games.js"></script> 
     <script src="js/features.js"></script> 
@@ -2239,5 +2373,32 @@
     <script src="js/onboarding.js"></script> 
     <script src="js/listeners.js"></script>
     <script src="js/app.js"></script>
+<script src="js/enhanced-features.js"></script>
+    <script>
+(function () {
+    var KEY = 'partnerTypingAnimEnabled';
+    function syncUI() {
+        var row = document.getElementById('partner-typing-anim-toggle');
+        if (!row) return;
+        var enabled = localStorage.getItem(KEY) !== '0';
+        row.classList.toggle('active', enabled);
+    }
+    document.addEventListener('click', function (e) {
+        var row = e.target.closest && e.target.closest('#partner-typing-anim-toggle');
+        if (!row) return;
+        var cur = localStorage.getItem(KEY) !== '0';
+        localStorage.setItem(KEY, cur ? '0' : '1');
+        syncUI();
+        if (typeof showNotification === 'function') {
+            showNotification(cur ? '已关闭打字动画' : '已开启打字动画', 'success', 1500);
+        }
+    });
+    document.addEventListener('click', function (e) {
+        var btn = e.target.closest && e.target.closest('#chat-settings');
+        if (btn) setTimeout(syncUI, 200);
+    });
+    setTimeout(syncUI, 2000);
+})();
+</script>
 </body>
 </html>
