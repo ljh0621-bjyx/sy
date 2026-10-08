@@ -1,3 +1,10 @@
+        // ============================================================
+// getStorageKey：算当前会话的存储键（防止报错未定义）
+// ============================================================
+function getStorageKey(key) {
+    return APP_PREFIX + SESSION_ID + '_' + key;
+}
+// ============================================================
         function safeGetItem(key) {
             try { return localStorage.getItem(key); }
             catch (e) { console.error('Error getting item:', e); return null; }
