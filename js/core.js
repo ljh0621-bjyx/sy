@@ -636,3 +636,45 @@ window.simulateReply = function() {
         }
     }, true); // ★ 捕获阶段，确保所有点击都会被拦截并处理
 })();
+// ==================== ★ 终极补丁：强制数据加载 + 强制绑定表情按钮 ====================
+(function finalRescueApp() {
+
+    // 1. 强制重新绑定“表情”和“设置”按钮（修复打不开的问题）
+    document.addEventListener('click', function(e) {
+        // 绑定设置按钮
+        var settingsBtn = e.target.closest('#settings-btn');
+        if (settingsBtn) {
+            e.preventDefault(); e.stopPropagation();
+            var m = document.getElementById('settings-modal');
+            if (m && window.showModal) window.showModal(m);
+            return;
+        }
+
+        // 绑定表情（笑脸）按钮
+        var comboBtn = e.target.closest('#combo-btn');
+        if (comboBtn) {
+            e.preventDefault(); e.stopPropagation();
+            var picker = document.getElementById('user-sticker-picker');
+            if (picker) picker.classList.toggle('active');
+            return;
+        }
+    }, true);
+
+    // 2. 强制重新执行一次数据加载（修复头像、回复库丢失）
+    // 必须延迟 1.5 秒，等所有依赖文件加载完毕
+    setTimeout(function() {
+        console.log("【系统提示】正在尝试恢复本地数据...");
+        if (typeof loadData === 'function') {
+            loadData().then(function() {
+                console.log("【系统提示】数据恢复完成");
+                if (typeof renderMessages === 'function') renderMessages();
+                if (typeof renderReplyLibrary === 'function') renderReplyLibrary();
+            }).catch(function(e) {
+                console.error("数据恢复失败:", e);
+            });
+        } else {
+            console.error("【严重错误】找不到 loadData 函数，数据无法恢复！");
+        }
+    }, 1500);
+
+})();
