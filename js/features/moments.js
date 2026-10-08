@@ -666,3 +666,6 @@ window.initMomentsPanel = function() {
         });
     }
 };
+window.initMomentsPanel = function() {
+    console.log('[moments] 朋友圈 已就绪');
+};

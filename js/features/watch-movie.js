@@ -509,3 +509,6 @@ window.initWatchMoviePanel = function() {
         });
     }
 };
+window.initWatchMoviePanel = function() {
+    console.log('[watch-movie] 一起看电影 已就绪');
+};
