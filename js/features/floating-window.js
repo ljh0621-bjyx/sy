@@ -361,12 +361,22 @@
         }, 900);
     };
 
-    window.simulatePartnerTypingProcess = async function (text) {
-        if (_isPlaying) return;
-        _isPlaying = true;
+  window.simulatePartnerTypingProcess = async function (text) {
+    if (_isPlaying) {
+        console.warn('[拼音弹窗] _isPlaying 卡住，强制重置');
+        _playCancelled = true;
+        _isPlaying = false;
+        await new Promise(function (r) { setTimeout(r, 100); });
+    }
+    _isPlaying = true;
+    _playCancelled = false;
+    try {
         await playPinyinAnimation(text);
-        setTimeout(function () { clearDisplay(); _isPlaying = false; }, 900);
-    };
+    } catch (e) {
+        console.error('[拼音弹窗] 动画失败', e);
+    }
+    setTimeout(function () { clearDisplay(); _isPlaying = false; }, 900);
+};  
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', createFloatingWindow);
