@@ -187,9 +187,26 @@
                             var idx = messages.findIndex(function (x) { return String(x.id) === String(id); });
                             if (idx === -1 || messages[idx].recalled) return;
                             messages[idx].recalled = true;
-                            messages[idx].recallTime = Date.now();
-                            if (typeof throttledSaveData === 'function') throttledSaveData();
-                            if (typeof renderMessages === 'function') renderMessages(true);
+messages[idx].recallTime = Date.now();
+if (typeof throttledSaveData === 'function') throttledSaveData();
+if (typeof renderMessages === 'function') renderMessages(true);
+
+// ★ 加一条系统提示（像微信那样）
+try {
+    const pn = (typeof settings !== 'undefined' && settings.partnerName) ? settings.partnerName : '对方';
+    if (typeof addMessage === 'function') {
+        addMessage({
+            id: Date.now() + Math.random(),
+            sender: null,
+            text: pn + ' 撤回了一条消息',
+            timestamp: new Date(),
+            status: 'received',
+            type: 'system'
+        });
+    }
+} catch (e) {
+    console.warn('[enhanced-features] 撤回提示失败', e);
+}
                         }, delay);
                     })(m.id);
                 }
