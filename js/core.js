@@ -318,7 +318,10 @@ const loadData = async () => {
         if (savedBgGallery) savedBackgrounds = savedBgGallery;
         else savedBackgrounds = [{ id: 'preset-1', type: 'color', value: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)' }];
 
-        if (savedCustomReplies) customReplies = savedCustomReplies;
+       // 只有读取到的数据是有内容的，才覆盖当前内存里的回复库
+if (savedCustomReplies && Array.isArray(savedCustomReplies) && savedCustomReplies.length > 0) {
+    customReplies = savedCustomReplies;
+}
         if (savedReplyGroups) window.customReplyGroups = savedReplyGroups;
         if (savedPokeGroups) window.customPokeGroups = savedPokeGroups;
         if (savedStatusGroups) window.customStatusGroups = savedStatusGroups;
@@ -427,7 +430,14 @@ const saveData = async () => {
     if (!SESSION_ID) return;
     const promises = [
         { key: 'chatSettings', val: () => localforage.setItem(getStorageKey('chatSettings'), settings) },
-        { key: 'customReplies', val: () => localforage.setItem(getStorageKey('customReplies'), customReplies) },
+        { key: 'customReplies', val: () => {
+    // 如果回复库是空的，就跳过保存，防止把原本有内容的库覆盖掉
+    if (!Array.isArray(customReplies) || customReplies.length === 0) {
+        console.warn('[saveData] 跳过保存空的回复库');
+        return Promise.resolve();
+    }
+    return localforage.setItem(getStorageKey('customReplies'), customReplies);
+}},
         { key: 'customReplyGroups', val: () => localforage.setItem(getStorageKey('customReplyGroups'), window.customReplyGroups || []) },
         { key: 'customPokeGroups', val: () => localforage.setItem(getStorageKey('customPokeGroups'), window.customPokeGroups || []) },
         { key: 'customStatusGroups', val: () => localforage.setItem(getStorageKey('customStatusGroups'), window.customStatusGroups || []) },
