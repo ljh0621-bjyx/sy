@@ -166,20 +166,29 @@ var data = {
         panelEl.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.6);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;';
 
         panelEl.innerHTML =
-            '<div style="background:var(--primary-bg);border-radius:20px;width:94%;max-width:460px;height:88vh;max-height:760px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,0.4);">'
-            + '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border-color);background:var(--secondary-bg);flex-shrink:0;">'
-            +   '<div style="display:flex;align-items:center;gap:10px;">'
-            +   '<div style="width:34px;height:34px;border-radius:10px;background:rgba(var(--accent-color-rgb),0.12);display:flex;align-items:center;justify-content:center;">'
-            +   '<i class="fas fa-camera-retro" style="color:var(--accent-color);font-size:14px;"></i></div>'
-            +   '<span style="font-size:16px;font-weight:700;color:var(--text-primary);">朋友圈</span>'
-            +   '<div style="display:flex;gap:6px;align-items:center;">'
-+   '<button id="moments-post-btn" style="padding:7px 14px;border:none;border-radius:10px;background:var(--accent-color);color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-family);"><i class="fas fa-plus"></i> 发动态</button>'
-+   '<button id="moments-settings-btn" style="background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:16px;padding:0 6px;" title="互动概率设置"><i class="fas fa-sliders-h"></i></button>'
-+   '<button id="moments-close-btn" style="background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:18px;padding:0 6px;"><i class="fas fa-times"></i></button>'
-+   '</div>'
-            + '</div>'
-            + '<div id="moments-list" style="flex:1;overflow-y:auto;padding:14px;background:var(--primary-bg);"></div>'
-            + '</div>';
+
+    // 最外层卡片容器
+    '<div style="background:var(--primary-bg);border-radius:20px;width:94%;max-width:460px;height:88vh;max-height:760px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,0.4);">'
+
+    // 头部
+    + '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border-color);background:var(--secondary-bg);flex-shrink:0;">'
+    +   '<div style="display:flex;align-items:center;gap:10px;">'
+    +     '<div style="width:34px;height:34px;border-radius:10px;background:rgba(var(--accent-color-rgb),0.12);display:flex;align-items:center;justify-content:center;">'
+    +       '<i class="fas fa-camera-retro" style="color:var(--accent-color);font-size:14px;"></i>'
+    +     '</div>'
+    +     '<span style="font-size:16px;font-weight:700;color:var(--text-primary);">朋友圈</span>'
+    +   '</div>'
+    +   '<div style="display:flex;gap:6px;align-items:center;">'
+    +     '<button id="moments-post-btn" style="padding:7px 14px;border:none;border-radius:10px;background:var(--accent-color);color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-family);"><i class="fas fa-plus"></i> 发动态</button>'
+    +     '<button id="moments-settings-btn" style="background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:16px;padding:0 6px;" title="互动概率设置"><i class="fas fa-sliders-h"></i></button>'
+    +     '<button id="moments-close-btn" style="background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:18px;padding:0 6px;"><i class="fas fa-times"></i></button>'
+    +   '</div>'
+    + '</div>'
+
+    // 动态列表（★ 加了 display:block 强制竖直排列）
+    + '<div id="moments-list" style="flex:1;overflow-y:auto;padding:14px;background:var(--primary-bg);display:block;"></div>'
+
+    + '</div>';
 
         document.body.appendChild(panelEl);
 
