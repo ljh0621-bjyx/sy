@@ -704,3 +704,29 @@ window.simulateReply = function() {
         }
     }, 1000); // 延迟 1 秒，等页面完全加载
 })();
+// ==================== ★ 精准补丁：强制绑定“夜间模式”按钮 ====================
+(function fixThemeToggle() {
+    // 延迟一点执行，确保按钮已经存在于页面上
+    setTimeout(function() {
+        var themeBtn = document.getElementById('theme-toggle');
+        if (themeBtn && !themeBtn._fixed) {
+            themeBtn._fixed = true; // 防止重复绑定
+            
+            // 移除之前可能绑定的所有旧事件
+            var newBtn = themeBtn.cloneNode(true);
+            themeBtn.parentNode.replaceChild(newBtn, themeBtn);
+            
+            // 绑定全新的、绝对有效的点击事件
+            newBtn.addEventListener('click', function() {
+                if (typeof settings !== 'undefined') {
+                    settings.isDarkMode = !settings.isDarkMode;
+                    if (typeof throttledSaveData === 'function') throttledSaveData();
+                    if (typeof updateUI === 'function') updateUI();
+                    if (typeof showNotification === 'function') {
+                        showNotification(settings.isDarkMode ? '已切换到夜间模式 🌙' : '已切换到日间模式 ☀️', 'success', 1500);
+                    }
+                }
+            });
+        }
+    }, 1000); // 延迟 1 秒，等页面完全加载
+})();
