@@ -190,6 +190,92 @@
     flex-shrink:0;
     display:flex;align-items:center;justify-content:center;
 }
+.call-duo-wrap{
+    display:flex;align-items:center;justify-content:center;
+    gap:18px;
+    position:relative;
+    margin-bottom:12px;
+}
+.call-duo-item{
+    display:flex;flex-direction:column;align-items:center;
+}
+.call-av-mine .call-avatar,
+.call-av-partner .call-avatar{
+    width:48px;height:48px;
+}
+.call-av-mine .call-avatar i,
+.call-av-partner .call-avatar i{
+    font-size:20px;
+}
+.call-av-mine,
+.call-av-partner{
+    width:48px;height:48px;
+}
+.call-av-mine .call-av-pulse,
+.call-av-partner .call-av-pulse{
+    top:-10px;left:-10px;right:-10px;bottom:-10px;
+}
+.call-av-mine .call-av-pulse2,
+.call-av-partner .call-av-pulse2{
+    top:-18px;left:-18px;right:-18px;bottom:-18px;
+}
+.call-heart-sync{
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:4px;
+    flex-shrink:0;
+}
+.call-heart{
+    font-size:22px;
+    color:var(--accent-color);
+    text-shadow:0 0 12px rgba(var(--accent-color-rgb),0.8);
+    animation:heartBeat 1.2s ease-in-out infinite;
+    line-height:1;
+}
+@keyframes heartBeat{
+    0%,100%{transform:scale(1);}
+    25%{transform:scale(1.18);}
+    40%{transform:scale(1);}
+    60%{transform:scale(1.12);}
+    75%{transform:scale(1);}
+}
+.call-sync-label{
+    font-size:9px;
+    color:rgba(255,255,255,0.6);
+    letter-spacing:1.5px;
+    white-space:nowrap;
+}
+/* 双方头像同步脉冲（慢呼吸） */
+.call-duo-wrap .call-avatar{
+    animation:syncBreath 4s ease-in-out infinite;
+}
+.call-duo-wrap .call-av-mine .call-avatar{
+    animation-delay:0s;
+}
+.call-duo-wrap .call-av-partner .call-avatar{
+    animation-delay:0s;
+}
+@keyframes syncBreath{
+    0%,100%{
+        transform:scale(1);
+        box-shadow:0 6px 22px rgba(0,0,0,0.4),
+                   0 0 0 0 rgba(var(--accent-color-rgb), 0);
+    }
+    50%{
+        transform:scale(1.08);
+        box-shadow:0 6px 22px rgba(0,0,0,0.4),
+                   0 0 20px 4px rgba(var(--accent-color-rgb), 0.5);
+    }
+}
+/* 双方头像同步心跳（快脉冲，叠加在呼吸上） */
+.call-duo-wrap .call-av-mine .call-avatar,
+.call-duo-wrap .call-av-partner .call-avatar{
+    animation:syncBreath 4s ease-in-out infinite, heartPulse 1.2s ease-in-out infinite;
+}
+@keyframes heartPulse{
+    0%,100%{filter:brightness(1);}
+    30%{filter:brightness(1.15);}
+    60%{filter:brightness(1);}
+}
 .call-av-pulse{
     position:absolute;
     top:-10px;left:-10px;right:-10px;bottom:-10px;
@@ -438,14 +524,29 @@ html:not([data-theme="dark"])[data-color-theme="black-white"] .message-sent{
     </div>
 
     <div id="call-window-body">
-      <div class="call-av-wrap">
+  <div class="call-duo-wrap">
+    <div class="call-duo-item">
+      <div class="call-av-wrap call-av-mine">
+        <div class="call-av-pulse"></div>
+        <div class="call-av-pulse2"></div>
+        <div class="call-avatar" id="call-win-my-avatar"><i class="fas fa-user" id="call-win-my-av-icon"></i></div>
+      </div>
+    </div>
+    <div class="call-heart-sync">
+      <div class="call-heart">♥</div>
+      <div class="call-sync-label">同频呼吸</div>
+    </div>
+    <div class="call-duo-item">
+      <div class="call-av-wrap call-av-partner">
         <div class="call-av-pulse"></div>
         <div class="call-av-pulse2"></div>
         <div class="call-avatar" id="call-win-avatar"><i class="fas fa-user" id="call-win-av-icon"></i></div>
       </div>
-      <div class="call-name" id="call-win-name">通话中</div>
-      <div class="call-wave"><span></span><span></span><span></span><span></span><span></span></div>
     </div>
+  </div>
+  <div class="call-name" id="call-win-name">通话中</div>
+  <div class="call-wave"><span></span><span></span><span></span><span></span><span></span></div>
+</div>
 
     <button class="call-util-btn" id="call-immersive-btn" title="沉浸模式"><i class="fas fa-eye-slash"></i></button>
     <button class="call-util-btn" id="call-bg-btn" title="更换背景"><i class="fas fa-image"></i></button>
@@ -514,6 +615,18 @@ html:not([data-theme="dark"])[data-color-theme="black-white"] .message-sent{
             ? `<img src="${src}" alt="" style="width:100%;height:100%;object-fit:cover;">`
             : `<i class="fas fa-user"></i>`;
     }
+    function fillMyAv() {
+    const av = document.getElementById('call-win-my-avatar');
+    if (!av) return;
+    let src = null;
+    try {
+        const img = document.querySelector('#my-avatar img, [id*="my-avatar"] img');
+        if (img) src = img.src;
+    } catch (e) {}
+    av.innerHTML = src
+        ? `<img src="${src}" alt="" style="width:100%;height:100%;object-fit:cover;">`
+        : `<i class="fas fa-user"></i>`;
+}
     function fillNm(id) { const e = document.getElementById(id); if (e) e.textContent = getName(); }
 
     function tick() {
@@ -583,7 +696,8 @@ html:not([data-theme="dark"])[data-color-theme="black-white"] .message-sent{
         document.getElementById('call-window')?.classList.remove('immersive');
 
         ['call-inc-avatar','call-conn-avatar','call-win-avatar','call-mini-av'].forEach(fillAv);
-        ['call-conn-name','call-win-name','call-mini-name'].forEach(fillNm);
+        fillMyAv();
+          ['call-conn-name','call-win-name','call-mini-name'].forEach(fillNm);
         applyBg(); positionWindow();
 
         const win  = document.getElementById('call-window');
