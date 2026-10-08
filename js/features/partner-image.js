@@ -55,21 +55,44 @@
     };
 
     window.generateAIImageWithReference = async function (promptText, refImage) {
-        const { img2imgApiBase, img2imgApiKey, img2imgModel } = data.aiConfig;
-        if (!img2imgApiBase || !img2imgApiKey || !promptText || !refImage) return null;
-        try {
-            const fd = new FormData();
-            fd.append('model', img2imgModel || 'sd-webui');
-            fd.append('prompt', promptText);
-            fd.append('image', refImage);
-            fd.append('n', '1');
-            fd.append('size', '1024x1024');
-            const resp = await fetch(img2imgApiBase + '/images/generations', { method: 'POST', headers: { 'Authorization': 'Bearer ' + img2imgApiKey }, body: fd });
-            if (!resp.ok) return null;
-            const j = await resp.json();
-            return j.data[0].b64_json ? 'data:image/png;base64,' + j.data[0].b64_json : j.data[0].url;
-        } catch (e) { return null; }
-    };
+    const { apiBase, apiKey } = data.aiConfig;
+    if (!apiBase || !apiKey || !promptText) return null;
+
+    try {
+        const body = {
+            model: 'cogview-4',
+            prompt: promptText,
+            size: '1024x1024'
+        };
+        if (refImage) {
+            body.image = refImage;
+        }
+
+        const resp = await fetch(apiBase + '/images/generations', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + apiKey
+            },
+            body: JSON.stringify(body)
+        });
+
+        if (!resp.ok) {
+            const errText = await resp.text();
+            console.error('[图生图] 错误：', resp.status, errText);
+            return null;
+        }
+
+        const j = await resp.json();
+        if (!j.data || !j.data[0]) return null;
+        return j.data[0].b64_json
+            ? 'data:image/png;base64,' + j.data[0].b64_json
+            : j.data[0].url;
+    } catch (e) {
+        console.error('[图生图] 失败', e);
+        return null;
+    }
+};
 
     window.openPartnerImagePanel = function () {
         const old = document.getElementById('partner-image-panel');
