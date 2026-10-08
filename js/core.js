@@ -461,3 +461,99 @@ window.simulateReply = function() {
     addMessage({ id: Date.now(), sender: partnerName, text: replyText, timestamp: new Date(), status: 'received', type: 'normal' });
     if (typeof playSound === 'function') playSound('message');
 };
+// ==================== ★ 万能钩子：修复功能面板无法点开的问题 ====================
+(function initUIBindings() {
+    // 1. 设置按钮 -> 打开设置弹窗
+    const settingsBtn = document.getElementById('settings-btn');
+    if (settingsBtn && !settingsBtn._hooked) {
+        settingsBtn._hooked = true;
+        settingsBtn.addEventListener('click', function() {
+            const modal = document.getElementById('settings-modal');
+            if (modal && typeof showModal === 'function') showModal(modal);
+        });
+    }
+
+    // 2. 会话管理 -> 打开会话列表
+    const sessionBtn = document.getElementById('session-manager-btn');
+    if (sessionBtn && !sessionBtn._hooked) {
+        sessionBtn._hooked = true;
+        sessionBtn.addEventListener('click', function() {
+            const modal = document.getElementById('session-modal');
+            if (modal && typeof showModal === 'function') {
+                showModal(modal);
+                if (typeof renderSessionList === 'function') renderSessionList();
+            }
+        });
+    }
+
+    // 3. 群聊设置 -> 打开群聊弹窗
+    const groupBtn = document.getElementById('group-chat-btn');
+    if (groupBtn && !groupBtn._hooked) {
+        groupBtn._hooked = true;
+        groupBtn.addEventListener('click', function() {
+            const modal = document.getElementById('group-chat-modal');
+            if (modal && typeof showModal === 'function') showModal(modal);
+            if (typeof updateGroupModeUI === 'function') updateGroupModeUI();
+        });
+    }
+
+    // 4. 今日公告 -> 打开每日公告
+    const dgBtn = document.getElementById('daily-greeting-btn');
+    if (dgBtn && !dgBtn._hooked) {
+        dgBtn._hooked = true;
+        dgBtn.addEventListener('click', function() {
+            if (typeof reopenDailyGreeting === 'function') reopenDailyGreeting();
+        });
+    }
+
+    // 5. 主题切换
+    const themeBtn = document.getElementById('theme-toggle');
+    if (themeBtn && !themeBtn._hooked) {
+        themeBtn._hooked = true;
+        themeBtn.addEventListener('click', function() {
+            if (typeof settings !== 'undefined') {
+                settings.isDarkMode = !settings.isDarkMode;
+                if (typeof throttledSaveData === 'function') throttledSaveData();
+                if (typeof updateUI === 'function') updateUI();
+            }
+        });
+    }
+
+    // 6. 附件/图片按钮
+    const attachBtn = document.getElementById('attachment-btn');
+    if (attachBtn && !attachBtn._hooked) {
+        attachBtn._hooked = true;
+        attachBtn.addEventListener('click', function() {
+            const input = document.getElementById('image-input');
+            if (input) input.click();
+        });
+    }
+})();
+
+// 延迟重复调用一次，确保在页面完全加载后绑定（因为有些元素可能是动态生成的）
+setTimeout(function() {
+    const buttons = ['settings-btn', 'session-manager-btn', 'group-chat-btn', 'daily-greeting-btn', 'theme-toggle', 'attachment-btn'];
+    buttons.forEach(function(id) {
+        const btn = document.getElementById(id);
+        if (btn && !btn._hooked) {
+            btn._hooked = true;
+            btn.addEventListener('click', function() {
+                if (id === 'settings-btn') {
+                    const m = document.getElementById('settings-modal'); if (m && window.showModal) window.showModal(m);
+                } else if (id === 'session-manager-btn') {
+                    const m = document.getElementById('session-modal'); if (m && window.showModal) window.showModal(m);
+                    if (typeof renderSessionList === 'function') renderSessionList();
+                } else if (id === 'group-chat-btn') {
+                    const m = document.getElementById('group-chat-modal'); if (m && window.showModal) window.showModal(m);
+                    if (typeof updateGroupModeUI === 'function') updateGroupModeUI();
+                } else if (id === 'daily-greeting-btn') {
+                    if (typeof reopenDailyGreeting === 'function') reopenDailyGreeting();
+                } else if (id === 'theme-toggle') {
+                    if (typeof settings !== 'undefined') { settings.isDarkMode = !settings.isDarkMode; if (typeof throttledSaveData === 'function') throttledSaveData(); if (typeof updateUI === 'function') updateUI(); }
+                } else if (id === 'attachment-btn') {
+                    const inp = document.getElementById('image-input'); if (inp) inp.click();
+                }
+            });
+        }
+    });
+}, 1500);
