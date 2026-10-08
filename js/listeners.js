@@ -25,6 +25,9 @@ function setupEventListeners() {
         ['initListenMusicPanel', typeof initListenMusicPanel === 'function' ? initListenMusicPanel : null],
         ['initMomentsPanel', typeof initMomentsPanel === 'function' ? initMomentsPanel : null],
         ['initWatchMoviePanel', typeof initWatchMoviePanel === 'function' ? initWatchMoviePanel : null]
+            ['initWatchMoviePanel', typeof initWatchMoviePanel === 'function' ? initWatchMoviePanel : null],
+    ['initFloatingWindow', typeof initFloatingWindow === 'function' ? initFloatingWindow : null]
+];
     ]; // ★ 这个分号必须在这里，数组才算闭合
 
     tasks.forEach(function(t) {
