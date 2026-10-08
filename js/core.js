@@ -427,7 +427,14 @@ function _tryRecoverFromBackup() {
 }
 
 const saveData = async () => {
-    if (!SESSION_ID) return;
+    // ★★★ 修复：不要因为 SESSION_ID 没准备好就拒绝保存 ★★★
+if (!SESSION_ID) {
+    console.warn('[saveData] SESSION_ID 尚未就绪，延迟 500ms 后重试');
+    setTimeout(function() {
+        try { saveData(); } catch (e) {}
+    }, 500);
+    return;
+}
     const promises = [
         { key: 'chatSettings', val: () => localforage.setItem(getStorageKey('chatSettings'), settings) },
        { key: 'customReplies', val: () => {
@@ -1324,16 +1331,26 @@ window.simulateReply = function() {
                     else separateEmoji = emoji;
                 }
 
-                addMessage({
-                    id: Date.now() + i, sender: settings.partnerName || '对方', text: finalText, timestamp: new Date(), status: 'received',
-                    favorited: false, note: null,
-                    replyTo: (i === 0 && recentUserMsgs.length > 0 && Math.random() < 0.3)
-                        ? (function(){ const m = recentUserMsgs[Math.floor(Math.random() * recentUserMsgs.length)]; return { id: m.id, text: m.text, sender: m.sender }; })()
-                        : null,
-                    type: 'normal'
-                });
-                if (typeof window._sendPartnerNotification === 'function') window._sendPartnerNotification(settings.partnerName || '对方', finalText);
-                playSound('message');
+                // 先弹拼音窗，弹完再发消息
+(async () => {
+    try {
+        if (typeof window.simulatePartnerTypingProcess === 'function') {
+            await window.simulatePartnerTypingProcess(finalText);
+        }
+    } catch (e) {
+        console.warn('[拼音弹窗] 失败', e);
+    }
+    addMessage({
+        id: Date.now() + i, sender: settings.partnerName || '对方', text: finalText, timestamp: new Date(), status: 'received',
+        favorited: false, note: null,
+        replyTo: (i === 0 && recentUserMsgs.length > 0 && Math.random() < 0.3)
+            ? (function(){ const m = recentUserMsgs[Math.floor(Math.random() * recentUserMsgs.length)]; return { id: m.id, text: m.text, sender: m.sender }; })()
+            : null,
+        type: 'normal'
+    });
+    if (typeof window._sendPartnerNotification === 'function') window._sendPartnerNotification(settings.partnerName || '对方', finalText);
+    playSound('message');
+})();
 
                 if (shouldSendSticker) {
                     const randomSticker = enabledStickerPool[Math.floor(Math.random() * enabledStickerPool.length)];
