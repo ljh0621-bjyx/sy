@@ -540,11 +540,43 @@ function schedulePartnerReact(postId) {
                 p.comments.push({ from: 'partner', text: cardText, time: Date.now() });
             }
         }
-        await save();
-        renderPanel();
-        var pn = (typeof settings !== 'undefined' && settings.partnerName) || '对方';
-        if (typeof showNotification === 'function') showNotification(pn + ' 回应了你的动态', 'info', 2500);
-    }, delay);
+         await save();
+    renderPanel();
+    var pn = (typeof settings !== 'undefined' && settings.partnerName) || '对方';
+
+    // ★ 分别推送"点赞"和"评论"到聊天记录
+    if (typeof addMessage === 'function') {
+        if (p.likes && p.likes.indexOf('partner') !== -1) {
+            try {
+                addMessage({
+                    id: Date.now() + Math.random(),
+                    sender: null,
+                    text: '📱 ' + pn + ' 点赞了你的朋友圈',
+                    timestamp: new Date(),
+                    status: 'received',
+                    type: 'system'
+                });
+            } catch (e) {}
+        }
+        if (p.comments && p.comments.length > 0) {
+            var lastComment = p.comments[p.comments.length - 1];
+            if (lastComment && lastComment.from === 'partner') {
+                try {
+                    addMessage({
+                        id: Date.now() + Math.random() + 1,
+                        sender: null,
+                        text: '📱 ' + pn + ' 评论了你的朋友圈：' + lastComment.text,
+                        timestamp: new Date(),
+                        status: 'received',
+                        type: 'system'
+                    });
+                } catch (e) {}
+            }
+        }
+    }
+
+    if (typeof showNotification === 'function') showNotification(pn + ' 回应了你的动态', 'info', 2500);
+}, delay);   
 }
 
     // 2) 我点赞了对方动态 → 对方也可能点赞我的动态
