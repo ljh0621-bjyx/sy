@@ -1,8 +1,3 @@
-if (typeof customReplyGroups === 'undefined') window.customReplyGroups = [];
-if (typeof replyGroupsEnabled === 'undefined') window.replyGroupsEnabled = false;
-if (typeof customPokeGroups === 'undefined') window.customPokeGroups = [];
-if (typeof customStatusGroups === 'undefined') window.customStatusGroups = [];
-
 // 根据当前 tab 返回对应的分组上下文 {groups, items, itemLabel}
 function _getGroupCtx(tab) {
     tab = tab || currentSubTab;
