@@ -730,3 +730,47 @@ window.simulateReply = function() {
         }
     }, 1000); // 延迟 1 秒，等页面完全加载
 })();
+// ==================== ★ 最终补丁：手动切换夜间模式（不依赖 updateUI） ====================
+(function forceThemeToggle() {
+    setTimeout(function() {
+        var themeBtn = document.getElementById('theme-toggle');
+        if (themeBtn) {
+            // 移除原有事件，重新绑定，确保没有旧代码干扰
+            var newBtn = themeBtn.cloneNode(true);
+            themeBtn.parentNode.replaceChild(newBtn, themeBtn);
+
+            newBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                // 1. 尝试修改全局变量
+                var isDark = false;
+                if (typeof settings !== 'undefined') {
+                    settings.isDarkMode = !settings.isDarkMode;
+                    isDark = settings.isDarkMode;
+                    if (typeof throttledSaveData === 'function') throttledSaveData();
+                } else {
+                    // 如果 settings 丢了，就直接从 html 属性读取
+                    var currentTheme = document.documentElement.getAttribute('data-theme');
+                    isDark = currentTheme !== 'dark';
+                }
+
+                // 2. 直接修改 html 上的 data-theme 属性，强制切换颜色
+                document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+                
+                // 3. 切换图标和按钮状态
+                newBtn.innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+                
+                // 4. 尝试调用 updateUI 备份（如果存在的话）
+                if (typeof updateUI === 'function') {
+                    try { updateUI(); } catch (err) {}
+                }
+                
+                // 5. 弹一个提示，告诉你已经切换了
+                if (typeof showNotification === 'function') {
+                    showNotification(isDark ? '已切换夜间模式 🌙' : '已切换日间模式 ☀️', 'success', 1500);
+                }
+            });
+        }
+    }, 1000);
+})();
