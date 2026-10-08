@@ -457,3 +457,20 @@ try {
     }
 
 })();
+// === novel.js 新增入口 ===
+window.initNovelPanel = function() {
+    var btn = document.getElementById('novel-function'); // 注意：这里的 ID 必须和 HTML 里的一致
+    if (btn && !btn.dataset.initialized) {
+        btn.dataset.initialized = 'true';
+        btn.addEventListener('click', function() {
+            // 如果是从高级菜单点进来的，先关掉高级菜单
+            var advancedModal = document.getElementById('advanced-modal');
+            if (advancedModal && typeof hideModal === 'function') hideModal(advancedModal);
+            
+            // 打开你的小说面板
+            if (typeof window.openNovelPanel === 'function') {
+                window.openNovelPanel();
+            }
+        });
+    }
+};
