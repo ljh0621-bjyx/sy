@@ -568,3 +568,71 @@ window.simulateReply = function() {
         }
     }, 300);
 })();
+// ==================== ★ 终极暴力补丁：修复设置和表情按钮 ====================
+(function finalFixButtons() {
+    // 1. 强制重写 showModal 函数，解决弹窗打不开
+    window.showModal = function(modalElement, focusElement) {
+        if (!modalElement) return;
+        if (modalElement._hideTimeout) {
+            clearTimeout(modalElement._hideTimeout);
+            modalElement._hideTimeout = null;
+        }
+        modalElement.style.display = 'flex';
+        requestAnimationFrame(function() {
+            var content = modalElement.querySelector('.modal-content');
+            if (content) {
+                content.style.opacity = '1';
+                content.style.transform = 'translateY(0) scale(1)';
+            }
+            if (focusElement) setTimeout(function() { focusElement.focus(); }, 100);
+        });
+    };
+
+    // 2. 强制重写 hideModal 函数
+    window.hideModal = function(modalElement) {
+        if (!modalElement) return;
+        var content = modalElement.querySelector('.modal-content');
+        if (content) {
+            content.style.opacity = '0';
+            content.style.transform = 'translateY(20px) scale(0.95)';
+        }
+        if (modalElement._hideTimeout) clearTimeout(modalElement._hideTimeout);
+        modalElement._hideTimeout = setTimeout(function() {
+            modalElement.style.display = 'none';
+        }, 300);
+    };
+
+    // 3. 绑定“设置”按钮
+    document.addEventListener('click', function(e) {
+        // 设置按钮
+        var settingsBtn = e.target.closest('#settings-btn');
+        if (settingsBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+            var m = document.getElementById('settings-modal');
+            if (m) window.showModal(m);
+            return;
+        }
+
+        // 表情（笑脸）按钮
+        var comboBtn = e.target.closest('#combo-btn');
+        if (comboBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+            var picker = document.getElementById('user-sticker-picker');
+            if (picker) {
+                picker.classList.toggle('active');
+            }
+            return;
+        }
+
+        // 每日公告按钮
+        var dgBtn = e.target.closest('#daily-greeting-btn');
+        if (dgBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (typeof window.reopenDailyGreeting === 'function') window.reopenDailyGreeting();
+            return;
+        }
+    }, true); // ★ 捕获阶段，确保所有点击都会被拦截并处理
+})();
