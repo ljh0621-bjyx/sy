@@ -735,3 +735,6 @@ window.initListenMusicPanel = function() {
         });
     }
 };
+window.initListenMusicPanel = function() {
+    console.log('[listen-music] 一起听音乐 已就绪');
+};

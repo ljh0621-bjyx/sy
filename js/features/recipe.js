@@ -358,3 +358,6 @@ window.initRecipePanel = function() {
         });
     }
 };
+window.initRecipePanel = function() {
+    console.log('[recipe] 菜谱 已就绪');
+};
