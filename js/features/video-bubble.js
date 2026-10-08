@@ -7,9 +7,9 @@
     const KEY = 'videoSettings_v1';
 
     let videoSettings = {
-        apiKey: '',           // 智谱 API Key（暂时不用）
+        apiKey: '',
         model: 'cogvideox-3',
-        enableRealVideo: false // 是否用真视频接口
+        enableRealVideo: false
     };
 
     async function load() {
@@ -23,14 +23,12 @@
     }
     load();
 
-    // ========== 生成假视频封面（Canvas） ==========
+    // ========== 生成假视频封面 ==========
     function generateFakeCover() {
-        // 优先：从对方图片库随机抽
         if (typeof window.getRandomPartnerImage === 'function') {
             const img = window.getRandomPartnerImage();
             if (img && img.url) return img.url;
         }
-        // 兜底：Canvas 画渐变 + 文字
         const W = 640, H = 360;
         const canvas = document.createElement('canvas');
         const dpr = window.devicePixelRatio || 1;
@@ -38,15 +36,9 @@
         canvas.height = H * dpr;
         const ctx = canvas.getContext('2d');
         ctx.scale(dpr, dpr);
-
-        // 随机渐变色
         const palettes = [
-            ['#FF9A8B', '#FF6B6B'],
-            ['#A8D8EA', '#AA96DA'],
-            ['#F4A6B3', '#C5A47E'],
-            ['#7FA6CD', '#4A90E2'],
-            ['#BB9EC7', '#9C6FD4'],
-            ['#7BC8A4', '#3BC8A4']
+            ['#FF9A8B', '#FF6B6B'], ['#A8D8EA', '#AA96DA'], ['#F4A6B3', '#C5A47E'],
+            ['#7FA6CD', '#4A90E2'], ['#BB9EC7', '#9C6FD4'], ['#7BC8A4', '#3BC8A4']
         ];
         const p = palettes[Math.floor(Math.random() * palettes.length)];
         const grad = ctx.createLinearGradient(0, 0, W, H);
@@ -54,8 +46,6 @@
         grad.addColorStop(1, p[1]);
         ctx.fillStyle = grad;
         ctx.fillRect(0, 0, W, H);
-
-        // 随机文字
         const texts = ['想你了', '来看看你', '刚刚拍的', '给你看', '想起你了', '在忙吗', '抱抱'];
         const txt = texts[Math.floor(Math.random() * texts.length)];
         ctx.fillStyle = 'rgba(255,255,255,0.9)';
@@ -63,7 +53,6 @@
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(txt, W / 2, H / 2);
-
         return canvas.toDataURL('image/png');
     }
 
@@ -72,7 +61,6 @@
         const dur = duration || 5;
         const durStr = '0:' + String(dur).padStart(2, '0');
         if (isLocalVideo && videoSrc) {
-            // 真视频（本地）
             return '<div class="video-bubble" data-video-src="' + videoSrc + '" data-video-type="local">'
                 +   '<video src="' + videoSrc + '" preload="metadata" style="width:100%;display:block;border-radius:12px;"></video>'
                 +   '<div class="video-overlay">'
@@ -81,7 +69,6 @@
                 +   '</div>'
                 + '</div>';
         }
-        // 假视频（封面图）
         return '<div class="video-bubble" data-video-src="' + coverUrl + '" data-video-type="fake">'
             +   '<img src="' + coverUrl + '" style="width:100%;display:block;border-radius:12px;">'
             +   '<div class="video-overlay">'
@@ -93,13 +80,11 @@
     }
     window.buildVideoBubbleHTML = buildVideoBubbleHTML;
 
-    // ========== 发送视频消息（对方发的假视频） ==========
+    // ========== 发送对方视频（假视频） ==========
     window.sendPartnerVideoMessage = function (duration) {
         const partnerName = (typeof settings !== 'undefined' && settings.partnerName) ? settings.partnerName : '对方';
         const cover = generateFakeCover();
         const dur = duration || (3 + Math.floor(Math.random() * 8));
-
-        // 生成消息（用 image 字段，但额外标记 _video）
         const msg = {
             id: Date.now() + Math.floor(Math.random() * 1000),
             sender: partnerName,
@@ -111,7 +96,6 @@
             _video: { duration: dur, type: 'fake', cover: cover }
         };
         addMessage(msg);
-
         if (typeof playSound === 'function') playSound('message');
         if (typeof window._sendPartnerNotification === 'function') {
             window._sendPartnerNotification(partnerName, '[视频]');
@@ -119,7 +103,7 @@
         return msg;
     };
 
-    // ========== 我发视频（本地真视频） ==========
+    // ========== 视频选择弹窗（带齿轮） ==========
     window.openVideoPicker = function () {
         const old = document.getElementById('video-picker-panel');
         if (old) old.remove();
@@ -134,7 +118,10 @@
             '<div style="background:var(--secondary-bg);border-radius:22px;padding:24px;width:90%;max-width:380px;box-shadow:0 24px 80px rgba(0,0,0,0.4);">'
             +   '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">'
             +     '<span style="font-size:16px;font-weight:700;color:var(--text-primary);"><i class="fas fa-video" style="color:var(--accent-color);margin-right:8px;"></i>发送视频</span>'
-            +     '<button id="vp-close" style="background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:18px;"><i class="fas fa-times"></i></button>'
+            +     '<div style="display:flex;gap:6px;align-items:center;">'
+            +       '<button id="vp-settings" title="视频设置" style="background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:16px;padding:4px 8px;"><i class="fas fa-cog"></i></button>'
+            +       '<button id="vp-close" style="background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:18px;padding:4px 8px;"><i class="fas fa-times"></i></button>'
+            +     '</div>'
             +   '</div>'
             +   '<div style="display:flex;flex-direction:column;gap:10px;">'
             +     '<button id="vp-upload" style="display:flex;align-items:center;gap:14px;padding:16px;border:1.5px solid var(--border-color);border-radius:14px;background:var(--primary-bg);cursor:pointer;text-align:left;">'
@@ -144,11 +131,11 @@
             +         '<div style="font-size:11px;color:var(--text-secondary);margin-top:2px;">从手机相册选一段视频发出去</div>'
             +       '</div>'
             +     '</button>'
-            +     '<button id="vp-ai" style="display:flex;align-items:center;gap:14px;padding:16px;border:1.5px solid var(--border-color);border-radius:14px;background:var(--primary-bg);cursor:pointer;text-align:left;opacity:0.55;">'
+            +     '<button id="vp-ai" style="display:flex;align-items:center;gap:14px;padding:16px;border:1.5px solid var(--border-color);border-radius:14px;background:var(--primary-bg);cursor:pointer;text-align:left;' + (videoSettings.apiKey ? '' : 'opacity:0.55;') + '">'
             +       '<div style="width:42px;height:42px;border-radius:12px;background:rgba(var(--accent-color-rgb),0.12);display:flex;align-items:center;justify-content:center;color:var(--accent-color);flex-shrink:0;font-size:18px;"><i class="fas fa-magic"></i></div>'
             +       '<div style="flex:1;">'
             +         '<div style="font-size:14px;font-weight:600;color:var(--text-primary);">AI 生成视频</div>'
-            +         '<div style="font-size:11px;color:var(--text-secondary);margin-top:2px;">让 ' + partnerName + ' 发一段视频给你（需先填 API Key）</div>'
+            +         '<div style="font-size:11px;color:var(--text-secondary);margin-top:2px;">' + (videoSettings.apiKey ? '让 ' + partnerName + ' 发一段视频给你' : '请先在右上角设置里填入 API Key') + '</div>'
             +       '</div>'
             +     '</button>'
             +   '</div>'
@@ -160,7 +147,11 @@
         modal.querySelector('#vp-close').onclick = close;
         modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
 
-        // 上传本地视频
+        modal.querySelector('#vp-settings').onclick = () => {
+            close();
+            window.openVideoSettings();
+        };
+
         modal.querySelector('#vp-upload').onclick = () => {
             close();
             const input = document.createElement('input');
@@ -172,7 +163,6 @@
                 if (file.size > 100 * 1024 * 1024) { showNotification('视频不能超过 100MB', 'error'); return; }
                 try {
                     const url = URL.createObjectURL(file);
-                    // 读时长
                     const dur = await new Promise((resolve) => {
                         const v = document.createElement('video');
                         v.preload = 'metadata';
@@ -198,10 +188,9 @@
             input.click();
         };
 
-        // AI 生成（暂未开放）
         modal.querySelector('#vp-ai').onclick = () => {
             if (!videoSettings.apiKey) {
-                showNotification('请先在设置里填入智谱 API Key', 'warning');
+                showNotification('请先点右上角 ⚙️ 填入 API Key', 'warning');
                 return;
             }
             close();
@@ -231,14 +220,11 @@
         if (type === 'local') {
             overlay.innerHTML = closeBtn + '<video src="' + src + '" controls autoplay style="max-width:95vw;max-height:88vh;border-radius:12px;box-shadow:0 8px 40px rgba(0,0,0,0.6);"></video>';
         } else {
-            // 假视频：显示一张图，加点"播放"的动效
             overlay.innerHTML = closeBtn
                 + '<div style="position:relative;max-width:95vw;max-height:88vh;display:flex;align-items:center;justify-content:center;">'
                 +   '<img src="' + src + '" style="max-width:95vw;max-height:88vh;object-fit:contain;border-radius:12px;box-shadow:0 8px 40px rgba(0,0,0,0.6);animation:slowZoom 3s ease-in-out infinite alternate;">'
                 + '</div>'
                 + '<div style="position:fixed;bottom:40px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,0.55);font-size:12px;letter-spacing:2px;">— 视频播放中 —</div>';
-
-            // 加动画 CSS
             if (!document.getElementById('vf-anim-style')) {
                 const s = document.createElement('style');
                 s.id = 'vf-anim-style';
@@ -252,7 +238,7 @@
         overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
     }
 
-    // ========== 对方主动发视频（每 15~40 分钟一次，25% 概率） ==========
+    // ========== 对方主动发视频 ==========
     function scheduleRandomVideo() {
         if (window._videoTimer) clearTimeout(window._videoTimer);
         const delay = (15 + Math.random() * 25) * 60 * 1000;
@@ -271,7 +257,7 @@
     }
     setTimeout(scheduleRandomVideo, 90000);
 
-    // ========== 视频设置面板（API Key 等） ==========
+    // ========== 视频设置面板 ==========
     window.openVideoSettings = function () {
         const old = document.getElementById('video-settings-panel');
         if (old) old.remove();
@@ -285,7 +271,7 @@
             +     '<button id="vs2-close" style="background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:18px;"><i class="fas fa-times"></i></button>'
             +   '</div>'
             +   '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:6px;">智谱 API Key</div>'
-            +   '<input id="vs2-key" type="password" placeholder="还没填，先留空" style="width:100%;box-sizing:border-box;padding:11px 14px;border:1.5px solid var(--border-color);border-radius:12px;background:var(--primary-bg);color:var(--text-primary);font-size:13px;font-family:var(--font-family);outline:none;margin-bottom:12px;">'
+            +   '<input id="vs2-key" type="password" placeholder="粘贴你的 API Key" style="width:100%;box-sizing:border-box;padding:11px 14px;border:1.5px solid var(--border-color);border-radius:12px;background:var(--primary-bg);color:var(--text-primary);font-size:13px;font-family:var(--font-family);outline:none;margin-bottom:12px;">'
             +   '<div style="font-size:11px;color:var(--text-secondary);margin-bottom:16px;line-height:1.6;opacity:0.75;">还没申请的话，可以去 open.bigmodel.cn 免费注册拿 Key。<br>填了 Key 之后，就能用真视频接口了。</div>'
             +   '<div style="display:flex;gap:10px;">'
             +     '<button id="vs2-cancel" style="flex:1;padding:11px;border:1.5px solid var(--border-color);border-radius:12px;background:none;color:var(--text-secondary);font-size:13px;cursor:pointer;font-family:var(--font-family);">取消</button>'
@@ -306,7 +292,7 @@
         };
     };
 
-    // ========== 给视频气泡注入 CSS ==========
+    // ========== 视频气泡样式 ==========
     if (!document.getElementById('video-bubble-style')) {
         const s = document.createElement('style');
         s.id = 'video-bubble-style';
