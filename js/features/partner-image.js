@@ -55,34 +55,25 @@
     };
 
     window.generateAIImageWithReference = async function (promptText, refImage) {
-    const { apiBase, apiKey } = data.aiConfig;
-    if (!apiBase || !apiKey || !promptText) return null;
-
+    const { img2imgApiBase, img2imgApiKey, img2imgModel } = data.aiConfig;
+    if (!img2imgApiBase || !img2imgApiKey || !promptText || !refImage) return null;
     try {
-        const body = {
-            model: 'cogview-4',
-            prompt: promptText,
-            size: '1024x1024'
-        };
-        if (refImage) {
-            body.image = refImage;
-        }
-
-        const resp = await fetch(apiBase + '/images/generations', {
+        const fd = new FormData();
+        fd.append('model', img2imgModel || 'Kwai-Kolors/Kolors');
+        fd.append('prompt', promptText);
+        fd.append('image', refImage);
+        fd.append('n', '1');
+        fd.append('size', '1024x1024');
+        const resp = await fetch(img2imgApiBase + '/images/generations', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer ' + apiKey
-            },
-            body: JSON.stringify(body)
+            headers: { 'Authorization': 'Bearer ' + img2imgApiKey },
+            body: fd
         });
-
         if (!resp.ok) {
             const errText = await resp.text();
             console.error('[图生图] 错误：', resp.status, errText);
             return null;
         }
-
         const j = await resp.json();
         if (!j.data || !j.data[0]) return null;
         return j.data[0].b64_json
