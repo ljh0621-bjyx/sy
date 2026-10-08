@@ -381,4 +381,36 @@
             if (typeof showNotification === 'function') showNotification('✓ 概率已保存', 'success');
         };
     };
+    // ========== 供 addMessage 钩子调用 ==========
+window._checkFavoriteNow = function (msg) {
+    try {
+        if (!msg || msg.sender !== 'user') return;
+
+        // 视频
+        if (msg._video && msg._video.src) {
+            addFavorite('video', msg._video.src, { duration: msg._video.duration || 5 });
+            return;
+        }
+        // 图片
+        if (msg.image) {
+            if (msg.image.length < 2000 && !msg.image.startsWith('data:image')) {
+                addFavorite('sticker', msg.image);
+            } else {
+                addFavorite('image', msg.image);
+            }
+            return;
+        }
+        // 音乐
+        if (msg._music && msg._music.url) {
+            addFavorite('music', msg._music.url, { title: msg._music.title, sub: msg._music.sub });
+            return;
+        }
+        // 文字
+        if (msg.text && msg.text.trim()) {
+            addFavorite('text', msg.text.trim());
+        }
+    } catch (e) {
+        console.warn('[partner-favorites] 立即检测失败', e);
+    }
+};
 })();
