@@ -1,14 +1,13 @@
 /* ==========================================================================
-   partner-image.js (专属照片库 + 图生图配置界面，完美避开括号和拼接错误)
+   partner-image.js (图库、专属照片、AI生图、图生图)
    ========================================================================== */
 (function () {
     'use strict';
 
     const KEY = 'partnerImageLibrary_v1';
-
     let data = {
-        library: [],       // 普通图库
-        selfPhotos: [],    // 专属图库
+        library: [],
+        selfPhotos: [],
         aiConfig: {
             apiBase: '',
             apiKey: '',
@@ -20,32 +19,23 @@
         }
     };
 
-    async function load() {
-        try { const saved = await localforage.getItem(KEY); if (saved) data = Object.assign(data, saved); } catch (e) {}
-    }
-    async function save() {
-        try { await localforage.setItem(KEY, data); } catch (e) {}
-    }
+    async function load() { try { const s = await localforage.getItem(KEY); if (s) data = Object.assign(data, s); } catch (e) {} }
+    async function save() { try { await localforage.setItem(KEY, data); } catch (e) {} }
 
-    window.getRandomPartnerImage = function () {
-        if (!data.library || data.library.length === 0) return null;
-        return data.library[Math.floor(Math.random() * data.library.length)];
-    };
-    window.getRandomSelfPhoto = function () {
-        if (!data.selfPhotos || data.selfPhotos.length === 0) return null;
-        return data.selfPhotos[Math.floor(Math.random() * data.selfPhotos.length)];
-    };
+    window.getRandomPartnerImage = function () { return (data.library && data.library.length > 0) ? data.library[Math.floor(Math.random() * data.library.length)] : null; };
+    window.getRandomSelfPhoto = function () { return (data.selfPhotos && data.selfPhotos.length > 0) ? data.selfPhotos[Math.floor(Math.random() * data.selfPhotos.length)] : null; };
+
     window.uploadSelfPhoto = function (file) {
         return new Promise((resolve, reject) => {
-            if (!file || file.size > 5 * 1024 * 1024) return reject('文件无效或过大');
-            const reader = new FileReader();
-            reader.onload = (ev) => {
+            if (!file || file.size > 5 * 1024 * 1024) return reject('无效文件');
+            const r = new FileReader();
+            r.onload = (ev) => {
                 if (!data.selfPhotos) data.selfPhotos = [];
                 data.selfPhotos.push({ id: 'self_' + Date.now(), url: ev.target.result, addedAt: Date.now() });
                 save(); resolve(ev.target.result);
             };
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
+            r.onerror = reject;
+            r.readAsDataURL(file);
         });
     };
 
@@ -59,31 +49,26 @@
                 body: JSON.stringify({ model: model || 'cogview-3-flash', prompt: promptText, n: 1, size: '1024x1024' })
             });
             if (!resp.ok) return null;
-            const json = await resp.json();
-            return json.data[0].b64_json ? 'data:image/png;base64,' + json.data[0].b64_json : json.data[0].url;
-        } catch (err) { return null; }
+            const j = await resp.json();
+            return j.data[0].b64_json ? 'data:image/png;base64,' + j.data[0].b64_json : j.data[0].url;
+        } catch (e) { return null; }
     };
 
-    window.generateAIImageWithReference = async function (promptText, referenceImageBase64) {
+    window.generateAIImageWithReference = async function (promptText, refImage) {
         const { img2imgApiBase, img2imgApiKey, img2imgModel } = data.aiConfig;
-        if (!img2imgApiBase || !img2imgApiKey || !promptText || !referenceImageBase64) return null;
+        if (!img2imgApiBase || !img2imgApiKey || !promptText || !refImage) return null;
         try {
-            const formData = new FormData();
-            formData.append('model', img2imgModel || 'sd-webui');
-            formData.append('prompt', promptText);
-            formData.append('image', referenceImageBase64);
-            formData.append('n', '1');
-            formData.append('size', '1024x1024');
-
-            const resp = await fetch(img2imgApiBase + '/images/generations', {
-                method: 'POST',
-                headers: { 'Authorization': 'Bearer ' + img2imgApiKey },
-                body: formData
-            });
+            const fd = new FormData();
+            fd.append('model', img2imgModel || 'sd-webui');
+            fd.append('prompt', promptText);
+            fd.append('image', refImage);
+            fd.append('n', '1');
+            fd.append('size', '1024x1024');
+            const resp = await fetch(img2imgApiBase + '/images/generations', { method: 'POST', headers: { 'Authorization': 'Bearer ' + img2imgApiKey }, body: fd });
             if (!resp.ok) return null;
-            const json = await resp.json();
-            return json.data[0].b64_json ? 'data:image/png;base64,' + json.data[0].b64_json : json.data[0].url;
-        } catch (err) { return null; }
+            const j = await resp.json();
+            return j.data[0].b64_json ? 'data:image/png;base64,' + j.data[0].b64_json : j.data[0].url;
+        } catch (e) { return null; }
     };
 
     window.openPartnerImagePanel = function () {
@@ -109,20 +94,20 @@
             + '<div id="pi-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;"></div>'
             + '<div style="background:var(--primary-bg);border-radius:12px;padding:14px;border:1px solid var(--border-color);">'
             +   '<div style="font-size:12px;font-weight:600;color:var(--text-primary);margin-bottom:10px;">AI 生图配置</div>'
-            +   '<input id="pi-api-base" placeholder="API 地址（例如 https://open.bigmodel.cn/api/paas/v4）" style="width:100%;padding:8px 10px;border:1px solid var(--border-color);border-radius:8px;background:var(--secondary-bg);color:var(--text-primary);font-size:12px;margin-bottom:8px;box-sizing:border-box;outline:none;">'
+            +   '<input id="pi-api-base" placeholder="API 地址" style="width:100%;padding:8px 10px;border:1px solid var(--border-color);border-radius:8px;background:var(--secondary-bg);color:var(--text-primary);font-size:12px;margin-bottom:8px;box-sizing:border-box;outline:none;">'
             +   '<input id="pi-api-key" placeholder="API Key" type="password" style="width:100%;padding:8px 10px;border:1px solid var(--border-color);border-radius:8px;background:var(--secondary-bg);color:var(--text-primary);font-size:12px;margin-bottom:8px;box-sizing:border-box;outline:none;">'
-            +   '<input id="pi-model" placeholder="模型（例如 cogview-3-flash）" value="cogview-3-flash" style="width:100%;padding:8px 10px;border:1px solid var(--border-color);border-radius:8px;background:var(--secondary-bg);color:var(--text-primary);font-size:12px;margin-bottom:8px;box-sizing:border-box;outline:none;">'
+            +   '<input id="pi-model" placeholder="模型" value="cogview-3-flash" style="width:100%;padding:8px 10px;border:1px solid var(--border-color);border-radius:8px;background:var(--secondary-bg);color:var(--text-primary);font-size:12px;margin-bottom:8px;box-sizing:border-box;outline:none;">'
             + '</div>'
             + '</div>';
         document.body.appendChild(modal);
 
-        // ★ 动态注入图生图配置（解决因为手机端复制导致的格式错乱）
+        // 动态注入图生图配置
         if (document.getElementById('pi-api-key') && !document.getElementById('pi-img2img-api-base')) {
             document.getElementById('pi-api-key').insertAdjacentHTML('afterend', `
                 <div style="font-size:12px;font-weight:600;color:var(--text-primary);margin-bottom:10px;margin-top:14px;">图生图配置（保留同一张脸换姿势）</div>
-                <input id="pi-img2img-api-base" placeholder="图生图 API 地址（例如 http://127.0.0.1:7860/sdapi/v1）" style="width:100%;padding:8px 10px;border:1px solid var(--border-color);border-radius:8px;background:var(--secondary-bg);color:var(--text-primary);font-size:12px;margin-bottom:8px;box-sizing:border-box;outline:none;">
+                <input id="pi-img2img-api-base" placeholder="图生图 API 地址" style="width:100%;padding:8px 10px;border:1px solid var(--border-color);border-radius:8px;background:var(--secondary-bg);color:var(--text-primary);font-size:12px;margin-bottom:8px;box-sizing:border-box;outline:none;">
                 <input id="pi-img2img-api-key" placeholder="图生图 API Key" type="password" style="width:100%;padding:8px 10px;border:1px solid var(--border-color);border-radius:8px;background:var(--secondary-bg);color:var(--text-primary);font-size:12px;margin-bottom:8px;box-sizing:border-box;outline:none;">
-                <input id="pi-img2img-model" placeholder="模型（例如 sd-webui）" value="sd-webui" style="width:100%;padding:8px 10px;border:1px solid var(--border-color);border-radius:8px;background:var(--secondary-bg);color:var(--text-primary);font-size:12px;margin-bottom:8px;box-sizing:border-box;outline:none;">
+                <input id="pi-img2img-model" placeholder="模型" value="sd-webui" style="width:100%;padding:8px 10px;border:1px solid var(--border-color);border-radius:8px;background:var(--secondary-bg);color:var(--text-primary);font-size:12px;margin-bottom:8px;box-sizing:border-box;outline:none;">
             `);
         }
 
@@ -140,99 +125,70 @@
         if (img2imgKeyInput) img2imgKeyInput.value = data.aiConfig.img2imgApiKey || '';
         if (img2imgModelInput) img2imgModelInput.value = data.aiConfig.img2imgModel || 'sd-webui';
 
-        const saveAllConfig = () => {
-            data.aiConfig = {
-                ...data.aiConfig,
-                apiBase: apiBaseInput ? apiBaseInput.value.trim() : '',
-                apiKey: apiKeyInput ? apiKeyInput.value.trim() : '',
-                model: modelInput ? modelInput.value.trim() || 'cogview-3-flash' : 'cogview-3-flash',
-                img2imgApiBase: img2imgBaseInput ? img2imgBaseInput.value.trim() : '',
-                img2imgApiKey: img2imgKeyInput ? img2imgKeyInput.value.trim() : '',
-                img2imgModel: img2imgModelInput ? img2imgModelInput.value.trim() || 'sd-webui' : 'sd-webui'
-            };
+        const saveAll = () => {
+            data.aiConfig.apiBase = apiBaseInput ? apiBaseInput.value.trim() : '';
+            data.aiConfig.apiKey = apiKeyInput ? apiKeyInput.value.trim() : '';
+            data.aiConfig.model = modelInput ? modelInput.value.trim() : 'cogview-3-flash';
+            data.aiConfig.img2imgApiBase = img2imgBaseInput ? img2imgBaseInput.value.trim() : '';
+            data.aiConfig.img2imgApiKey = img2imgKeyInput ? img2imgKeyInput.value.trim() : '';
+            data.aiConfig.img2imgModel = img2imgModelInput ? img2imgModelInput.value.trim() : 'sd-webui';
             save();
         };
-
-        if (apiBaseInput) apiBaseInput.addEventListener('change', saveAllConfig);
-        if (apiKeyInput) apiKeyInput.addEventListener('change', saveAllConfig);
-        if (modelInput) modelInput.addEventListener('change', saveAllConfig);
-        if (img2imgBaseInput) img2imgBaseInput.addEventListener('change', saveAllConfig);
-        if (img2imgKeyInput) img2imgKeyInput.addEventListener('change', saveAllConfig);
-        if (img2imgModelInput) img2imgModelInput.addEventListener('change', saveAllConfig);
+        if (apiBaseInput) apiBaseInput.addEventListener('change', saveAll);
+        if (apiKeyInput) apiKeyInput.addEventListener('change', saveAll);
+        if (modelInput) modelInput.addEventListener('change', saveAll);
+        if (img2imgBaseInput) img2imgBaseInput.addEventListener('change', saveAll);
+        if (img2imgKeyInput) img2imgKeyInput.addEventListener('change', saveAll);
+        if (img2imgModelInput) img2imgModelInput.addEventListener('change', saveAll);
 
         function renderSelfGrid() {
-            const grid = document.getElementById('pi-self-grid');
-            if (!grid) return;
-            if (!data.selfPhotos || data.selfPhotos.length === 0) {
-                grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:12px;color:var(--text-secondary);font-size:11px;">暂无专属照片，请上传</div>';
-                return;
-            }
-            grid.innerHTML = data.selfPhotos.map((item, i) => `
+            const g = document.getElementById('pi-self-grid');
+            if (!g) return;
+            if (!data.selfPhotos || data.selfPhotos.length === 0) { g.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:12px;color:var(--text-secondary);font-size:11px;">暂无专属照片</div>'; return; }
+            g.innerHTML = data.selfPhotos.map((item, i) => `
                 <div style="position:relative;aspect-ratio:1/1;border-radius:10px;overflow:hidden;border:1px solid var(--border-color);">
                     <img src="${item.url}" style="width:100%;height:100%;object-fit:cover;">
                     <button data-del-self="${i}" style="position:absolute;top:4px;right:4px;width:20px;height:20px;border-radius:50%;border:none;background:rgba(0,0,0,0.6);color:#fff;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;">×</button>
-                </div>
-            `).join('');
-            grid.querySelectorAll('[data-del-self]').forEach(btn => {
-                btn.onclick = () => { data.selfPhotos.splice(parseInt(btn.dataset.delSelf), 1); save(); renderSelfGrid(); };
-            });
+                </div>`).join('');
+            g.querySelectorAll('[data-del-self]').forEach(b => { b.onclick = () => { data.selfPhotos.splice(parseInt(b.dataset.delSelf), 1); save(); renderSelfGrid(); }; });
         }
 
         function renderGrid() {
-            const grid = document.getElementById('pi-grid');
-            const countEl = document.getElementById('pi-count');
-            if (!grid || !countEl) return;
-            countEl.textContent = data.library.length;
-            if (data.library.length === 0) {
-                grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:12px;color:var(--text-secondary);font-size:11px;">图库为空</div>';
-                return;
-            }
-            grid.innerHTML = data.library.map((item, i) => `
-                <div style="position:relative;aspect-ratio:1/1;border-radius:10px;overflow:hidden;border:1px solid var(--border-color);background:var(--primary-bg);">
-                    <img src="${item.url}" style="width:100%;height:100%;object-fit:cover;display:block;">
+            const g = document.getElementById('pi-grid');
+            const c = document.getElementById('pi-count');
+            if (!g || !c) return;
+            c.textContent = data.library.length;
+            if (data.library.length === 0) { g.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:12px;color:var(--text-secondary);font-size:11px;">图库为空</div>'; return; }
+            g.innerHTML = data.library.map((item, i) => `
+                <div style="position:relative;aspect-ratio:1/1;border-radius:10px;overflow:hidden;border:1px solid var(--border-color);">
+                    <img src="${item.url}" style="width:100%;height:100%;object-fit:cover;">
                     <button data-del="${i}" style="position:absolute;top:4px;right:4px;width:20px;height:20px;border-radius:50%;border:none;background:rgba(0,0,0,0.6);color:#fff;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;">×</button>
-                </div>
-            `).join('');
-            grid.querySelectorAll('[data-del]').forEach(btn => {
-                btn.onclick = () => { data.library.splice(parseInt(btn.dataset.del, 10), 1); save(); renderGrid(); };
-            });
+                </div>`).join('');
+            g.querySelectorAll('[data-del]').forEach(b => { b.onclick = () => { data.library.splice(parseInt(b.dataset.del, 10), 1); save(); renderGrid(); }; });
         }
 
         document.getElementById('pi-upload-self').onclick = function() {
-            const input = document.createElement('input');
-            input.type = 'file'; input.accept = 'image/*'; input.multiple = true;
-            input.onchange = async function(e) {
-                for (const file of Array.from(e.target.files)) { try { await window.uploadSelfPhoto(file); } catch (err) {} }
-                renderSelfGrid();
-                if (typeof showNotification === 'function') showNotification('✓ 专属照片已添加', 'success');
-            };
-            input.click();
+            const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*'; inp.multiple = true;
+            inp.onchange = async (e) => { for (const f of Array.from(e.target.files)) { try { await window.uploadSelfPhoto(f); } catch (err) {} } renderSelfGrid(); if (typeof showNotification === 'function') showNotification('✓ 已添加', 'success'); };
+            inp.click();
         };
-
         document.getElementById('pi-upload').onclick = function() {
-            const input = document.createElement('input');
-            input.type = 'file'; input.accept = 'image/*'; input.multiple = true;
-            input.onchange = async function(e) {
-                for (const file of Array.from(e.target.files)) {
-                    if (file.size > 5 * 1024 * 1024) { continue; }
-                    try {
-                        const base64 = await optimizeImage(file, 800, 0.85);
-                        data.library.push({ id: 'pi_' + Date.now(), url: base64, source: 'upload', addedAt: Date.now() });
-                    } catch (err) {}
+            const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*'; inp.multiple = true;
+            inp.onchange = async (e) => {
+                for (const f of Array.from(e.target.files)) {
+                    if (f.size > 5 * 1024 * 1024) continue;
+                    try { const b64 = await optimizeImage(f, 800, 0.85); data.library.push({ id: 'pi_' + Date.now(), url: b64, source: 'upload', addedAt: Date.now() }); } catch (err) {}
                 }
-                await save(); renderGrid();
-                if (typeof showNotification === 'function') showNotification('已添加图片', 'success');
+                await save(); renderGrid(); if (typeof showNotification === 'function') showNotification('已添加', 'success');
             };
-            input.click();
+            inp.click();
         };
 
         document.getElementById('pi-close').onclick = function() { modal.remove(); };
-        modal.addEventListener('click', function(e) { if (e.target === modal) modal.remove(); });
-
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
         renderGrid(); renderSelfGrid();
     };
 
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', load);
-    } else { load(); }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', load);
+    else load();
 })();
