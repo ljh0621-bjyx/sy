@@ -22,6 +22,9 @@ function getChance(key) {
 function setChance(key, val) {
     try { localStorage.setItem(CHANCE_KEYS[key], String(val)); } catch (e) {}
 }
+var data = {
+    posts: []
+};
 
     var panelEl = null;
 
