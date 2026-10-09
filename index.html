@@ -1247,6 +1247,19 @@ window.addEventListener('unhandledrejection', function(e) {
                         </div>
                     </div>
                 </div>
+                <p class="cs-group-label" style="margin-top:4px;">消息类型</p>
+<div class="cs-card">
+    <div class="cs-slider-row">
+        <span class="cs-slider-label">发语音</span>
+        <input type="range" min="0" max="100" step="1" value="30" class="font-size-slider" id="voice-chance-slider">
+        <span class="cs-slider-val" id="voice-chance-value">30%</span>
+    </div>
+    <div class="cs-slider-row">
+        <span class="cs-slider-label">发图片</span>
+        <input type="range" min="0" max="100" step="1" value="40" class="font-size-slider" id="image-chance-slider">
+        <span class="cs-slider-val" id="image-chance-value">40%</span>
+    </div>
+</div>
 
                 <div class="cs-panel" id="cs-panel-sound">
                     <p class="cs-group-label">消息音效</p>
