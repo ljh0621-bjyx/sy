@@ -808,6 +808,55 @@ surveyDiv.style.justifyContent = (msg.sender === 'user') ? 'flex-end' : 'flex-st
             ${optsHTML}
         </div>
     `;
+    // ★ 如果是对方发来的问卷，加一个"回复输入框"
+if (!isMe) {
+    const replyBox = document.createElement('div');
+    replyBox.style.cssText = 'margin-top:10px;display:flex;gap:6px;';
+    const inputId = 'survey-reply-' + msg.id;
+    replyBox.innerHTML = `
+        <input id="${inputId}" type="text" placeholder="回复…" style="
+            flex:1;padding:8px 12px;border:1.5px solid rgba(244,166,179,0.4);
+            border-radius:10px;background:#fff;color:#5a3a44;
+            font-size:12px;outline:none;font-family:var(--font-family);box-sizing:border-box;
+        ">
+        <button id="${inputId}-btn" style="
+            padding:8px 14px;border:none;border-radius:10px;
+            background:#F4A6B3;color:#fff;font-size:12px;font-weight:600;
+            cursor:pointer;font-family:var(--font-family);flex-shrink:0;
+        ">发送</button>
+    `;
+    surveyDiv.querySelector('div').appendChild(replyBox);
+
+    // 绑定发送
+    setTimeout(() => {
+        const inp = document.getElementById(inputId);
+        const btn = document.getElementById(inputId + '-btn');
+        if (!btn) return;
+        const doSend = () => {
+            const v = (inp && inp.value || '').trim();
+            if (!v) return;
+            // 发一条你的消息
+            if (typeof addMessage === 'function') {
+                addMessage({
+                    id: Date.now(),
+                    sender: 'user',
+                    text: v,
+                    timestamp: new Date(),
+                    status: 'sent',
+                    type: 'normal'
+                });
+            }
+            if (typeof playSound === 'function') playSound('send');
+            if (inp) inp.value = '';
+        };
+        btn.onclick = doSend;
+        if (inp) {
+            inp.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') { e.preventDefault(); doSend(); }
+            });
+        }
+    }, 50);
+}
     fragment.appendChild(surveyDiv);
     lastSenderRef.current = 'system';
     return fragment;
