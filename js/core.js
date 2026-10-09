@@ -741,6 +741,9 @@ if (msg.type === 'survey' && msg.survey) {
     const surveyDiv = document.createElement('div');
     surveyDiv.className = 'survey-message-wrapper';
     surveyDiv.dataset.id = msg.id;
+    // 根据 sender 靠左或靠右
+surveyDiv.style.display = 'flex';
+surveyDiv.style.justifyContent = (msg.sender === 'user') ? 'flex-end' : 'flex-start';
 
     const isMe = msg.sender === 'user';
     const survey = msg.survey;
