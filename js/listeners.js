@@ -1059,6 +1059,62 @@ if (_chatSettingsEl) _chatSettingsEl.addEventListener('click', () => {
                 maxDelaySlider.min = settings.replyDelayMin; 
             }
             updateDelayUI();
+            // ===== 语音/图片概率滑块 =====
+const voiceChanceSlider = document.getElementById('voice-chance-slider');
+const voiceChanceValue = document.getElementById('voice-chance-value');
+const imageChanceSlider = document.getElementById('image-chance-slider');
+const imageChanceValue = document.getElementById('image-chance-value');
+
+function loadChanceFromStorage() {
+    try {
+        const raw = localStorage.getItem('aiReplySettings_v1');
+        const s = raw ? JSON.parse(raw) : {};
+        if (voiceChanceSlider) {
+            const v = (typeof s.voiceChance === 'number') ? s.voiceChance : 30;
+            voiceChanceSlider.value = v;
+            if (voiceChanceValue) voiceChanceValue.textContent = v + '%';
+        }
+        if (imageChanceSlider) {
+            const v = (typeof s.imageChance === 'number') ? s.imageChance : 40;
+            imageChanceSlider.value = v;
+            if (imageChanceValue) imageChanceValue.textContent = v + '%';
+        }
+    } catch (e) {}
+}
+loadChanceFromStorage();
+
+function saveChance() {
+    try {
+        let s = {};
+        const raw = localStorage.getItem('aiReplySettings_v1');
+        if (raw) s = JSON.parse(raw);
+        if (voiceChanceSlider) s.voiceChance = parseInt(voiceChanceSlider.value, 10);
+        if (imageChanceSlider) s.imageChance = parseInt(imageChanceSlider.value, 10);
+        localStorage.setItem('aiReplySettings_v1', JSON.stringify(s));
+        if (typeof localforage !== 'undefined') {
+            localforage.setItem('aiReplySettings_v1', s).catch(() => {});
+        }
+    } catch (e) { console.warn('[chance] 保存失败', e); }
+}
+
+if (voiceChanceSlider) {
+    voiceChanceSlider.addEventListener('input', () => {
+        if (voiceChanceValue) voiceChanceValue.textContent = voiceChanceSlider.value + '%';
+    });
+    voiceChanceSlider.addEventListener('change', () => {
+        saveChance();
+        if (typeof showNotification === 'function') showNotification('✓ 语音概率已保存', 'success', 1500);
+    });
+}
+if (imageChanceSlider) {
+    imageChanceSlider.addEventListener('input', () => {
+        if (imageChanceValue) imageChanceValue.textContent = imageChanceSlider.value + '%';
+    });
+    imageChanceSlider.addEventListener('change', () => {
+        saveChance();
+        if (typeof showNotification === 'function') showNotification('✓ 图片概率已保存', 'success', 1500);
+    });
+}
 
             minDelaySlider.addEventListener('input', (e) => {
                 settings.replyDelayMin = parseInt(e.target.value, 10);
