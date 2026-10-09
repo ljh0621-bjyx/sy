@@ -43,45 +43,6 @@ function setupEventListeners() {
 }
 
 function initChatActionListeners() {
-// ========== ★ 双击消息撤回 ==========
-let _lastTapMsgId = null;
-let _lastTapTime = 0;
-
-DOMElements.chatContainer.addEventListener('click', (e) => {
-    if (e.target.closest('.message-meta-actions')) return;
-    if (e.target.closest('.message-image')) return;
-
-    const wrapper = e.target.closest('.message-wrapper');
-    if (!wrapper) return;
-
-    const id = wrapper.dataset.id;
-    const now = Date.now();
-
-    if (_lastTapMsgId === id && now - _lastTapTime < 350) {
-        _lastTapMsgId = null; _lastTapTime = 0;
-
-        const msg = messages.find(m => String(m.id) === String(id));
-        if (!msg) return;
-        if (msg.type === 'system' || msg.type === 'call-event') return;
-        if (msg.recalled) return;
-
-        const who = msg.sender === 'user'
-            ? '你'
-            : ((typeof settings !== 'undefined' && settings.partnerName) || '对方');
-
-        if (!confirm(`确定撤回${who}的这条消息吗？`)) return;
-
-        msg.recalled = true;
-        msg.recallTime = Date.now();
-        throttledSaveData();
-        renderMessages(true);
-        if (typeof showNotification === 'function') showNotification('已撤回', 'success', 1500);
-    } else {
-        _lastTapMsgId = id;
-        _lastTapTime = now;
-    }
-});
-// =====================================
             DOMElements.chatContainer.addEventListener('click', (e) => {
 
                 if (isBatchFavoriteMode) {
