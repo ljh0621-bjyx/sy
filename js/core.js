@@ -736,6 +736,79 @@ function createMessageFragment(msg, prevMsg, nextMsg, lastSenderRef) {
         return fragment;
     }
 
+// ===== 问卷卡片 =====
+if (msg.type === 'survey' && msg.survey) {
+    const surveyDiv = document.createElement('div');
+    surveyDiv.className = 'survey-message-wrapper';
+    surveyDiv.dataset.id = msg.id;
+
+    const isMe = msg.sender === 'user';
+    const survey = msg.survey;
+    const q = survey.question || '';
+    const opts = survey.options || [];
+    const answered = survey.answered || false;
+    const answer = survey.answer || [];
+
+    // 样式
+    const bgColor = isMe ? '#F8C8DC' : '#FFF0F5';
+    const borderColor = isMe ? '#F4A6B3' : '#F4A6B3';
+    const textColor = '#5a3a44';
+
+    let optsHTML = '';
+    if (opts.length > 0) {
+        optsHTML = opts.map((opt, i) => {
+            const letter = String.fromCharCode(65 + i); // A, B, C...
+            const isChosen = answered && answer.indexOf(opt) !== -1;
+            return `
+                <div class="survey-option" style="
+                    display:flex;align-items:center;gap:10px;
+                    padding:10px 14px;margin-bottom:8px;
+                    border-radius:14px;
+                    background:${isChosen ? '#FFD6E5' : '#fff'};
+                    border:1.5px solid ${isChosen ? '#F4A6B3' : 'rgba(244,166,179,0.35)'};
+                    transition:all 0.25s;
+                ">
+                    <div style="
+                        width:22px;height:22px;border-radius:50%;
+                        background:${isChosen ? '#F4A6B3' : '#fff'};
+                        border:1.5px solid ${isChosen ? '#F4A6B3' : 'rgba(244,166,179,0.5)'};
+                        display:flex;align-items:center;justify-content:center;
+                        flex-shrink:0;color:#fff;font-size:12px;font-weight:700;
+                    ">${isChosen ? '✓' : letter}</div>
+                    <div style="font-size:13px;color:${textColor};font-weight:500;">${opt.replace(/</g,'&lt;')}</div>
+                </div>
+            `;
+        }).join('');
+    } else {
+        optsHTML = '<div style="font-size:12px;color:#9a7a84;opacity:0.7;padding:6px 0;">（自由回答）</div>';
+    }
+
+    surveyDiv.innerHTML = `
+        <div style="
+            background:linear-gradient(135deg, ${bgColor}, #fff);
+            border:2px dashed ${borderColor};
+            border-radius:18px;
+            padding:16px 16px 12px;
+            max-width:260px;
+            box-shadow:0 4px 16px rgba(244,166,179,0.25);
+            margin:6px 0;
+        ">
+            <div style="
+                display:flex;align-items:flex-start;gap:6px;
+                margin-bottom:14px;padding-bottom:10px;
+                border-bottom:1px dashed rgba(244,166,179,0.4);
+            ">
+                <span style="font-size:14px;line-height:1.4;">🌸</span>
+                <div style="flex:1;font-size:13.5px;font-weight:700;color:#5a3a44;line-height:1.5;">${q.replace(/</g,'&lt;')}</div>
+                ${opts.length > 0 ? '<span style="font-size:10px;color:#b88a96;background:rgba(244,166,179,0.18);padding:2px 8px;border-radius:10px;flex-shrink:0;white-space:nowrap;">单选</span>' : ''}
+            </div>
+            ${optsHTML}
+        </div>
+    `;
+    fragment.appendChild(surveyDiv);
+    lastSenderRef.current = 'system';
+    return fragment;
+}
     let showTimestamp = true;
     if (settings.timeFormat === 'off') showTimestamp = false;
     else if (nextMsg) {
@@ -860,7 +933,6 @@ function createMessageFragment(msg, prevMsg, nextMsg, lastSenderRef) {
     if (settings.replyEnabled) actionsHTML += `<button class="meta-action-btn reply-btn" title="回复"><i class="fas fa-reply"></i></button>`;
     const starIcon = msg.favorited ? 'fas fa-star' : 'far fa-star';
     actionsHTML += `<button class="meta-action-btn favorite-action-btn ${msg.favorited ? 'favorited' : ''}" title="${msg.favorited ? '取消收藏' : '收藏'}"><i class="${starIcon}"></i></button>`;
-    actionsHTML += `<button class="meta-action-btn recall-btn" title="撤回"><i class="fas fa-undo"></i></button>`;
     actionsHTML += `<button class="meta-action-btn delete-btn" title="删除"><i class="fas fa-trash-alt"></i></button>`;
     const actionsDiv = document.createElement('div');
     actionsDiv.className = 'message-meta-actions';
