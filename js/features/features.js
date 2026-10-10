@@ -1,8 +1,8 @@
 (function() {
-    var MY_SYM_KEY   = 'pokeSym_my';
-    var PTR_SYM_KEY  = 'pokeSym_partner';
-    var MY_CUST_KEY  = 'pokeSym_my_custom';
-    var PTR_CUST_KEY = 'pokeSym_partner_custom';
+    var MY_SYM_KEY   = getStorageKey('pokeSym_my');
+var PTR_SYM_KEY  = getStorageKey('pokeSym_partner');
+var MY_CUST_KEY  = getStorageKey('pokeSym_my_custom');
+var PTR_CUST_KEY = getStorageKey('pokeSym_partner_custom');
 
     var PRESETS = [
         { value: 'none',    label: '无装饰',   sym: '' },

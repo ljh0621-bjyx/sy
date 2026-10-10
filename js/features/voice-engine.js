@@ -7,11 +7,11 @@
 
     window.getVoiceConfig = function() {
         return {
-            groupId: localStorage.getItem('minimax_group_id') || '',
-            apiKey: localStorage.getItem('minimax_api_key') || '',
-            voiceId: localStorage.getItem('minimax_voice_id') || 'male-qn-qingse',
-            model: localStorage.getItem('minimax_model') || 'speech-02-turbo' // 默认使用新模型
-        };
+    groupId: localStorage.getItem(getStorageKey('minimax_group_id')) || '',
+    apiKey: localStorage.getItem(getStorageKey('minimax_api_key')) || '',
+    voiceId: localStorage.getItem(getStorageKey('minimax_voice_id')) || 'male-qn-qingse',
+    model: localStorage.getItem(getStorageKey('minimax_model')) || 'speech-02-turbo'
+};
     };
 
     const VOICE_MAP = {
