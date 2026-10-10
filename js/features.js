@@ -209,7 +209,8 @@
         var sw   = document.getElementById('keepalive-audio-switch');
         var row  = document.getElementById('keepalive-bar-row');
 
-        if (sw)   sw.classList.toggle('active', _get());
+        var toggleRow = document.getElementById('keepalive-audio-toggle');
+if (toggleRow) toggleRow.classList.toggle('active', _get());
         if (dot) {
             dot.className = 'keepalive-dot' + (playing ? ' alive' : '');
         }
