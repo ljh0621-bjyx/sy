@@ -1,3 +1,4 @@
+localStorage.removeItem('BACKUP_V1_critical');
 document.addEventListener('DOMContentLoaded', async () => {
     const loaderBar = document.getElementById('loader-tech-bar');
     const welcomeSubtitle = document.querySelector('.welcome-subtitle-scramble');
