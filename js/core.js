@@ -420,6 +420,7 @@ const _BACKUP_PREFIX = 'BACKUP_V1_';
 function _backupCriticalData() {
     if (window._skipBackup) return;
     try {
+        const _bkSuffix = '_' + (typeof SESSION_ID !== 'undefined' && SESSION_ID ? SESSION_ID : 'default');
         const backupPayload = { ts: Date.now(), messages: messages, settings: settings, sessionId: SESSION_ID, anniversaries: anniversaries };
         let payloadToStore = backupPayload;
         const msgSizeEstimate = messages.length * 500;
@@ -429,16 +430,21 @@ function _backupCriticalData() {
         const json = JSON.stringify(payloadToStore);
         if (json.length > 4.5 * 1024 * 1024) {
             const smallerPayload = { ...payloadToStore, messages: messages.slice(-50), _truncated: true };
-            localStorage.setItem(_BACKUP_PREFIX + 'critical', JSON.stringify(smallerPayload));
+            localStorage.setItem(_BACKUP_PREFIX + 'critical' + _bkSuffix, JSON.stringify(smallerPayload));
         } else {
-            localStorage.setItem(_BACKUP_PREFIX + 'critical', json);
+            localStorage.setItem(_BACKUP_PREFIX + 'critical' + _bkSuffix, json);
         }
-        localStorage.setItem(_BACKUP_PREFIX + 'timestamp', String(Date.now()));
+        localStorage.setItem(_BACKUP_PREFIX + 'timestamp' + _bkSuffix, String(Date.now()));
     } catch (e) { console.warn('localStorage 备份写入失败:', e); }
 }
+
 function _tryRecoverFromBackup() {
-    try { const raw = localStorage.getItem(_BACKUP_PREFIX + 'critical'); if (!raw) return null; return JSON.parse(raw); }
-    catch (e) { return null; }
+    try {
+        const _bkSuffix = '_' + (typeof SESSION_ID !== 'undefined' && SESSION_ID ? SESSION_ID : 'default');
+        const raw = localStorage.getItem(_BACKUP_PREFIX + 'critical' + _bkSuffix);
+        if (!raw) return null;
+        return JSON.parse(raw);
+    } catch (e) { return null; }
 }
 
 const saveData = async () => {
@@ -1474,7 +1480,7 @@ window.simulateReply = function() {
     addMessage({
         id: Date.now() + i, sender: settings.partnerName || '对方', text: finalText, timestamp: new Date(), status: 'received',
         favorited: false, note: null,
-        replyTo: (i === 0 && recentUserMsgs.length > 0 && Math.random() < 0.3)
+            replyTo: (i === 0 && recentUserMsgs.length > 0 && Math.random() < 0.3)
             ? (function(){ const m = recentUserMsgs[Math.floor(Math.random() * recentUserMsgs.length)]; return { id: m.id, text: m.text, sender: m.sender }; })()
             : null,
         type: 'normal'
