@@ -102,11 +102,18 @@
                 if (Math.random() * 100 < settingsRW.partnerChance) {
                     const picked = applyRandomBackground(true);
                     if (picked) {
-                        const pn = (typeof settings !== 'undefined' && settings.partnerName) ? settings.partnerName : '对方';
-                        if (typeof showNotification === 'function') {
-                            showNotification('✨ ' + pn + ' 帮你换了张壁纸', 'info', 2500);
-                        }
-                    }
+    const pn = (typeof settings !== 'undefined' && settings.partnerName) ? settings.partnerName : '对方';
+    if (typeof addMessage === 'function') {
+        addMessage({
+            id: Date.now() + Math.random(),
+            sender: null,
+            text: pn + ' 帮你换了张新壁纸',
+            timestamp: new Date(),
+            type: 'system'
+        });
+    }
+    if (typeof playSound === 'function') playSound('favorite');
+}
                 }
             } catch (e) {
                 console.warn('[random-wallpaper] partner swap fail', e);
