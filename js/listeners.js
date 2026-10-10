@@ -3086,9 +3086,9 @@ playlist.style.top = (rect.top + (player.classList.contains('collapsed') ? 65 : 
                     const file = e.target.files[0];
                     if (file) {
                         if (file.size > MAX_IMAGE_SIZE) {
-                            showNotification('图片大小不能超过5MB', 'error');
-                            return;
-                        }
+    showNotification('图片大小不能超过1000MB', 'error');
+    return;
+}
                         showNotification('正在优化图片...', 'info', 1500);
                         optimizeImage(file).then(optimizedData => {
                             currentImageData = optimizedData;
