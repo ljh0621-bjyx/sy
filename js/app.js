@@ -1,4 +1,3 @@
-localStorage.removeItem('BACKUP_V1_critical');
 document.addEventListener('DOMContentLoaded', async () => {
     const loaderBar = document.getElementById('loader-tech-bar');
     const welcomeSubtitle = document.querySelector('.welcome-subtitle-scramble');
@@ -36,7 +35,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         try {
-            const emergencyBackupRaw = localStorage.getItem('BACKUP_V1_critical');
+            const emergencyBackupRaw = localStorage.getItem('BACKUP_V1_critical' + '_' + (typeof SESSION_ID !== 'undefined' && SESSION_ID ? SESSION_ID : 'default'));
             if (emergencyBackupRaw) {
                 const emergencyBackup = JSON.parse(emergencyBackupRaw);
                 if (emergencyBackup && Array.isArray(emergencyBackup.messages) && emergencyBackup.messages.length > 0) {
