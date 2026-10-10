@@ -283,14 +283,6 @@ if (target.classList.contains('recall-btn')) {
                 settings.myName = newName;
             }
             
-            // ★ 立即同步写入 localStorage（防止刷新丢失）
-            try {
-                if (typeof SESSION_ID !== 'undefined' && SESSION_ID && typeof APP_PREFIX !== 'undefined') {
-                    localStorage.setItem(APP_PREFIX + SESSION_ID + '_partnerName_override', settings.partnerName || '');
-                    localStorage.setItem(APP_PREFIX + SESSION_ID + '_myName_override', settings.myName || '');
-                }
-            } catch (e) {}
-            
             // ★ 立即保存
             if (typeof saveData === 'function') {
                 try { await saveData(); } catch (e) { console.warn('[saveName] 保存失败:', e); }
