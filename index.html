@@ -1369,6 +1369,30 @@ window.addEventListener('unhandledrejection', function(e) {
                             </div>
                         </div>
                     </div>
+                    <p class="cs-group-label" style="margin-top:16px;">打字音效</p>
+<div class="cs-card">
+    <div class="setting-pill-row" id="my-typing-sound-row">
+        <span class="setting-pill-icon"><i class="fas fa-keyboard"></i></span>
+        <span class="setting-pill-label">我打字时 <span style="font-size:11px;color:var(--text-secondary);font-weight:400;">输入框里每敲一下播放</span></span>
+        <div class="setting-pill-switch" id="my-typing-sound-switch"><div class="setting-pill-knob"></div></div>
+    </div>
+    <div class="setting-pill-row" id="partner-typing-sound-row" style="border-top:1px solid var(--border-color);">
+        <span class="setting-pill-icon"><i class="fas fa-comment-dots"></i></span>
+        <span class="setting-pill-label">对方打字时 <span style="font-size:11px;color:var(--text-secondary);font-weight:400;">"正在输入"出现时播放</span></span>
+        <div class="setting-pill-switch" id="partner-typing-sound-switch"><div class="setting-pill-knob"></div></div>
+    </div>
+    <div style="padding:10px 14px 14px;border-top:1px solid var(--border-color);">
+        <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;font-weight:600;">音效风格</div>
+        <div style="display:flex;gap:6px;">
+            <button class="typing-preset-btn" data-preset="soft" style="flex:1;padding:9px 6px;border:1.5px solid var(--border-color);border-radius:10px;background:var(--primary-bg);color:var(--text-secondary);font-size:12px;cursor:pointer;font-family:var(--font-family);">轻柔</button>
+            <button class="typing-preset-btn" data-preset="mechanical" style="flex:1;padding:9px 6px;border:1.5px solid var(--border-color);border-radius:10px;background:var(--primary-bg);color:var(--text-secondary);font-size:12px;cursor:pointer;font-family:var(--font-family);">机械</button>
+            <button class="typing-preset-btn" data-preset="wooden" style="flex:1;padding:9px 6px;border:1.5px solid var(--border-color);border-radius:10px;background:var(--primary-bg);color:var(--text-secondary);font-size:12px;cursor:pointer;font-family:var(--font-family);">木质</button>
+        </div>
+        <button id="typing-sound-preview" style="width:100%;margin-top:8px;padding:8px;border:1px dashed var(--border-color);border-radius:10px;background:none;color:var(--text-secondary);font-size:12px;cursor:pointer;font-family:var(--font-family);">
+            <i class="fas fa-play"></i> 试听当前风格
+        </button>
+    </div>
+</div>
                     <p class="cs-group-label" style="margin-top:16px;">挂机保活音频</p>
                     <div class="cs-card">
                         <div class="setting-pill-row" id="keepalive-audio-toggle" onclick="window._toggleKeepaliveAudio && window._toggleKeepaliveAudio()">
@@ -2395,6 +2419,7 @@ window.addEventListener('unhandledrejection', function(e) {
     <script src="js/features/anniversary-enhance.js"></script>
     <script src="js/features/message-popup.js"></script>
     <script src="js/features/random-wallpaper.js"></script>
+    <script src="js/features/typing-sound.js"></script>
     <script src="js/features/partner-image.js"></script>
     <script src="js/features/transfer.js?v=1"></script>
     <script src="js/features/video-bubble.js?v=4"></script>
