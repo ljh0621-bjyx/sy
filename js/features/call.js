@@ -1,11 +1,11 @@
 (function () {
     'use strict';
 
-    const KEY_ENABLED  = 'callFeatureEnabled';
-    const KEY_POS      = 'callWindowPos';
-    const KEY_SIZE     = 'callWindowSize';
-    const KEY_PILL_POS = 'callPillPos';
-    const BG_LF_KEY    = 'callBgImageData';
+    const KEY_ENABLED  = getStorageKey('callFeatureEnabled');
+const KEY_POS      = getStorageKey('callWindowPos');
+const KEY_SIZE     = getStorageKey('callWindowSize');
+const KEY_PILL_POS = getStorageKey('callPillPos');
+const BG_LF_KEY    = getStorageKey('callBgImageData');
 
     const S = {
         enabled:         localStorage.getItem(KEY_ENABLED) !== 'false',
