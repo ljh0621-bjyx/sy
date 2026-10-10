@@ -5,12 +5,12 @@
 (function () {
     'use strict';
 
-    var KEY = 'momentsData_v1';
+    var KEY = getStorageKey('momentsData_v1');
 
     var CHANCE_KEYS = {
-    like: 'momentsChanceLike',
-    comment: 'momentsChanceComment',
-    reply: 'momentsChanceReply'
+    like: getStorageKey('momentsChanceLike'),
+    comment: getStorageKey('momentsChanceComment'),
+    reply: getStorageKey('momentsChanceReply')
 };
 var CHANCE_DEFAULTS = { like: 40, comment: 40, reply: 50 };
 
