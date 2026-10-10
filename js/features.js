@@ -1,8 +1,8 @@
 (function() {
     var MY_SYM_KEY   = getStorageKey('pokeSym_my');
-var PTR_SYM_KEY  = getStorageKey('pokeSym_partner');
-var MY_CUST_KEY  = getStorageKey('pokeSym_my_custom');
-var PTR_CUST_KEY = getStorageKey('pokeSym_partner_custom');
+    var PTR_SYM_KEY  = getStorageKey('pokeSym_partner');
+    var MY_CUST_KEY  = getStorageKey('pokeSym_my_custom');
+    var PTR_CUST_KEY = getStorageKey('pokeSym_partner_custom');
 
     var PRESETS = [
         { value: 'none',    label: '无装饰',   sym: '' },
@@ -23,11 +23,8 @@ var PTR_CUST_KEY = getStorageKey('pokeSym_partner_custom');
         return p ? p.sym : '✦';
     }
 
-    // 用于“戳一戳”文本的清理：移除大部分表情类字符，避免用户文本里夹带 emoji
-    // 装饰符号仍由 _formatPokeText() 根据用户配置自动包裹输出
     function _stripEmojiForPoke(text) {
         return String(text || '')
-            // 常见 Emoji / 符号区段（尽量保守）
             .replace(/[\u2600-\u27BF\u{1F300}-\u{1FAFF}]/gu, '')
             .replace(/\s+/g, ' ')
             .trim();
@@ -367,6 +364,7 @@ if (toggleRow) toggleRow.classList.toggle('active', _get());
 
 function renderComboMenu() {
     const content = document.getElementById('user-sticker-content');
+    if (!content) return;
     content.innerHTML = '';
     
     const tabBar = document.createElement('div');
@@ -411,6 +409,7 @@ function renderComboMenu() {
 
 function showEmojiTab() {
     const area = document.getElementById('combo-content-area');
+    if (!area) return;
     area.innerHTML = '';
     area.style.display = 'grid';
     area.style.gridTemplateColumns = 'repeat(5, 1fr)';
@@ -475,6 +474,7 @@ function showEmojiTab() {
 
 function showPokeTab() {
     const area = document.getElementById('combo-content-area');
+    if (!area) return;
     area.innerHTML = '';
     area.style.display = 'flex';
     area.style.flexDirection = 'column';
@@ -548,25 +548,22 @@ function showPokeTab() {
     };
     area.appendChild(customBtn);
 }
-        function initCoreListeners() {
 
+function initCoreListeners() {
+    DOMElements.sendBtn.addEventListener('click', () => isBatchMode ? addToBatch(): sendMessage());
+    DOMElements.messageInput.addEventListener('keydown', e => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault(); isBatchMode ? addToBatch(): sendMessage();
+        }
+    });
+    DOMElements.messageInput.addEventListener('input', () => {
+        DOMElements.messageInput.style.height = 'auto'; DOMElements.messageInput.style.height = `${Math.min(DOMElements.messageInput.scrollHeight, 120)}px`;
+    });
 
-            DOMElements.sendBtn.addEventListener('click', () => isBatchMode ? addToBatch(): sendMessage());
-            DOMElements.messageInput.addEventListener('keydown', e => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault(); isBatchMode ? addToBatch(): sendMessage();
-                }
-            });
-            DOMElements.messageInput.addEventListener('input', () => {
-                DOMElements.messageInput.style.height = 'auto'; DOMElements.messageInput.style.height = `${Math.min(DOMElements.messageInput.scrollHeight, 120)}px`;
-            });
-
-
-            DOMElements.attachmentBtn.addEventListener('click', () => {
-
-                const modal = document.createElement('div');
-                modal.className = 'modal image-upload-modal';
-                modal.style.cssText = `
+    DOMElements.attachmentBtn.addEventListener('click', () => {
+        const modal = document.createElement('div');
+        modal.className = 'modal image-upload-modal';
+        modal.style.cssText = `
             display: flex !important;
             position: fixed;
             top: 0;
@@ -580,9 +577,9 @@ function showPokeTab() {
             backdrop-filter: blur(8px);
             opacity: 0;
             transition: opacity 0.3s ease;
-            `;
+        `;
 
-                modal.innerHTML = `
+        modal.innerHTML = `
             <div class="modal-content" style="
             z-index: 10000;
             position: relative;
@@ -613,200 +610,172 @@ function showPokeTab() {
             <button class="modal-btn modal-btn-primary" id="send-image" disabled>发送</button>
             </div>
             </div>
-            `;
+        `;
 
-                document.body.appendChild(modal);
+        document.body.appendChild(modal);
 
+        setTimeout(() => {
+            modal.style.opacity = '1';
+            const content = modal.querySelector('.modal-content');
+            content.style.opacity = '1';
+            content.style.transform = 'translateY(0)';
+        }, 10);
 
-                setTimeout(() => {
-                    modal.style.opacity = '1';
-                    const content = modal.querySelector('.modal-content');
-                    content.style.opacity = '1';
-                    content.style.transform = 'translateY(0)';
-                }, 10);
+        const fileInput = document.getElementById('image-file-input');
+        const urlInput = document.getElementById('image-url-input');
+        const uploadBtn = document.getElementById('upload-image-file-btn');
+        const pasteUrlBtn = document.getElementById('paste-image-url-btn');
+        const previewDiv = document.getElementById('image-preview');
+        const previewImg = document.getElementById('preview-chat-image');
+        const sendBtn = document.getElementById('send-image');
+        const cancelBtn = document.getElementById('cancel-image');
+        const uploadModeBtns = document.querySelectorAll('.upload-mode-btn');
 
-                const fileInput = document.getElementById('image-file-input');
-                const urlInput = document.getElementById('image-url-input');
-                const uploadBtn = document.getElementById('upload-image-file-btn');
-                const pasteUrlBtn = document.getElementById('paste-image-url-btn');
-                const previewDiv = document.getElementById('image-preview');
-                const previewImg = document.getElementById('preview-chat-image');
-                const sendBtn = document.getElementById('send-image');
-                const cancelBtn = document.getElementById('cancel-image');
-                const uploadModeBtns = document.querySelectorAll('.upload-mode-btn');
+        let currentImageData = null;
 
-                let currentImageData = null;
-
-
-                function switchUploadMode(isFileMode) {
-                    uploadModeBtns.forEach(btn => btn.classList.remove('active'));
-                    if (isFileMode) {
-                        uploadBtn.classList.add('active');
-                        fileInput.style.display = 'block';
-                        urlInput.style.display = 'none';
-                    } else {
-                        pasteUrlBtn.classList.add('active');
-                        fileInput.style.display = 'none';
-                        urlInput.style.display = 'block';
-                        urlInput.focus();
-                    }
-
-                    previewDiv.style.display = 'none';
-                    sendBtn.disabled = true;
-                    currentImageData = null;
-                }
-
-
-                uploadBtn.addEventListener('click', () => switchUploadMode(true));
-
-
-                pasteUrlBtn.addEventListener('click', () => switchUploadMode(false));
-
-
-                fileInput.addEventListener('change', function(e) {
-    const file = e.target.files[0];
-        if (file) {
-        if (file.size > MAX_IMAGE_SIZE) {
-            showNotification('图片大小不能超过1000MB', 'error');
-            return;
+        function switchUploadMode(isFileMode) {
+            uploadModeBtns.forEach(btn => btn.classList.remove('active'));
+            if (isFileMode) {
+                uploadBtn.classList.add('active');
+                fileInput.style.display = 'block';
+                urlInput.style.display = 'none';
+            } else {
+                pasteUrlBtn.classList.add('active');
+                fileInput.style.display = 'none';
+                urlInput.style.display = 'block';
+                urlInput.focus();
+            }
+            previewDiv.style.display = 'none';
+            sendBtn.disabled = true;
+            currentImageData = null;
         }
-        showNotification('正在优化图片...', 'info', 1500);
-        optimizeImage(file).then(optimizedData => {
-            currentImageData = optimizedData;
-            previewImg.src = currentImageData;
-            previewDiv.style.display = 'block';
-            sendBtn.disabled = false;
-        }).catch(() => {
-            showNotification('图片处理失败', 'error');
-        });
-    }
-});
 
-                urlInput.addEventListener('input',
-                    function() {
-                        const url = urlInput.value.trim();
-                        if (url) {
+        uploadBtn.addEventListener('click', () => switchUploadMode(true));
+        pasteUrlBtn.addEventListener('click', () => switchUploadMode(false));
 
-                            if (/^(https?:\/\/.*\.(?:png|jpg|jpeg|gif|webp|bmp))$/i.test(url)) {
-                                previewImg.src = url;
-                                previewDiv.style.display = 'block';
-                                currentImageData = url;
-                                sendBtn.disabled = false;
-
-
-                                const img = new Image();
-                                img.onload = function() {
-
-                                    previewImg.src = url;
-                                    showNotification('图片URL有效', 'success', 1000);
-                                };
-                                img.onerror = function() {
-                                    showNotification('图片URL无效或无法访问', 'error');
-                                    sendBtn.disabled = true;
-                                    previewDiv.style.display = 'none';
-                                };
-                                img.src = url;
-                            } else {
-                                sendBtn.disabled = true;
-                                previewDiv.style.display = 'none';
-                            }
-                        } else {
-                            sendBtn.disabled = true;
-                            previewDiv.style.display = 'none';
-                        }
-                    });
-
-
-                sendBtn.addEventListener('click',
-                    () => {
-                        if (currentImageData) {
-
-                            addMessage({
-                                id: Date.now(),
-                                sender: 'user',
-                                text: '',
-                                timestamp: new Date(),
-                                image: currentImageData,
-                                status: 'sent',
-                                favorited: false,
-                                note: null,
-                                replyTo: currentReplyTo,
-                                type: 'normal'
-                            });
-                            playSound('send');
-                            currentReplyTo = null;
-                            updateReplyPreview();
-                            const delayRange = settings.replyDelayMax - settings.replyDelayMin;
-                            const randomDelay = settings.replyDelayMin + Math.random() * delayRange;
-                            setTimeout(simulateReply, randomDelay);
-
-
-                            closeModal();
-                        }
-                    });
-
-
-                cancelBtn.addEventListener('click',
-                    closeModal);
-
-
-                function closeModal() {
-                    modal.style.opacity = '0';
-                    const content = modal.querySelector('.modal-content');
-                    content.style.opacity = '0';
-                    content.style.transform = 'translateY(20px)';
-                    setTimeout(() => {
-                        if (modal.parentNode) {
-                            modal.parentNode.removeChild(modal);
-                        }
-                    },
-                        300);
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                if (file.size > MAX_IMAGE_SIZE) {
+                    showNotification('图片大小不能超过1000MB', 'error');
+                    return;
                 }
-
-
-                modal.addEventListener('click',
-                    (e) => {
-                        if (e.target === modal) {
-                            closeModal();
-                        }
-                    });
-
-
-                modal.querySelector('.modal-content').addEventListener('click',
-                    (e) => {
-                        e.stopPropagation();
-                    });
-
-
-                const handleEscKey = (e) => {
-                    if (e.key === 'Escape') {
-                        closeModal();
-                        document.removeEventListener('keydown', handleEscKey);
-                    }
-                };
-                document.addEventListener('keydown', handleEscKey);
-
-
-                modal.addEventListener('close', () => {
-                    document.removeEventListener('keydown', handleEscKey);
+                showNotification('正在优化图片...', 'info', 1500);
+                optimizeImage(file).then(optimizedData => {
+                    currentImageData = optimizedData;
+                    previewImg.src = currentImageData;
+                    previewDiv.style.display = 'block';
+                    sendBtn.disabled = false;
+                }).catch(() => {
+                    showNotification('图片处理失败', 'error');
                 });
-            });
+            }
+        });
 
-
-            DOMElements.imageInput.addEventListener('change', () => {
-                if (DOMElements.imageInput.files[0]) {
-                    if (isBatchMode) {
-                        showNotification('批量模式不支持图片', 'warning');
-                        DOMElements.imageInput.value = '';
-                    } else {
-                        sendMessage();
-                    }
+        urlInput.addEventListener('input', function() {
+            const url = urlInput.value.trim();
+            if (url) {
+                if (/^(https?:\/\/.*\.(?:png|jpg|jpeg|gif|webp|bmp))$/i.test(url)) {
+                    previewImg.src = url;
+                    previewDiv.style.display = 'block';
+                    currentImageData = url;
+                    sendBtn.disabled = false;
+                    const img = new Image();
+                    img.onload = function() {
+                        previewImg.src = url;
+                        showNotification('图片URL有效', 'success', 1000);
+                    };
+                    img.onerror = function() {
+                        showNotification('图片URL无效或无法访问', 'error');
+                        sendBtn.disabled = true;
+                        previewDiv.style.display = 'none';
+                    };
+                    img.src = url;
+                } else {
+                    sendBtn.disabled = true;
+                    previewDiv.style.display = 'none';
                 }
-            });
+            } else {
+                sendBtn.disabled = true;
+                previewDiv.style.display = 'none';
+            }
+        });
 
-            DOMElements.continueBtn.addEventListener('click', simulateReply);
-            DOMElements.batchBtn.addEventListener('click', toggleBatchMode);
+        sendBtn.addEventListener('click', () => {
+            if (currentImageData) {
+                addMessage({
+                    id: Date.now(),
+                    sender: 'user',
+                    text: '',
+                    timestamp: new Date(),
+                    image: currentImageData,
+                    status: 'sent',
+                    favorited: false,
+                    note: null,
+                    replyTo: currentReplyTo,
+                    type: 'normal'
+                });
+                playSound('send');
+                currentReplyTo = null;
+                updateReplyPreview();
+                const delayRange = settings.replyDelayMax - settings.replyDelayMin;
+                const randomDelay = settings.replyDelayMin + Math.random() * delayRange;
+                setTimeout(simulateReply, randomDelay);
+                closeModal();
+            }
+        });
+
+        cancelBtn.addEventListener('click', closeModal);
+
+        function closeModal() {
+            modal.style.opacity = '0';
+            const content = modal.querySelector('.modal-content');
+            content.style.opacity = '0';
+            content.style.transform = 'translateY(20px)';
+            setTimeout(() => {
+                if (modal.parentNode) {
+                    modal.parentNode.removeChild(modal);
+                }
+            }, 300);
         }
+
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closeModal();
+            }
+        });
+
+        modal.querySelector('.modal-content').addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+
+        const handleEscKey = (e) => {
+            if (e.key === 'Escape') {
+                closeModal();
+                document.removeEventListener('keydown', handleEscKey);
+            }
+        };
+        document.addEventListener('keydown', handleEscKey);
+
+        modal.addEventListener('close', () => {
+            document.removeEventListener('keydown', handleEscKey);
+        });
+    });
+
+    DOMElements.imageInput.addEventListener('change', () => {
+        if (DOMElements.imageInput.files[0]) {
+            if (isBatchMode) {
+                showNotification('批量模式不支持图片', 'warning');
+                DOMElements.imageInput.value = '';
+            } else {
+                sendMessage();
+            }
+        }
+    });
+
+    DOMElements.continueBtn.addEventListener('click', simulateReply);
+    DOMElements.batchBtn.addEventListener('click', toggleBatchMode);
+}
 
 window._dailyGreetingReady = false;
 
@@ -821,136 +790,69 @@ function _getDailyGreetingData() {
     else if (hour >= 18 && hour < 22) { timeLabel = '傍晚好'; timeEmoji = '🌇'; }
     else if (hour >= 22 || hour < 6) { timeLabel = '晚上好'; timeEmoji = '🌙'; }
 
-var festivals = [
-    { m:1, d:1, name:'元旦', emoji:'🎆', label:'NEW YEAR', note:'新年快乐！愿新的一年里，你们的爱情越来越甜蜜，每一天都充满幸福与惊喜～' },
-    { m:1, d:5, name:'小寒', emoji:'❄️', label:'MINOR COLD', note:'小寒至，春不远。有你在身边，心里总是暖暖的。' },
-    { m:1, d:20, name:'大寒', emoji:'🧊', label:'MAJOR COLD', note:'大寒快乐，记得添衣保暖。你的拥抱就是最暖的炉火。' },
-
-    { m:2, d:4, name:'立春', emoji:'🌱', label:'START OF SPRING', note:'立春快乐！春天来了，我们的爱也像新芽一样蓬勃生长。' },
-    { m:2, d:14, name:'情人节', emoji:'💝', label:'VALENTINES DAY', note:'情人节快乐，亲爱的！你是我最美好的礼物，爱你哦～' },
-    { m:2, d:16, name:'除夕', emoji:'🧧', label:'CHINESE NEW YEAR EVE', note:'除夕快乐！辞旧迎新，愿你们携手跨入幸福的新一年，万事如意！' },
-    { m:2, d:17, name:'春节', emoji:'🎊', label:'SPRING FESTIVAL', note:'新年快乐！新的一年，愿你们相爱如初，甜蜜长久。' },
-    { m:2, d:18, name:'雨水', emoji:'☔', label:'RAIN WATER', note:'雨水节气，愿幸福像春雨一样滋润你的每一天。' },
-
-    { m:3, d:3, name:'元宵节', emoji:'🏮', label:'LANTERN FESTIVAL', note:'元宵节快乐！花灯映月，你是我心里最亮的那盏灯。' },
-    { m:3, d:5, name:'惊蛰', emoji:'⚡', label:'AWAKENING OF INSECTS', note:'惊蛰春雷响，万物复苏，你是我最美的春天。' },
-    { m:3, d:8, name:'妇女节', emoji:'🌹', label:'WOMENS DAY', note:'今天是属于你的节日，愿你永远被温柔相待，被爱守护。' },
-    { m:3, d:12, name:'植树节', emoji:'🌳', label:'TREE PLANTING DAY', note:'今天种下一棵树，也在心里种下对你不变的爱。' },
-    { m:3, d:20, name:'春分', emoji:'🌸', label:'SPRING EQUINOX', note:'春分昼夜平分，我的爱对你从不偏心——永远满分。' },
-
-    { m:4, d:1, name:'愚人节', emoji:'🤡', label:'APRIL FOOLS', note:'今天可以骗你说“我不爱你了”，但我的心骗不了自己～' },
-    { m:4, d:5, name:'清明节', emoji:'🌧', label:'QINGMING FESTIVAL', note:'慎终追远，珍惜眼前。有你在，每一天都格外温暖。' },
-    { m:4, d:20, name:'谷雨', emoji:'🌾', label:'GRAIN RAIN', note:'谷雨生百谷，你是我生命里最饱满的那颗。' },
-
-    { m:5, d:1, name:'劳动节', emoji:'🛠️', label:'LABOR DAY', note:'劳动最光荣，但我更光荣的是能拥有你。' },
-    { m:5, d:4, name:'青年节', emoji:'✨', label:'YOUTH DAY', note:'青春正好，与你共度。愿我们永远年轻，永远热泪盈眶。' },
-    { m:5, d:5, name:'立夏', emoji:'☀️', label:'START OF SUMMER', note:'立夏快乐！愿我们的爱像夏天一样热情。' },
-    { m:5, d:20, name:'520', emoji:'💕', label:'I LOVE YOU', note:'520，我爱你！感谢你出现在我的生命里，你是我最好的选择。' },
-    { m:5, d:21, name:'小满', emoji:'🌾', label:'GRAIN BUDS', note:'小满未满，万物可期。我对你的爱永远在增长的季节。' },
-
-    { m:6, d:1, name:'儿童节', emoji:'🎈', label:'CHILDRENS DAY', note:'愿你永远保持那颗童心，和我一起做个快乐的大小孩。' },
-    { m:6, d:5, name:'芒种', emoji:'🌽', label:'GRAIN IN EAR', note:'芒种忙种，有你在的日子，每天都是收获。' },
-    { m:6, d:19, name:'端午节', emoji:'🛶', label:'DRAGON BOAT FESTIVAL', note:'粽子软糯，你更甜～端午安康！' },
-    { m:6, d:21, name:'夏至', emoji:'🍉', label:'SUMMER SOLSTICE', note:'夏至最长的一天，我的思念比它还长。' },
-
-    { m:7, d:6, name:'小暑', emoji:'🌡️', label:'MINOR HEAT', note:'小暑入伏天，你的怀抱是最清凉的风。' },
-    { m:7, d:23, name:'大暑', emoji:'🔥', label:'MAJOR HEAT', note:'大暑炎炎，你是我心里的冰镇西瓜。' },
-
-    { m:8, d:7, name:'立秋', emoji:'🍁', label:'START OF AUTUMN', note:'立秋快乐，愿与你共赏每一片秋叶。' },
-    { m:8, d:19, name:'七夕节', emoji:'🌌', label:'QIXI FESTIVAL', note:'七夕快乐！牛郎织女一年只见一次，而我们每天都在一起，真幸运。' },
-    { m:8, d:23, name:'处暑', emoji:'🌬️', label:'END OF HEAT', note:'处暑出暑，炎热渐消，爱意不减。' },
-
-    { m:9, d:7, name:'白露', emoji:'💧', label:'WHITE DEW', note:'白露为霜，所谓伊人，在我身旁。' },
-    { m:9, d:10, name:'教师节', emoji:'📚', label:'TEACHERS DAY', note:'你是我人生中最特别的老师，教会了我什么是爱。' },
-    { m:9, d:23, name:'秋分', emoji:'🍂', label:'AUTUMN EQUINOX', note:'秋分昼夜均，你是我心里的天平。' },
-    { m:9, d:25, name:'中秋节', emoji:'🌕', label:'MID AUTUMN FESTIVAL', note:'月圆人团圆，有你才叫团圆。中秋快乐！' },
-
-    { m:10, d:1, name:'国庆节', emoji:'🎑', label:'NATIONAL DAY', note:'国庆快乐！和你在一起的每一天都像节日，爱你。' },
-    { m:10, d:8, name:'寒露', emoji:'🍃', label:'COLD DEW', note:'寒露凝霜，有你在心里总是暖的。' },
-    { m:10, d:23, name:'霜降', emoji:'❄️', label:'FROST DESCENT', note:'霜降叶落，我的爱却常青。' },
-    { m:10, d:31, name:'万圣夜', emoji:'🎃', label:'HALLOWEEN', note:'不给糖就捣蛋，但你给了我全世界最甜的糖——你的爱。' },
-
-    { m:11, d:7, name:'立冬', emoji:'🧣', label:'START OF WINTER', note:'立冬快乐，你的拥抱是冬天里最暖的阳光。' },
-    { m:11, d:11, name:'光棍节', emoji:'👫', label:'SINGLES DAY', note:'幸好我们不用过这个节，因为我有你。' },
-    { m:11, d:22, name:'小雪', emoji:'⛄', label:'MINOR SNOW', note:'小雪飘飘，你是我心里最暖的那团火。' },
-    { m:11, d:26, name:'感恩节', emoji:'🙏', label:'THANKSGIVING', note:'感谢生命中有你，每一天都是恩赐。' },
-
-    { m:12, d:7, name:'大雪', emoji:'☃️', label:'MAJOR SNOW', note:'大雪封门，封不住我对你的想念。' },
-    { m:12, d:22, name:'冬至', emoji:'🥟', label:'WINTER SOLSTICE', note:'冬至快乐，记得吃饺子，但记得想我。' },
-    { m:12, d:24, name:'平安夜', emoji:'🎄', label:'CHRISTMAS EVE', note:'平安夜快乐！愿你平平安安，我们的爱情也岁岁常安。' },
-    { m:12, d:25, name:'圣诞节', emoji:'🎅', label:'MERRY CHRISTMAS', note:'圣诞快乐！你就是我收到的最好的礼物，永远爱你。' },
-    { m:12, d:31, name:'跨年夜', emoji:'🎆', label:'NEW YEAR EVE', note:'再见这一年，你是我最好的收获。新的一年，继续爱你。' }
-];
-var festival = null;
+    var festivals = [
+        { m:1, d:1, name:'元旦', emoji:'🎆', label:'NEW YEAR', note:'新年快乐！愿新的一年里，你们的爱情越来越甜蜜，每一天都充满幸福与惊喜～' },
+        { m:1, d:5, name:'小寒', emoji:'❄️', label:'MINOR COLD', note:'小寒至，春不远。有你在身边，心里总是暖暖的。' },
+        { m:1, d:20, name:'大寒', emoji:'🧊', label:'MAJOR COLD', note:'大寒快乐，记得添衣保暖。你的拥抱就是最暖的炉火。' },
+        { m:2, d:4, name:'立春', emoji:'🌱', label:'START OF SPRING', note:'立春快乐！春天来了，我们的爱也像新芽一样蓬勃生长。' },
+        { m:2, d:14, name:'情人节', emoji:'💝', label:'VALENTINES DAY', note:'情人节快乐，亲爱的！你是我最美好的礼物，爱你哦～' },
+        { m:2, d:16, name:'除夕', emoji:'🧧', label:'CHINESE NEW YEAR EVE', note:'除夕快乐！辞旧迎新，愿你们携手跨入幸福的新一年，万事如意！' },
+        { m:2, d:17, name:'春节', emoji:'🎊', label:'SPRING FESTIVAL', note:'新年快乐！新的一年，愿你们相爱如初，甜蜜长久。' },
+        { m:2, d:18, name:'雨水', emoji:'☔', label:'RAIN WATER', note:'雨水节气，愿幸福像春雨一样滋润你的每一天。' },
+        { m:3, d:3, name:'元宵节', emoji:'🏮', label:'LANTERN FESTIVAL', note:'元宵节快乐！花灯映月，你是我心里最亮的那盏灯。' },
+        { m:3, d:5, name:'惊蛰', emoji:'⚡', label:'AWAKENING OF INSECTS', note:'惊蛰春雷响，万物复苏，你是我最美的春天。' },
+        { m:3, d:8, name:'妇女节', emoji:'🌹', label:'WOMENS DAY', note:'今天是属于你的节日，愿你永远被温柔相待，被爱守护。' },
+        { m:3, d:12, name:'植树节', emoji:'🌳', label:'TREE PLANTING DAY', note:'今天种下一棵树，也在心里种下对你不变的爱。' },
+        { m:3, d:20, name:'春分', emoji:'🌸', label:'SPRING EQUINOX', note:'春分昼夜平分，我的爱对你从不偏心——永远满分。' },
+        { m:4, d:1, name:'愚人节', emoji:'🤡', label:'APRIL FOOLS', note:'今天可以骗你说“我不爱你了”，但我的心骗不了自己～' },
+        { m:4, d:5, name:'清明节', emoji:'🌧', label:'QINGMING FESTIVAL', note:'慎终追远，珍惜眼前。有你在，每一天都格外温暖。' },
+        { m:4, d:20, name:'谷雨', emoji:'🌾', label:'GRAIN RAIN', note:'谷雨生百谷，你是我生命里最饱满的那颗。' },
+        { m:5, d:1, name:'劳动节', emoji:'🛠️', label:'LABOR DAY', note:'劳动最光荣，但我更光荣的是能拥有你。' },
+        { m:5, d:4, name:'青年节', emoji:'✨', label:'YOUTH DAY', note:'青春正好，与你共度。愿我们永远年轻，永远热泪盈眶。' },
+        { m:5, d:5, name:'立夏', emoji:'☀️', label:'START OF SUMMER', note:'立夏快乐！愿我们的爱像夏天一样热情。' },
+        { m:5, d:20, name:'520', emoji:'💕', label:'I LOVE YOU', note:'520，我爱你！感谢你出现在我的生命里，你是我最好的选择。' },
+        { m:5, d:21, name:'小满', emoji:'🌾', label:'GRAIN BUDS', note:'小满未满，万物可期。我对你的爱永远在增长的季节。' },
+        { m:6, d:1, name:'儿童节', emoji:'🎈', label:'CHILDRENS DAY', note:'愿你永远保持那颗童心，和我一起做个快乐的大小孩。' },
+        { m:6, d:5, name:'芒种', emoji:'🌽', label:'GRAIN IN EAR', note:'芒种忙种，有你在的日子，每天都是收获。' },
+        { m:6, d:19, name:'端午节', emoji:'🛶', label:'DRAGON BOAT FESTIVAL', note:'粽子软糯，你更甜～端午安康！' },
+        { m:6, d:21, name:'夏至', emoji:'🍉', label:'SUMMER SOLSTICE', note:'夏至最长的一天，我的思念比它还长。' },
+        { m:7, d:6, name:'小暑', emoji:'🌡️', label:'MINOR HEAT', note:'小暑入伏天，你的怀抱是最清凉的风。' },
+        { m:7, d:23, name:'大暑', emoji:'🔥', label:'MAJOR HEAT', note:'大暑炎炎，你是我心里的冰镇西瓜。' },
+        { m:8, d:7, name:'立秋', emoji:'🍁', label:'START OF AUTUMN', note:'立秋快乐，愿与你共赏每一片秋叶。' },
+        { m:8, d:19, name:'七夕节', emoji:'🌌', label:'QIXI FESTIVAL', note:'七夕快乐！牛郎织女一年只见一次，而我们每天都在一起，真幸运。' },
+        { m:8, d:23, name:'处暑', emoji:'🌬️', label:'END OF HEAT', note:'处暑出暑，炎热渐消，爱意不减。' },
+        { m:9, d:7, name:'白露', emoji:'💧', label:'WHITE DEW', note:'白露为霜，所谓伊人，在我身旁。' },
+        { m:9, d:10, name:'教师节', emoji:'📚', label:'TEACHERS DAY', note:'你是我人生中最特别的老师，教会了我什么是爱。' },
+        { m:9, d:23, name:'秋分', emoji:'🍂', label:'AUTUMN EQUINOX', note:'秋分昼夜均，你是我心里的天平。' },
+        { m:9, d:25, name:'中秋节', emoji:'🌕', label:'MID AUTUMN FESTIVAL', note:'月圆人团圆，有你才叫团圆。中秋快乐！' },
+        { m:10, d:1, name:'国庆节', emoji:'🎑', label:'NATIONAL DAY', note:'国庆快乐！和你在一起的每一天都像节日，爱你。' },
+        { m:10, d:8, name:'寒露', emoji:'🍃', label:'COLD DEW', note:'寒露凝霜，有你在心里总是暖的。' },
+        { m:10, d:23, name:'霜降', emoji:'❄️', label:'FROST DESCENT', note:'霜降叶落，我的爱却常青。' },
+        { m:10, d:31, name:'万圣夜', emoji:'🎃', label:'HALLOWEEN', note:'不给糖就捣蛋，但你给了我全世界最甜的糖——你的爱。' },
+        { m:11, d:7, name:'立冬', emoji:'🧣', label:'START OF WINTER', note:'立冬快乐，你的拥抱是冬天里最暖的阳光。' },
+        { m:11, d:11, name:'光棍节', emoji:'👫', label:'SINGLES DAY', note:'幸好我们不用过这个节，因为我有你。' },
+        { m:11, d:22, name:'小雪', emoji:'⛄', label:'MINOR SNOW', note:'小雪飘飘，你是我心里最暖的那团火。' },
+        { m:11, d:26, name:'感恩节', emoji:'🙏', label:'THANKSGIVING', note:'感谢生命中有你，每一天都是恩赐。' },
+        { m:12, d:7, name:'大雪', emoji:'☃️', label:'MAJOR SNOW', note:'大雪封门，封不住我对你的想念。' },
+        { m:12, d:22, name:'冬至', emoji:'🥟', label:'WINTER SOLSTICE', note:'冬至快乐，记得吃饺子，但记得想我。' },
+        { m:12, d:24, name:'平安夜', emoji:'🎄', label:'CHRISTMAS EVE', note:'平安夜快乐！愿你平平安安，我们的爱情也岁岁常安。' },
+        { m:12, d:25, name:'圣诞节', emoji:'🎅', label:'MERRY CHRISTMAS', note:'圣诞快乐！你就是我收到的最好的礼物，永远爱你。' },
+        { m:12, d:31, name:'跨年夜', emoji:'🎆', label:'NEW YEAR EVE', note:'再见这一年，你是我最好的收获。新的一年，继续爱你。' }
+    ];
+    var festival = null;
     for (var fi = 0; fi < festivals.length; fi++) {
         if (festivals[fi].m === month && festivals[fi].d === day) { festival = festivals[fi]; break; }
     }
 
-  var weathers = [
-    '晴空万里',
-    '多云转晴',
-    '阴天有云',
-    '细雨蒙蒙',
-    '春风和煦',
-    '微微寒冷',
-    '清风徐徐',
-    '雨后初晴',
-    '夜色宁静',
-    '月光皎洁',
-    '晴间多云',
-    '大雨滂沱',
-    '雷雨交加',
-    '小雪纷飞',
-    '微风拂面',
-    '多云天气',
-    '雾气朦胧',
-    '星光璀璨',
-    '朝霞满天',
-    '夕阳西下',
-    '海风轻拂',
-    '山间清爽',
-    '秋叶飘落',
-    '花香四溢',
-    '绿意盎然',
-    '雨后清新',
-    '雪花飞舞',
-    '阳光明媚'
-];
+    var weathers = [
+        '晴空万里','多云转晴','阴天有云','细雨蒙蒙','春风和煦','微微寒冷','清风徐徐','雨后初晴','夜色宁静','月光皎洁','晴间多云','大雨滂沱','雷雨交加','小雪纷飞','微风拂面','多云天气','雾气朦胧','星光璀璨','朝霞满天','夕阳西下','海风轻拂','山间清爽','秋叶飘落','花香四溢','绿意盎然','雨后清新','雪花飞舞','阳光明媚'
+    ];
 
-var statusPool = [
-    '正在想你 💭',
-    '忙碌中，但心里有你',
-    '好好的，别担心 ✨',
-    '期待见到你',
-    '有点想你了',
-    '在努力变更好',
-    '今天挺安静的',
-    '心情不错哦 🌱',
-    '一切都好，你呢？',
-    '看月亮，想到你 🌙',
-    '今天有点想你',
-    '刚刚看到一朵云像你 ☁️',
-    '工作再忙也会想你的',
-    '今天你开心吗？',
-    '梦里见 💤',
-    '好好吃饭了吗？',
-    '记得多喝水哦 💧',
-    '今天有没有照顾好自己',
-    '想你，但不说 🤫',
-    '全世界你最可爱',
-    '今天天气不错，适合想你',
-    '吃饱喝足，开始想你',
-    '今天也想牵你的手',
-    '你有没有想我',
-    '今天比昨天更想你',
-    '看到好吃的想分享给你 🍜',
-    '听到一首歌想到你 🎵',
-    '今天也要加油鸭',
-    '晚安，我的全世界 🌙',
-    '早安，又是想你的一天'
-];
+    var statusPool = [
+        '正在想你 💭','忙碌中，但心里有你','好好的，别担心 ✨','期待见到你','有点想你了','在努力变更好','今天挺安静的','心情不错哦 🌱','一切都好，你呢？','看月亮，想到你 🌙','今天有点想你','刚刚看到一朵云像你 ☁️','工作再忙也会想你的','今天你开心吗？','梦里见 💤','好好吃饭了吗？','记得多喝水哦 💧','今天有没有照顾好自己','想你，但不说 🤫','全世界你最可爱','今天天气不错，适合想你','吃饱喝足，开始想你','今天也想牵你的手','你有没有想我','今天比昨天更想你','看到好吃的想分享给你 🍜','听到一首歌想到你 🎵','今天也要加油鸭','晚安，我的全世界 🌙','早安，又是想你的一天'
+    ];
+    
     var todayKey = String(now.getFullYear()) + String(month) + String(day);
-    // 为每个安装生成唯一 salt，确保每位用户每天的天气/状态各不相同
     var userSalt = localStorage.getItem('_dgUserSalt');
     if (!userSalt) {
         userSalt = String(Math.floor(Math.random() * 999983) + 1);
@@ -967,7 +869,6 @@ var statusPool = [
     var customWeatherKey = 'customWeather_' + now.getFullYear() + '_' + month + '_' + day;
     var weather = localStorage.getItem(customWeatherKey) || defaultWeather;
 
-    // 混合系统预设 + 用户自定义状态池
     var userStatusPool = [];
     try { userStatusPool = JSON.parse(localStorage.getItem('dg_status_pool') || '[]'); } catch(e) {}
     var userStatusTexts = userStatusPool.map(function(item) { return item.status || item; }).filter(Boolean);
@@ -1060,10 +961,8 @@ function _buildDailyGreeting() {
 
         var statusPoolData = [];
         try { statusPoolData = JSON.parse(localStorage.getItem('dg_status_pool') || '[]'); } catch(e2) {}
-        // 将系统预设 + 用户自定义混合后，按今日种子选取
         var systemStatusItems = (function() {
             var sysPool = [];
-            // 将系统状态文本包装成与 statusPoolData 兼容的格式
             var baseStatus = (typeof status !== 'undefined') ? status : '';
             if (baseStatus) sysPool.push({ status: baseStatus, icon: null, iconImg: null });
             return sysPool;
@@ -1352,11 +1251,8 @@ window.switchToAnnouncementPanel = function() {
     var subTabs = document.getElementById('cr-sub-tabs');
     var addBtn = document.getElementById('add-custom-reply');
     var titleEl = document.getElementById('cr-modal-title');
-    // 隐藏并清空列表区域，彻底清除 emoji/sticker/字卡等残留内容
     if (listArea) { listArea.style.display = 'none'; listArea.innerHTML = ''; listArea.className = 'content-list-area'; }
-    // 隐藏并清空批量操作工具栏，防止工具栏内容残留
     if (batchToolbar) { batchToolbar.style.display = 'none'; batchToolbar.innerHTML = ''; }
-    // 隐藏并清空 sub tabs，防止 tab 按钮残留
     if (subTabs) { subTabs.style.display = 'none'; subTabs.innerHTML = ''; }
     if (annPanel) { annPanel.style.display = 'block'; annPanel.scrollTop = 0; }
     if (toolbar) toolbar.style.display = 'none';
@@ -1612,7 +1508,6 @@ window.tryShowDailyGreeting = function() {
         if (modal) modal.classList.remove('hidden');
     } catch(e) { console.warn('Daily greeting show error:', e); }
 };
-/* ===== 调查问卷面板（编辑器风格） ===== */
 
 const SURVEY_KEY_FOR_PARTNER = 'survey_questions_for_partner_v1';
 const SURVEY_HISTORY_KEY = 'survey_answer_history_v1';
@@ -1642,11 +1537,9 @@ function _saveSurveyHistory(list) {
 }
 
 function _pickOptionsFromCards(n) {
-    // ★ 已禁用：不再从字卡库自动抽选项
     return [];
 }
 
-// ---------- 主入口：打开问卷编辑器 ----------
 window.openSurveyPanel = function () {
     const old = document.getElementById('survey-panel');
     if (old) old.remove();
@@ -1672,7 +1565,6 @@ window.openSurveyPanel = function () {
     modal.innerHTML =
         '<div style="background:#fff;border-radius:24px;padding:22px 20px;width:92%;max-width:420px;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(0,0,0,0.18);">'
 
-        // 标题栏
         + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-shrink:0;">'
         +   '<div style="width:28px;height:28px;border-radius:50%;background:#f8b8c8;color:#fff;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;">?</div>'
         +   '<span style="font-size:22px;font-weight:700;color:#2a2a2a;">问问你</span>'
@@ -1681,12 +1573,10 @@ window.openSurveyPanel = function () {
         +   '<button id="sp-ask-me-btn" style="background:none;border:none;color:#f8b8c8;cursor:pointer;font-size:17px;padding:4px 8px;" title="让他问我一个问题"><i class="fas fa-dice"></i></button>'
         + '</div>'
 
-        // 问题输入框
         + '<div style="padding:4px;border:2px solid #f8c8d4;border-radius:18px;background:#fff;margin-bottom:16px;flex-shrink:0;">'
         +   '<textarea id="sp-question-input" placeholder="输入你想问的问题..." style="width:100%;min-height:64px;padding:12px 14px;border:none;background:transparent;color:#2a2a2a;font-size:15px;outline:none;font-family:var(--font-family);resize:none;box-sizing:border-box;line-height:1.5;"></textarea>'
         + '</div>'
 
-        // 选项 header + 单选/多选切换
         + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-shrink:0;">'
         +   '<span style="font-size:15px;font-weight:600;color:#2a2a2a;">选项</span>'
         +   '<div style="display:flex;gap:4px;padding:3px;background:#f5f5f5;border-radius:20px;">'
@@ -1695,13 +1585,10 @@ window.openSurveyPanel = function () {
         +   '</div>'
         + '</div>'
 
-        // 选项列表
         + '<div id="sp-ed-options-list" style="flex:1;overflow-y:auto;margin-bottom:12px;max-height:40vh;">' + renderOptions() + '</div>'
 
-        // 添加选项
         + '<button id="sp-ed-add-opt" style="width:100%;padding:13px;border:2px dashed #7dd3d8;border-radius:14px;background:none;color:#7dd3d8;font-size:13px;cursor:pointer;font-family:var(--font-family);margin-bottom:16px;flex-shrink:0;"><i class="fas fa-plus"></i> 添加选项</button>'
 
-        // 底部按钮
         + '<div style="display:flex;gap:10px;flex-shrink:0;">'
         +   '<button id="sp-ed-cancel" style="flex:1;padding:14px;border:none;border-radius:14px;background:#f0f0f0;color:#666;font-size:15px;font-weight:600;cursor:pointer;font-family:var(--font-family);">取消</button>'
         +   '<button id="sp-ed-send" style="flex:1.5;padding:14px;border:none;border-radius:14px;background:#f8b8c8;color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:var(--font-family);">发送问题</button>'
@@ -1710,7 +1597,6 @@ window.openSurveyPanel = function () {
 
     document.body.appendChild(modal);
 
-    // 绑定选项输入框事件
     const bindOptionEvents = () => {
         modal.querySelectorAll('.sp-ed-opt-input').forEach(inp => {
             inp.addEventListener('input', () => {
@@ -1731,14 +1617,12 @@ window.openSurveyPanel = function () {
     };
     bindOptionEvents();
 
-    // 添加选项
     modal.querySelector('#sp-ed-add-opt').onclick = () => {
         editorOptions.push('');
         modal.querySelector('#sp-ed-options-list').innerHTML = renderOptions();
         bindOptionEvents();
     };
 
-    // 单选/多选切换
     modal.querySelectorAll('.sp-mode-btn').forEach(btn => {
         btn.onclick = () => {
             isMulti = btn.dataset.mode === 'multi';
@@ -1750,15 +1634,12 @@ window.openSurveyPanel = function () {
         };
     });
 
-    // 关闭
     const close = () => modal.remove();
     modal.querySelector('#sp-ed-cancel').onclick = close;
     modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
 
-    // 打开题库管理
     modal.querySelector('#sp-bank-btn').onclick = () => _openSurveyBankManager();
 
-    // 让他问我（随机）
     modal.querySelector('#sp-ask-me-btn').onclick = () => {
         const ok = _sendPartnerQuestion();
         if (ok) {
@@ -1768,14 +1649,12 @@ window.openSurveyPanel = function () {
         }
     };
 
-    // 发送问题
     modal.querySelector('#sp-ed-send').onclick = () => {
         const q = modal.querySelector('#sp-question-input').value.trim();
         const opts = editorOptions.map(o => (o || '').trim()).filter(Boolean);
         if (!q) { showNotification('请输入问题', 'warning'); return; }
         if (opts.length < 2) { showNotification('至少填写 2 个选项', 'warning'); return; }
 
-        // 发到聊天
         addMessage({
             id: Date.now(),
             sender: 'user',
@@ -1795,60 +1674,57 @@ window.openSurveyPanel = function () {
         close();
         showNotification('✓ 问卷已发送', 'success');
 
-           // 读取聊天设置里的回复速度
-    const _spMin = Math.max(500, (typeof settings !== 'undefined' && settings.surveyReplyDelayMin) || 30000);
-const _spMax = Math.max(_spMin + 500, (typeof settings !== 'undefined' && settings.surveyReplyDelayMax) || 60000);
-    const _spDelay1 = _spMin + Math.random() * (_spMax - _spMin);
-    const _spDelay2 = Math.max(400, _spMin * 0.4 + Math.random() * (_spMax - _spMin) * 0.4);
+        const _spMin = Math.max(500, (typeof settings !== 'undefined' && settings.surveyReplyDelayMin) || 30000);
+        const _spMax = Math.max(_spMin + 500, (typeof settings !== 'undefined' && settings.surveyReplyDelayMax) || 60000);
+        const _spDelay1 = _spMin + Math.random() * (_spMax - _spMin);
+        const _spDelay2 = Math.max(400, _spMin * 0.4 + Math.random() * (_spMax - _spMin) * 0.4);
 
-    const myMsgId = messages[messages.length - 1].id;
-    setTimeout(() => {
-        const idx = messages.findIndex(m => String(m.id) === String(myMsgId));
-        if (idx === -1) return;
-        const msg = messages[idx];
-        if (!msg || msg.type !== 'survey' || msg.survey.answered) return;
-
-        if (msg.survey.multi) {
-            const count = Math.random() < 0.5 ? 1 : 2;
-            const shuffled = msg.survey.options.slice().sort(() => Math.random() - 0.5);
-            msg.survey.answer = shuffled.slice(0, Math.min(count, shuffled.length));
-        } else {
-            msg.survey.answer = [msg.survey.options[Math.floor(Math.random() * msg.survey.options.length)]];
-        }
-        msg.survey.answered = true;
-        msg.survey.answeredBy = 'partner';
-        throttledSaveData();
-        renderMessages(true);
-        if (typeof playSound === 'function') playSound('favorite');
-
-        // 对方再回一句字卡
+        const myMsgId = messages[messages.length - 1].id;
         setTimeout(() => {
-            const pool = (typeof customReplies !== 'undefined' && Array.isArray(customReplies))
-                ? customReplies.filter(t => t && String(t).trim())
-                : [];
-            if (pool.length > 0) {
-                const reply = pool[Math.floor(Math.random() * pool.length)];
-                const partnerName = (typeof settings !== 'undefined' && settings.partnerName) ? settings.partnerName : '对方';
-                addMessage({
-                    id: Date.now() + Math.random(),
-                    sender: partnerName,
-                    text: reply,
-                    timestamp: new Date(),
-                    status: 'received',
-                    type: 'normal'
-                });
-                if (typeof playSound === 'function') playSound('message');
+            const idx = messages.findIndex(m => String(m.id) === String(myMsgId));
+            if (idx === -1) return;
+            const msg = messages[idx];
+            if (!msg || msg.type !== 'survey' || msg.survey.answered) return;
+
+            if (msg.survey.multi) {
+                const count = Math.random() < 0.5 ? 1 : 2;
+                const shuffled = msg.survey.options.slice().sort(() => Math.random() - 0.5);
+                msg.survey.answer = shuffled.slice(0, Math.min(count, shuffled.length));
+            } else {
+                msg.survey.answer = [msg.survey.options[Math.floor(Math.random() * msg.survey.options.length)]];
             }
-        }, _spDelay2);
-    }, _spDelay1);
-};
+            msg.survey.answered = true;
+            msg.survey.answeredBy = 'partner';
+            throttledSaveData();
+            renderMessages(true);
+            if (typeof playSound === 'function') playSound('favorite');
+
+            setTimeout(() => {
+                const pool = (typeof customReplies !== 'undefined' && Array.isArray(customReplies))
+                    ? customReplies.filter(t => t && String(t).trim())
+                    : [];
+                if (pool.length > 0) {
+                    const reply = pool[Math.floor(Math.random() * pool.length)];
+                    const partnerName = (typeof settings !== 'undefined' && settings.partnerName) ? settings.partnerName : '对方';
+                    addMessage({
+                        id: Date.now() + Math.random(),
+                        sender: partnerName,
+                        text: reply,
+                        timestamp: new Date(),
+                        status: 'received',
+                        type: 'normal'
+                    });
+                    if (typeof playSound === 'function') playSound('message');
+                }
+            }, _spDelay2);
+        }, _spDelay1);
+    };
 
     setTimeout(() => {
         const inp = modal.querySelector('#sp-question-input');
         if (inp) inp.focus();
     }, 150);
 
-    // 30% 概率：打开面板时，他随机问你一个问题
     if (Math.random() < 0.3) {
         setTimeout(() => {
             const ok = _sendPartnerQuestion();
@@ -1859,7 +1735,6 @@ const _spMax = Math.max(_spMin + 500, (typeof settings !== 'undefined' && settin
     }
 };
 
-// ---------- 让"他"随机问你一个问题（作为 survey 消息发到聊天） ----------
 function _sendPartnerQuestion() {
     const list = _loadSurveyForPartner();
     if (list.length === 0) return false;
@@ -1886,7 +1761,6 @@ function _sendPartnerQuestion() {
     return true;
 }
 
-// ---------- 题库管理 ----------
 function _openSurveyBankManager() {
     const old = document.getElementById('sp-bank-manager');
     if (old) old.remove();
@@ -1978,7 +1852,6 @@ function _openSurveyBankManager() {
     };
 }
 
-// ---------- 编辑"他问我"的单条问卷 ----------
 function _openSurveyItemEditor(item, onSave) {
     const old = document.getElementById('sp-item-editor');
     if (old) old.remove();
