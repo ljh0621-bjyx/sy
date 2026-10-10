@@ -25,7 +25,8 @@ function setupEventListeners() {
     ['initMomentsPanel', typeof initMomentsPanel === 'function' ? initMomentsPanel : null],
     ['initWatchMoviePanel', typeof initWatchMoviePanel === 'function' ? initWatchMoviePanel : null],
         ['initFloatingWindow', typeof initFloatingWindow === 'function' ? initFloatingWindow : null],
-    ['initDreamDivination', typeof initDreamDivination === 'function' ? initDreamDivination : null]
+    ['initDreamDivination', typeof initDreamDivination === 'function' ? initDreamDivination : null],
+    ['initDailyCheckin', typeof initDailyCheckin === 'function' ? initDailyCheckin : null]
 ];
 
     tasks.forEach(function(t) {
