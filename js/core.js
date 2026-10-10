@@ -321,6 +321,20 @@ const loadData = async () => {
        // 只有读取到的数据是有内容的，才覆盖当前内存里的回复库
 if (savedCustomReplies && Array.isArray(savedCustomReplies) && savedCustomReplies.length > 0) {
     customReplies = savedCustomReplies;
+} else {
+    // ★ 从 localStorage 兜底恢复
+    try {
+        const backup = localStorage.getItem('BACKUP_customReplies_v2');
+        if (backup) {
+            const parsed = JSON.parse(backup);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                customReplies = parsed;
+                // 重新写回 localforage，让下次读得到
+                try { localforage.setItem(getStorageKey('customReplies'), customReplies); } catch (e) {}
+                console.warn('[loadData] 回复库从 localStorage 备份恢复', customReplies.length, '条');
+            }
+        }
+    } catch (e) { console.warn('[loadData] 备份恢复失败', e); }
 }
         if (savedReplyGroups) window.customReplyGroups = savedReplyGroups;
         if (savedPokeGroups) window.customPokeGroups = savedPokeGroups;
