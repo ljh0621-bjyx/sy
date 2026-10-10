@@ -106,22 +106,6 @@
                         if (typeof showNotification === 'function') {
                             showNotification('✨ ' + pn + ' 帮你换了张壁纸', 'info', 2500);
                         }
-                        if (typeof playSound === 'function') playSound('favorite');
-                        // 让对方再发一条消息
-                        if (typeof addMessage === 'function') {
-                            setTimeout(function () {
-                                try {
-                                    addMessage({
-                                        id: Date.now() + Math.random(),
-                                        sender: pn,
-                                        text: '看，给你换了张新壁纸，好看吗？',
-                                        timestamp: new Date(),
-                                        status: 'received',
-                                        type: 'normal'
-                                    });
-                                } catch (e) {}
-                            }, 1200 + Math.random() * 1500);
-                        }
                     }
                 }
             } catch (e) {
