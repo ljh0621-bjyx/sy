@@ -27,7 +27,8 @@ function setupEventListeners() {
         ['initFloatingWindow', typeof initFloatingWindow === 'function' ? initFloatingWindow : null],
     ['initDreamDivination', typeof initDreamDivination === 'function' ? initDreamDivination : null],
     ['initDailyCheckin', typeof initDailyCheckin === 'function' ? initDailyCheckin : null],
-    ['initQuickPhrases', typeof initQuickPhrases === 'function' ? initQuickPhrases : null]
+    ['initQuickPhrases', typeof initQuickPhrases === 'function' ? initQuickPhrases : null],
+    ['initAnniversaryEnhance', typeof initAnniversaryEnhance === 'function' ? initAnniversaryEnhance : null]
 ];
 
     tasks.forEach(function(t) {
