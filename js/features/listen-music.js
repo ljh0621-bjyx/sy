@@ -25,21 +25,29 @@
     }
 
     async function load() {
-        try {
-             const saved = await localforage.getItem(getLMKey());
-            if (saved) {
-                data.playlist = (saved.playlist || []).map(s => ({ ...s, url: '' }));
-                data.chatHistory = saved.chatHistory || [];
-                data.orphanLyrics = saved.orphanLyrics || [];
-                data.currentIndex = 0;
-            }
-        } catch (e) { console.warn('[listen-music] load fail', e); }
-    }
+    try {
+        const saved = await localforage.getItem(getLMKey());
+        if (saved) {
+            data.playlist = (saved.playlist || []).map(s => ({
+                ...s,
+                url: s.url || ''
+            }));
+            data.chatHistory = saved.chatHistory || [];
+            data.orphanLyrics = saved.orphanLyrics || [];
+            data.currentIndex = 0;
+        }
+    } catch (e) { console.warn('[listen-music] load fail', e); }
+}
 
     async function save() {
     try {
         const safe = {
-            playlist: data.playlist.map(s => ({ id: s.id, title: s.title, lyrics: s.lyrics })),
+            playlist: data.playlist.map(s => ({
+                id: s.id,
+                title: s.title,
+                lyrics: s.lyrics,
+                url: (s.url && (/^https?:/i.test(s.url) || /^data:audio\//i.test(s.url))) ? s.url : ''
+            })),
             chatHistory: data.chatHistory.slice(-200),
             orphanLyrics: data.orphanLyrics.slice(-100)
         };
