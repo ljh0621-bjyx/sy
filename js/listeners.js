@@ -28,7 +28,8 @@ function setupEventListeners() {
     ['initDreamDivination', typeof initDreamDivination === 'function' ? initDreamDivination : null],
     ['initDailyCheckin', typeof initDailyCheckin === 'function' ? initDailyCheckin : null],
     ['initQuickPhrases', typeof initQuickPhrases === 'function' ? initQuickPhrases : null],
-    ['initAnniversaryEnhance', typeof initAnniversaryEnhance === 'function' ? initAnniversaryEnhance : null]
+    ['initAnniversaryEnhance', typeof initAnniversaryEnhance === 'function' ? initAnniversaryEnhance : null],
+    ['initMessagePopup', typeof initMessagePopup === 'function' ? initMessagePopup : null]
 ];
 
     tasks.forEach(function(t) {
