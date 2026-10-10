@@ -378,7 +378,7 @@ window.addEventListener('unhandledrejection', function(e) {
     <button class="combo-btn input-btn collapse-hideable" id="combo-btn" title="表情 & 拍一拍">
         <i class="fas fa-laugh-beam"></i>
     </button>
-    <button class="input-btn collapse-hideable" id="quick-phrases-btn" title="快捷短语">
+<button class="input-btn collapse-hideable" id="quick-phrases-btn" title="快捷短语" onclick="event.stopPropagation(); openQuickPhrases();">
     <i class="fas fa-bolt"></i>
 </button>
 
@@ -1489,7 +1489,7 @@ window.addEventListener('unhandledrejection', function(e) {
 <div class="settings-item" id="daily-checkin-function">
     <i class="fas fa-calendar-check"></i><span>每日打卡</span>
 </div>
-<div class="settings-item" id="quick-phrases-function">
+<div class="settings-item" id="quick-phrases-function" onclick="openQuickPhrasesManager()">
     <i class="fas fa-bolt"></i><span>快捷短语</span>
 </div>
 <div class="settings-item" id="partner-image-function" onclick="openPartnerImagePanel()">
