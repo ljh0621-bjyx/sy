@@ -352,6 +352,7 @@ if (savedCustomReplies && Array.isArray(savedCustomReplies) && savedCustomReplie
 
         displayedMessageCount = HISTORY_BATCH_SIZE;
         setTimeout(() => {
+        window._loadDataReady = true;
             applyAllAvatarFrames();
             manageAutoSendTimer();
             checkEnvelopeStatus();
@@ -464,11 +465,9 @@ if (!SESSION_ID) {
         { key: 'chatMessages', val: () => localforage.setItem(getStorageKey('chatMessages'), messages) },
     ];
     const partnerAvatarSrc = (() => { try { const img = DOMElements.partner.avatar.querySelector('img'); return img ? img.src : null; } catch(e) { return null; } })();
-    const myAvatarSrc = (() => { try { const img = DOMElements.me.avatar.querySelector('img'); return img ? img.src : null; } catch(e) { return null; } })();
-    if (partnerAvatarSrc) promises.push({ key: 'partnerAvatar', val: () => localforage.setItem(getStorageKey('partnerAvatar'), partnerAvatarSrc) });
-    else promises.push({ key: 'partnerAvatar', val: () => localforage.removeItem(getStorageKey('partnerAvatar')) });
-    if (myAvatarSrc) promises.push({ key: 'myAvatar', val: () => localforage.setItem(getStorageKey('myAvatar'), myAvatarSrc) });
-    else promises.push({ key: 'myAvatar', val: () => localforage.removeItem(getStorageKey('myAvatar')) });
+const myAvatarSrc = (() => { try { const img = DOMElements.me.avatar.querySelector('img'); return img ? img.src : null; } catch(e) { return null; } })();
+if (partnerAvatarSrc) promises.push({ key: 'partnerAvatar', val: () => localforage.setItem(getStorageKey('partnerAvatar'), partnerAvatarSrc) });
+if (myAvatarSrc) promises.push({ key: 'myAvatar', val: () => localforage.setItem(getStorageKey('myAvatar'), myAvatarSrc) });
     await Promise.allSettled(promises.map(p => { try { return p.val(); } catch(e) { return Promise.reject(e); } }));
     _backupCriticalData();
 };
