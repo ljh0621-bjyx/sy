@@ -188,4 +188,16 @@
     };
 
     window.isMessagePopupEnabled = isEnabled;
+    // ========== 自启动（不依赖 listeners） ==========
+(function autoStart() {
+    function start() {
+        try { window.initMessagePopup(); } catch (e) { console.warn('[msg-popup] 启动失败', e); }
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function () { setTimeout(start, 800); });
+    } else {
+        setTimeout(start, 800);
+    }
+})();
+
 })();
