@@ -1,4 +1,4 @@
-/* ============================================================
+//* ============================================================
  * typing-sound.js - 聊天打字音效
  * 我打字 + 对方正在输入 都能响
  * ============================================================ */
@@ -33,7 +33,7 @@
             } catch (e) { return null; }
         }
         if (_sharedCtx.state === 'suspended') {
-            _sharedCtx.resume().catch(() => {});
+            _sharedCtx.resume().catch(function () {});
         }
         return _sharedCtx;
     }
@@ -119,7 +119,7 @@
         }
     }
 
-    // ========== 初始化 ==========
+    // ========== 对外 API ==========
     window.initTypingSound = function () {
         bindMyTyping();
         bindPartnerTyping();
@@ -127,7 +127,6 @@
         setTimeout(bindPartnerTyping, 2000);
     };
 
-    // ========== 供设置面板调用 ==========
     window.toggleMyTypingSound = function () {
         const cur = isMyEnabled();
         localStorage.setItem(MY_KEY, cur ? '0' : '1');
@@ -146,91 +145,95 @@
     window.getTypingSoundPreset = getPreset;
     window.previewTypingSound = function () { playTypingSound(1.0); };
 
-// ========== UI 绑定 ==========
-function refreshUI() {
-    const mySwitch = document.getElementById('my-typing-sound-switch');
-    const partnerSwitch = document.getElementById('partner-typing-sound-switch');
-    if (myRow) {
-    if (isMyEnabled()) myRow.classList.add('active'); else myRow.classList.remove('active');
-}
-if (partnerRow) {
-    if (isPartnerEnabled()) partnerRow.classList.add('active'); else partnerRow.classList.remove('active');
-}
-    const curPreset = getPreset();
-    document.querySelectorAll('.typing-preset-btn').forEach(btn => {
-        const isActive = btn.dataset.preset === curPreset;
-        btn.style.background = isActive ? 'var(--accent-color)' : 'var(--primary-bg)';
-        btn.style.color = isActive ? '#fff' : 'var(--text-secondary)';
-        btn.style.borderColor = isActive ? 'var(--accent-color)' : 'var(--border-color)';
-        btn.style.fontWeight = isActive ? '700' : '500';
-    });
-}
+    // ========== UI 刷新 ==========
+    function refreshUI() {
+        const myRow = document.getElementById('my-typing-sound-row');
+        const partnerRow = document.getElementById('partner-typing-sound-row');
 
-function bindUI() {
-    const myRow = document.getElementById('my-typing-sound-row');
-    if (myRow && !myRow._bound) {
-        myRow._bound = true;
-        myRow.addEventListener('click', () => {
-            const next = window.toggleMyTypingSound();
-            refreshUI();
-            if (typeof showNotification === 'function')
-                showNotification(next ? '已开启我打字音效' : '已关闭我打字音效', 'success', 1500);
-        });
-    }
-    const partnerRow = document.getElementById('partner-typing-sound-row');
-    if (partnerRow && !partnerRow._bound) {
-        partnerRow._bound = true;
-        partnerRow.addEventListener('click', () => {
-            const next = window.togglePartnerTypingSound();
-            refreshUI();
-            if (typeof showNotification === 'function')
-                showNotification(next ? '已开启对方打字音效' : '已关闭对方打字音效', 'success', 1500);
-        });
-    }
-    document.querySelectorAll('.typing-preset-btn').forEach(btn => {
-        if (btn._bound) return;
-        btn._bound = true;
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            window.setTypingSoundPreset(btn.dataset.preset);
-            refreshUI();
-            window.previewTypingSound();
-        });
-    });
-    const previewBtn = document.getElementById('typing-sound-preview');
-    if (previewBtn && !previewBtn._bound) {
-        previewBtn._bound = true;
-        previewBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            window.previewTypingSound();
-        });
-    }
-}
-
-window.initTypingSoundUI = function () {
-    bindUI();
-    refreshUI();
-    setTimeout(() => { bindUI(); refreshUI(); }, 1500);
-};
-
-// ========== 自启动 ==========
-(function autoStart() {
-    function start() {
-        try { window.initTypingSound(); } catch (e) { console.warn('[typing-sound] init fail', e); }
-        try { window.initTypingSoundUI(); } catch (e) { console.warn('[typing-sound] UI bind fail', e); }
-    }
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => setTimeout(start, 900));
-    } else {
-        setTimeout(start, 900);
-    }
-    // 打开聊天设置时也尝试刷新 UI
-    document.addEventListener('click', (e) => {
-        if (e.target.closest('#chat-settings')) {
-            setTimeout(() => { try { window.initTypingSoundUI(); } catch (err) {} }, 300);
+        if (myRow) {
+            if (isMyEnabled()) myRow.classList.add('active');
+            else myRow.classList.remove('active');
         }
-    });
-})();
+        if (partnerRow) {
+            if (isPartnerEnabled()) partnerRow.classList.add('active');
+            else partnerRow.classList.remove('active');
+        }
 
+        const curPreset = getPreset();
+        document.querySelectorAll('.typing-preset-btn').forEach(function (btn) {
+            const isActive = btn.dataset.preset === curPreset;
+            btn.style.background = isActive ? 'var(--accent-color)' : 'var(--primary-bg)';
+            btn.style.color = isActive ? '#fff' : 'var(--text-secondary)';
+            btn.style.borderColor = isActive ? 'var(--accent-color)' : 'var(--border-color)';
+            btn.style.fontWeight = isActive ? '700' : '500';
+        });
+    }
+
+    // ========== UI 绑定 ==========
+    function bindUI() {
+        const myRow = document.getElementById('my-typing-sound-row');
+        if (myRow && !myRow._bound) {
+            myRow._bound = true;
+            myRow.addEventListener('click', function () {
+                const next = window.toggleMyTypingSound();
+                refreshUI();
+                if (typeof showNotification === 'function')
+                    showNotification(next ? '已开启我打字音效' : '已关闭我打字音效', 'success', 1500);
+            });
+        }
+        const partnerRow = document.getElementById('partner-typing-sound-row');
+        if (partnerRow && !partnerRow._bound) {
+            partnerRow._bound = true;
+            partnerRow.addEventListener('click', function () {
+                const next = window.togglePartnerTypingSound();
+                refreshUI();
+                if (typeof showNotification === 'function')
+                    showNotification(next ? '已开启对方打字音效' : '已关闭对方打字音效', 'success', 1500);
+            });
+        }
+        document.querySelectorAll('.typing-preset-btn').forEach(function (btn) {
+            if (btn._bound) return;
+            btn._bound = true;
+            btn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                window.setTypingSoundPreset(btn.dataset.preset);
+                refreshUI();
+                window.previewTypingSound();
+            });
+        });
+        const previewBtn = document.getElementById('typing-sound-preview');
+        if (previewBtn && !previewBtn._bound) {
+            previewBtn._bound = true;
+            previewBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                window.previewTypingSound();
+            });
+        }
+    }
+
+    window.initTypingSoundUI = function () {
+        bindUI();
+        refreshUI();
+        setTimeout(function () { bindUI(); refreshUI(); }, 1500);
+    };
+
+    // ========== 自启动 ==========
+    (function autoStart() {
+        function start() {
+            try { window.initTypingSound(); } catch (e) { console.warn('[typing-sound] init fail', e); }
+            try { window.initTypingSoundUI(); } catch (e) { console.warn('[typing-sound] UI bind fail', e); }
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function () { setTimeout(start, 900); });
+        } else {
+            setTimeout(start, 900);
+        }
+        // 打开聊天设置时也尝试刷新 UI
+        document.addEventListener('click', function (e) {
+            if (e.target.closest('#chat-settings')) {
+                setTimeout(function () { try { window.initTypingSoundUI(); } catch (err) {} }, 300);
+            }
+        });
+    })();
 
 })();
