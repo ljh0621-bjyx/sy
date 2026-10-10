@@ -121,22 +121,30 @@ function deduplicateContentArray(arr, baseSystemArray = []) {
             }, duration);
         }
 
-        let _currentAudioContext = null;
-        let _currentAudio = null;
+        let _sharedAudioCtx = null;
+let _currentAudio = null;
 
-        const stopCurrentSound = () => {
-            try {
-                if (_currentAudio) {
-                    _currentAudio.pause();
-                    _currentAudio.currentTime = 0;
-                    _currentAudio = null;
-                }
-                if (_currentAudioContext) {
-                    _currentAudioContext.close();
-                    _currentAudioContext = null;
-                }
-            } catch(e) {}
-        };
+const getSharedAudioCtx = () => {
+    if (!_sharedAudioCtx) {
+        try { _sharedAudioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+        catch (e) { return null; }
+    }
+    if (_sharedAudioCtx.state === 'suspended') {
+        _sharedAudioCtx.resume().catch(() => {});
+    }
+    return _sharedAudioCtx;
+};
+
+const stopCurrentSound = () => {
+    try {
+        if (_currentAudio) {
+            _currentAudio.pause();
+            _currentAudio.currentTime = 0;
+            _currentAudio = null;
+        }
+        // ★ 不再关闭 AudioContext（复用同一个）
+    } catch(e) {}
+};
 
         const playSound = (type) => {
             if (!settings.soundEnabled) return;
@@ -240,9 +248,9 @@ function deduplicateContentArray(arr, baseSystemArray = []) {
                     return { osc1Type: 'sine', osc2Type: 'triangle', freq: 600, dur: 0.15, up: 1.05, down: 0.60 };
                 })();
 
-                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                _currentAudioContext = audioContext;
-                const gainNode = audioContext.createGain();
+                const audioContext = getSharedAudioCtx();
+if (!audioContext) return;
+const gainNode = audioContext.createGain();
                 const vol = Math.min(0.55, Math.max(0.01, settings.soundVolume || 0.1));
 
                 // 叠加一层泛音让音色更"厚"
@@ -281,9 +289,6 @@ function deduplicateContentArray(arr, baseSystemArray = []) {
 
                 osc1.stop(end);
                 osc2.stop(end);
-                audioContext.addEventListener('statechange', () => {
-                    if (audioContext.state === 'closed') _currentAudioContext = null;
-                });
             } catch (e) { console.warn("音频播放失败:", e); }
         };
 
