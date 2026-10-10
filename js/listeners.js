@@ -1565,7 +1565,7 @@ if (_cancelEnvEl) _cancelEnvEl.addEventListener('click', () => {
             showNotification('新会话已创建', 'success');
         });
 
-        DOMElements.sessionModal.list.addEventListener('click', (e) => {
+        DOMElements.sessionModal.list.addEventListener('click', async (e) => {
             const item = e.target.closest('.session-item');
             if (!item) return;
             const sessionId = item.dataset.id;
@@ -1615,13 +1615,15 @@ if (sessionId === currentSessionId) {
                 }
             } else {
 
-                if (sessionId !== SESSION_ID) {
-                    if (confirm('切换会话将刷新页面，确定要继续吗？')) {
-                        window.location.hash = sessionId;
-                        window.location.reload();
-                    }
-                }
-            }
+    if (sessionId !== SESSION_ID) {
+        // ★ 切会话前强制保存当前会话数据
+        try {
+            if (typeof saveData === 'function') await saveData();
+        } catch (e) { console.warn('[switch] 保存失败', e); }
+        window.location.hash = sessionId;
+        window.location.reload();
+    }
+}
         });
 
         const initMusicPlayer = async () => {
