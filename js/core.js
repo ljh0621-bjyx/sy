@@ -1250,7 +1250,7 @@ function sendMessage(textOverride = null, type = 'normal') {
 
     DOMElements.messageInput.value = '';
     DOMElements.messageInput.style.height = '46px';
-    if (imageFile && imageFile.size > MAX_IMAGE_SIZE) { showNotification('图片大小不能超过5MB', 'error'); DOMElements.imageInput.value = ''; return; }
+    if (imageFile && imageFile.size > MAX_IMAGE_SIZE) { showNotification('图片大小不能超过1000MB', 'error'); DOMElements.imageInput.value = ''; return; }
 
     const createMessage = (imgSrc = null) => {
         const messageData = { id: Date.now(), sender: 'user', text: text || '', timestamp: new Date(), image: imgSrc, status: 'sent', favorited: false, note: null, replyTo: currentReplyTo, type: type };
