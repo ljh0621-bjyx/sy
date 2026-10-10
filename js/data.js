@@ -334,8 +334,9 @@
             // 修复：直接赋值 let messages（window.messages 赋值不影响 let 绑定）
             messages = [];
             displayedMessageCount = typeof HISTORY_BATCH_SIZE !== 'undefined' ? HISTORY_BATCH_SIZE : 20;
-            try { localStorage.removeItem('BACKUP_V1_critical'); } catch(e) {}
-            try { localStorage.removeItem('BACKUP_V1_timestamp'); } catch(e) {}
+            var _bkSfx2 = '_' + (typeof SESSION_ID !== 'undefined' && SESSION_ID ? SESSION_ID : 'default');
+try { localStorage.removeItem('BACKUP_V1_critical' + _bkSfx2); } catch(e) {}
+try { localStorage.removeItem('BACKUP_V1_timestamp' + _bkSfx2); } catch(e) {}
             if (window.localforage && typeof getStorageKey === 'function') {
                 localforage.setItem(getStorageKey('chatMessages'), []).catch(function() {});
             }
