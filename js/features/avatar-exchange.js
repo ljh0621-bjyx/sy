@@ -1,7 +1,7 @@
 /**
  * avatar-exchange.js
  */
- // ★ 必须放在最前面，解决 updateAvatar 未定义报错
+// ★ 必须放在最前面，解决 updateAvatar 未定义报错
 window.updateAvatar = window.updateAvatar || function(element, src) {
     if (!element) return;
     if (src) {
@@ -14,6 +14,8 @@ window.updateAvatar = window.updateAvatar || function(element, src) {
     'use strict';
 
     const KEY = 'avatarExchangeData_v1';
+    const CHANCE_KEY = 'avatarExchangeChance_v1';      // 他换我头像的概率
+    const MY_CHANCE_KEY = 'myAvatarExchangeChance_v1'; // 我换他头像时他同意的概率
     let exchangeData = { myAvatar: null, partnerAvatar: null, pendingRequest: null, history: [] };
 
     async function loadData() {
@@ -28,6 +30,21 @@ window.updateAvatar = window.updateAvatar || function(element, src) {
         catch (e) { console.warn('[avatar-exchange] save fail', e); }
     }
 
+    // ============================================================
+    //  概率读取
+    // ============================================================
+    function getPartnerChance() {
+        const v = parseInt(localStorage.getItem(CHANCE_KEY), 10);
+        return isNaN(v) ? 25 : Math.max(0, Math.min(100, v));
+    }
+    function getMyAcceptChance() {
+        const v = parseInt(localStorage.getItem(MY_CHANCE_KEY), 10);
+        return isNaN(v) ? 70 : Math.max(0, Math.min(100, v));
+    }
+
+    // ============================================================
+    //  他主动请求换我的头像（他给你发请求）
+    // ============================================================
     window.simulatePartnerAvatarRequest = async function () {
         if (exchangeData.pendingRequest && exchangeData.pendingRequest.from === 'partner') {
             showNotification('已有待处理的请求', 'warning'); return;
@@ -56,6 +73,9 @@ window.updateAvatar = window.updateAvatar || function(element, src) {
         return canvas.toDataURL('image/jpeg', 0.85);
     }
 
+    // ============================================================
+    //  他发来请求的弹窗（我同意 / 我拒绝）
+    // ============================================================
     function showPartnerRequestModal(avatarData) {
         const old = document.getElementById('avatar-exchange-request-modal');
         if (old) old.remove();
@@ -99,6 +119,178 @@ window.updateAvatar = window.updateAvatar || function(element, src) {
         };
     }
 
+    // ============================================================
+    //  我向 TA 请求换头像（TA 可以同意 / 拒绝）
+    // ============================================================
+    async function askPartnerForAvatarChange(avatarSrc) {
+        const partnerName = (typeof settings !== 'undefined' && settings.partnerName) ? settings.partnerName : '对方';
+
+        // 显示"正在等待他回复"的浮层
+        const oldTip = document.getElementById('avatar-asking-tip');
+        if (oldTip) oldTip.remove();
+        const tip = document.createElement('div');
+        tip.id = 'avatar-asking-tip';
+        tip.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:999999;background:rgba(0,0,0,0.85);color:#fff;padding:12px 20px;border-radius:14px;font-size:13px;backdrop-filter:blur(10px);box-shadow:0 8px 30px rgba(0,0,0,0.4);display:flex;align-items:center;gap:10px;';
+        tip.innerHTML = '<span style="display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:avSpin 0.8s linear infinite;"></span>正在请求 ' + partnerName + ' 更换头像…';
+        if (!document.getElementById('av-spin-style')) {
+            const s = document.createElement('style');
+            s.id = 'av-spin-style';
+            s.textContent = '@keyframes avSpin { to { transform: rotate(360deg); } }';
+            document.head.appendChild(s);
+        }
+        document.body.appendChild(tip);
+
+        // 延迟 1.5~3 秒模拟他思考
+        const delay = 1500 + Math.random() * 1500;
+        await new Promise(r => setTimeout(r, delay));
+
+        const acceptChance = getMyAcceptChance(); // "他同意我换他头像"的概率
+        const accepted = Math.random() * 100 < acceptChance;
+
+        tip.remove();
+
+        if (accepted) {
+            // 应用他头像
+            updateAvatar(DOMElements.partner.avatar, avatarSrc);
+            exchangeData.partnerAvatar = avatarSrc;
+            try { await localforage.setItem(getStorageKey('partnerAvatar'), avatarSrc); } catch(err) {}
+            exchangeData.history.unshift({ type: 'me_to_partner', avatar: avatarSrc, accepted: true, time: Date.now() });
+            await saveData();
+
+            // 刷新面板里的头像预览
+            const pp = document.getElementById('avatar-panel-partner');
+            if (pp) pp.innerHTML = '<img src="' + avatarSrc + '" style="width:100%;height:100%;object-fit:cover;">';
+
+            if (typeof throttledSaveData === 'function') throttledSaveData();
+            showNotification('✓ ' + partnerName + ' 同意了换头像', 'success', 2500);
+            addMessage({
+                id: Date.now(),
+                text: partnerName + ' 同意了你的头像更换请求',
+                timestamp: new Date(),
+                type: 'system'
+            });
+        } else {
+            exchangeData.history.unshift({ type: 'me_to_partner', avatar: avatarSrc, accepted: false, time: Date.now() });
+            await saveData();
+            showNotification(partnerName + ' 拒绝了这次换头像', 'info', 2500);
+            addMessage({
+                id: Date.now(),
+                text: partnerName + ' 拒绝了你的头像更换请求',
+                timestamp: new Date(),
+                type: 'system'
+            });
+        }
+    }
+    window.askPartnerForAvatarChange = askPartnerForAvatarChange;
+
+    // ============================================================
+    //  概率设置面板（两个滑块）
+    // ============================================================
+    window.openAvatarExchangeChancePanel = function () {
+        const old = document.getElementById('avatar-exchange-chance-panel');
+        if (old) old.remove();
+
+        let partnerChance = getPartnerChance();
+        let myAcceptChance = getMyAcceptChance();
+
+        const modal = document.createElement('div');
+        modal.id = 'avatar-exchange-chance-panel';
+        modal.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.6);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;';
+        modal.innerHTML = `
+            <div style="background:var(--secondary-bg);border-radius:20px;padding:24px;width:90%;max-width:380px;box-shadow:0 24px 80px rgba(0,0,0,0.4);">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+                    <span style="font-size:16px;font-weight:700;color:var(--text-primary);">
+                        <i class="fas fa-exchange-alt" style="color:var(--accent-color);margin-right:8px;"></i>头像交换概率
+                    </span>
+                    <button id="aec-close" style="background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:18px;"><i class="fas fa-times"></i></button>
+                </div>
+
+                <div style="font-size:12px;color:var(--text-secondary);margin-bottom:18px;line-height:1.6;">
+                    他换你头像时可以同意/拒绝；你换他头像时他也会同意/拒绝。
+                </div>
+
+                <!-- 滑块 1：他换我头像的概率 -->
+                <div style="background:var(--primary-bg);border:1px solid var(--border-color);border-radius:14px;padding:14px;margin-bottom:12px;">
+                    <div style="font-size:12px;font-weight:700;color:var(--text-primary);margin-bottom:4px;">
+                        <i class="fas fa-arrow-right" style="color:var(--accent-color);"></i> 他主动发起请求
+                    </div>
+                    <div style="font-size:11px;color:var(--text-secondary);margin-bottom:10px;">他每隔 20~60 分钟触发一次，概率达到才会向你发请求</div>
+                    <div style="display:flex;align-items:center;gap:12px;">
+                        <input type="range" id="aec-partner-slider" min="0" max="100" step="1" value="${partnerChance}" style="flex:1;accent-color:var(--accent-color);">
+                        <span id="aec-partner-val" style="font-size:14px;font-weight:700;color:var(--accent-color);width:48px;text-align:right;">${partnerChance}%</span>
+                    </div>
+                </div>
+
+                <!-- 滑块 2：我换他头像时他同意的概率 -->
+                <div style="background:var(--primary-bg);border:1px solid var(--border-color);border-radius:14px;padding:14px;margin-bottom:18px;">
+                    <div style="font-size:12px;font-weight:700;color:var(--text-primary);margin-bottom:4px;">
+                        <i class="fas fa-arrow-left" style="color:var(--accent-color);"></i> 我发起请求时他的同意率
+                    </div>
+                    <div style="font-size:11px;color:var(--text-secondary);margin-bottom:10px;">每次你点他的头像池，他按此概率决定同意或拒绝</div>
+                    <div style="display:flex;align-items:center;gap:12px;">
+                        <input type="range" id="aec-my-slider" min="0" max="100" step="1" value="${myAcceptChance}" style="flex:1;accent-color:var(--accent-color);">
+                        <span id="aec-my-val" style="font-size:14px;font-weight:700;color:var(--accent-color);width:48px;text-align:right;">${myAcceptChance}%</span>
+                    </div>
+                </div>
+
+                <div style="display:flex;gap:10px;">
+                    <button id="aec-reset" style="flex:1;padding:11px;border:1.5px solid var(--border-color);border-radius:12px;background:none;color:var(--text-secondary);font-size:13px;cursor:pointer;font-family:var(--font-family);">恢复默认</button>
+                    <button id="aec-save" style="flex:2;padding:11px;border:none;border-radius:12px;background:var(--accent-color);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font-family);">保存</button>
+                </div>
+            </div>`;
+        document.body.appendChild(modal);
+
+        const partnerSlider = modal.querySelector('#aec-partner-slider');
+        const partnerVal = modal.querySelector('#aec-partner-val');
+        const mySlider = modal.querySelector('#aec-my-slider');
+        const myVal = modal.querySelector('#aec-my-val');
+
+        partnerSlider.oninput = () => { partnerVal.textContent = partnerSlider.value + '%'; };
+        mySlider.oninput = () => { myVal.textContent = mySlider.value + '%'; };
+
+        const close = () => modal.remove();
+        modal.querySelector('#aec-close').onclick = close;
+        modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+
+        modal.querySelector('#aec-reset').onclick = () => {
+            partnerSlider.value = 25;
+            partnerVal.textContent = '25%';
+            mySlider.value = 70;
+            myVal.textContent = '70%';
+        };
+
+        modal.querySelector('#aec-save').onclick = () => {
+            localStorage.setItem(CHANCE_KEY, partnerSlider.value);
+            localStorage.setItem(MY_CHANCE_KEY, mySlider.value);
+            close();
+            if (typeof showNotification === 'function') {
+                showNotification('✓ 头像交换概率已保存', 'success', 1800);
+            }
+        };
+    };
+
+    // ============================================================
+    //  定时调度：他每隔 20~60 分钟按概率触发一次请求
+    // ============================================================
+    function schedulePartnerAvatarRequest() {
+        const delay = (20 + Math.random() * 40) * 60 * 1000;
+        setTimeout(() => {
+            try {
+                // 如果他当前没有待处理请求，且概率命中，就发起
+                if (!exchangeData.pendingRequest) {
+                    const prob = getPartnerChance();
+                    if (Math.random() * 100 < prob) {
+                        window.simulatePartnerAvatarRequest();
+                    }
+                }
+            } catch (e) {
+                console.warn('[avatar-exchange] schedule fail', e);
+            }
+            schedulePartnerAvatarRequest();
+        }, delay);
+    }
+    setTimeout(schedulePartnerAvatarRequest, 60000);
+
     /* ========================================================
      * 互换头像面板（头像池独立 + 单删 / 批删 / 清空 + 持久化）
      * ======================================================== */
@@ -117,7 +309,10 @@ window.updateAvatar = window.updateAvatar || function(element, src) {
                     </div>
                     <span style="font-size:16px;font-weight:700;color:var(--text-primary);">互换头像</span>
                 </div>
-                <button id="close-avatar-exchange" style="background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:18px;"><i class="fas fa-times"></i></button>
+                <div style="display:flex;align-items:center;gap:4px;">
+                    <button id="open-avatar-chance" title="概率设置" style="background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:16px;padding:4px 8px;border-radius:6px;"><i class="fas fa-cog"></i></button>
+                    <button id="close-avatar-exchange" style="background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:18px;"><i class="fas fa-times"></i></button>
+                </div>
             </div>
 
             <div style="display:flex;gap:10px;margin-bottom:16px;">
@@ -170,7 +365,10 @@ window.updateAvatar = window.updateAvatar || function(element, src) {
                 <button id="btn-confirm-batch-del" style="padding:5px 12px;border:none;border-radius:10px;background:#ff4757;color:#fff;font-size:12px;cursor:pointer;font-family:var(--font-family);">删除所选</button>
             </div>
 
-            <div style="font-size:11px;color:var(--text-secondary);text-align:center;margin-bottom:12px;opacity:0.75;line-height:1.5;">TA 池的图只用于换 TA 的头像；我的池的图只用于换我的头像。<br>点击任意头像即可直接更换</div>
+            <div style="font-size:11px;color:var(--text-secondary);text-align:center;margin-bottom:12px;opacity:0.75;line-height:1.5;">
+                TA 池的图 → 换 TA 的头像（TA 会同意/拒绝）<br>
+                我的池的图 → 换我的头像（<span style="color:#ff4757;">仅能换自己的</span>）
+            </div>
 
             <div style="display:flex;flex-direction:column;gap:8px;">
                 <button id="close-avatar-exchange-2" style="width:100%;padding:12px;border:none;border-radius:12px;background:var(--primary-bg);color:var(--text-secondary);font-size:13px;cursor:pointer;font-family:var(--font-family);">关闭</button>
@@ -211,6 +409,15 @@ window.updateAvatar = window.updateAvatar || function(element, src) {
         document.getElementById('close-avatar-exchange').onclick = close;
         document.getElementById('close-avatar-exchange-2').onclick = close;
         modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+
+        // 概率设置按钮
+        const chanceBtn = document.getElementById('open-avatar-chance');
+        if (chanceBtn) {
+            chanceBtn.onclick = (e) => {
+                e.stopPropagation();
+                window.openAvatarExchangeChancePanel();
+            };
+        }
 
         const updateBatchBar = () => {
             const total = partnerSelected.size + mySelected.size;
@@ -265,16 +472,14 @@ window.updateAvatar = window.updateAvatar || function(element, src) {
                     if (w === 'partner' && !partnerBatchMode) {
                         const src = batchPartnerAvatars[idx];
                         if (!src) return;
-                        updateAvatar(DOMElements.partner.avatar, src);
-                        try { await localforage.setItem(getStorageKey('partnerAvatar'), src); } catch(err) {}
-                        if (typeof showNotification === 'function') showNotification('已更换 ' + settings.partnerName + ' 的头像', 'success');
-                        if (typeof updateAvatars === 'function') updateAvatars();
-                        if (typeof throttledSaveData === 'function') throttledSaveData();
+                        // ★ 改为请求对方同意
+                        askPartnerForAvatarChange(src);
                         return;
                     }
                     if (w === 'my' && !myBatchMode) {
                         const src = batchMyAvatars[idx];
                         if (!src) return;
+                        // 我换自己的头像 → 直接换，不需要他同意
                         updateAvatar(DOMElements.me.avatar, src);
                         try { await localforage.setItem(getStorageKey('myAvatar'), src); } catch(err) {}
                         if (typeof showNotification === 'function') showNotification('已更换你的头像', 'success');
@@ -406,7 +611,7 @@ window.updateAvatar = window.updateAvatar || function(element, src) {
             if (!files.length) return;
             showNotification('正在处理 ' + files.length + ' 张...', 'info');
             for (const file of files) {
-                if (file.size > 2 * 1024 * 1024) { showNotification(file.name + ' 超过2MB，已跳过', 'warning'); continue; }
+                if (file.size > 1000 * 1024 * 1024) { showNotification(file.name + ' 超过1000MB，已跳过', 'warning'); continue; }
                 try { batchPartnerAvatars.push(await cropImageToSquare(file, 300)); } catch (err) { console.error(err); }
             }
             renderBatchList(batchPartnerAvatars, 'partner-batch-list', 'partner-batch-count', 'partner');
@@ -423,7 +628,7 @@ window.updateAvatar = window.updateAvatar || function(element, src) {
             if (!files.length) return;
             showNotification('正在处理 ' + files.length + ' 张...', 'info');
             for (const file of files) {
-                if (file.size > 2 * 1024 * 1024) { showNotification(file.name + ' 超过2MB，已跳过', 'warning'); continue; }
+                if (file.size > 1000 * 1024 * 1024) { showNotification(file.name + ' 超过1000MB，已跳过', 'warning'); continue; }
                 try { batchMyAvatars.push(await cropImageToSquare(file, 300)); } catch (err) { console.error(err); }
             }
             renderBatchList(batchMyAvatars, 'my-batch-list', 'my-batch-count', 'my');
