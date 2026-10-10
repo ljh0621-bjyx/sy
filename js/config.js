@@ -1,7 +1,7 @@
 /*应用常量与数据结构*/
 
         const APP_PREFIX = 'CHAT_APP_V3_';
-        const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+        const MAX_IMAGE_SIZE = 1000 * 1024 * 1024;
         const MAX_AVATAR_SIZE = 2 * 1024 * 1024;
         const MESSAGES_PER_PAGE = 50;
         
