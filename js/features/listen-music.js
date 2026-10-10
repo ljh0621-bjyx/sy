@@ -320,6 +320,7 @@
             + '<span style="font-size:14px;font-weight:700;color:var(--text-primary);white-space:nowrap;">一起听音乐</span></div>'
             + '<div style="display:flex;align-items:center;gap:5px;flex:1;justify-content:flex-end;">'
             + '<button id="lm-import-audio" style="padding:6px 10px;border:none;border-radius:8px;background:var(--accent-color);color:#fff;font-size:12px;cursor:pointer;font-family:var(--font-family);white-space:nowrap;"><i class="fas fa-music"></i> 加歌曲</button>'
+            + '<button id="lm-import-link" style="padding:6px 10px;border:1.5px solid var(--accent-color);border-radius:8px;background:none;color:var(--accent-color);font-size:12px;cursor:pointer;font-family:var(--font-family);white-space:nowrap;"><i class="fas fa-link"></i> 粘贴链接</button>'
             + '<button id="lm-import-lrc" style="padding:6px 10px;border:1.5px solid var(--accent-color);border-radius:8px;background:none;color:var(--accent-color);font-size:12px;cursor:pointer;font-family:var(--font-family);white-space:nowrap;"><i class="fas fa-paste"></i> 粘贴歌词</button>'
             + '<button id="lm-close-btn" style="background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:18px;padding:0 4px;"><i class="fas fa-times"></i></button>'
             + '</div></div>'
@@ -396,6 +397,13 @@
             };
             input.click();
         };
+
+var linkBtn = document.getElementById('lm-import-link');
+if (linkBtn) {
+    linkBtn.onclick = function () {
+        openLinkPasteDialog();
+    };
+}
 
         document.getElementById('lm-import-lrc').onclick = function () {
             openLyricPasteDialog();
@@ -621,6 +629,60 @@
             container.scrollTop = 0;
         }, 150);
     }
+function openLinkPasteDialog() {
+    var old = document.getElementById('lm-link-paste');
+    if (old) old.remove();
+    var modal = document.createElement('div');
+    modal.id = 'lm-link-paste';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:999999;background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;';
+    modal.innerHTML =
+        '<div style="background:var(--secondary-bg);border-radius:20px;padding:22px;width:90%;max-width:400px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(0,0,0,0.4);">'
+        + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">'
+        +   '<span style="font-size:16px;font-weight:700;color:var(--text-primary);"><i class="fas fa-link" style="color:var(--accent-color);margin-right:8px;"></i>粘贴音乐链接</span>'
+        +   '<button id="lm-lk-close" style="background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:18px;"><i class="fas fa-times"></i></button>'
+        + '</div>'
+        + '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:6px;">歌曲名称</div>'
+        + '<input id="lm-lk-title" type="text" placeholder="例如：小半" style="width:100%;padding:11px 14px;border:1.5px solid var(--border-color);border-radius:12px;background:var(--primary-bg);color:var(--text-primary);font-size:14px;font-family:var(--font-family);outline:none;box-sizing:border-box;margin-bottom:12px;">'
+        + '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:6px;">歌手 / 备注（可选）</div>'
+        + '<input id="lm-lk-sub" type="text" placeholder="例如：陈粒" style="width:100%;padding:11px 14px;border:1.5px solid var(--border-color);border-radius:12px;background:var(--primary-bg);color:var(--text-primary);font-size:14px;font-family:var(--font-family);outline:none;box-sizing:border-box;margin-bottom:12px;">'
+        + '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:6px;">音频链接（.mp3 / .m4a / .aac / .ogg）</div>'
+        + '<input id="lm-lk-url" type="text" placeholder="https://example.com/song.mp3" style="width:100%;padding:11px 14px;border:1.5px solid var(--border-color);border-radius:12px;background:var(--primary-bg);color:var(--text-primary);font-size:13px;font-family:var(--font-family);outline:none;box-sizing:border-box;margin-bottom:10px;">'
+        + '<div style="font-size:11px;color:var(--text-secondary);opacity:0.7;line-height:1.6;margin-bottom:14px;">支持 .mp3 / .m4a / .aac / .ogg / .wav 直链</div>'
+        + '<div style="display:flex;gap:8px;">'
+        +   '<button id="lm-lk-cancel" style="flex:1;padding:12px;border:1.5px solid var(--border-color);border-radius:12px;background:none;color:var(--text-secondary);font-size:13px;cursor:pointer;font-family:var(--font-family);">取消</button>'
+        +   '<button id="lm-lk-save" style="flex:2;padding:12px;border:none;border-radius:12px;background:var(--accent-color);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font-family);"><i class="fas fa-check"></i> 添加</button>'
+        + '</div>'
+        + '</div>';
+    document.body.appendChild(modal);
+
+    var close = function () { modal.remove(); };
+    document.getElementById('lm-lk-close').onclick = close;
+    document.getElementById('lm-lk-cancel').onclick = close;
+    modal.addEventListener('click', function (e) { if (e.target === modal) modal.remove(); });
+
+    document.getElementById('lm-lk-save').onclick = async function () {
+        var title = document.getElementById('lm-lk-title').value.trim();
+        var sub = document.getElementById('lm-lk-sub').value.trim();
+        var url = document.getElementById('lm-lk-url').value.trim();
+        if (!title) { if (typeof showNotification === 'function') showNotification('请填写歌曲名称', 'warning'); return; }
+        if (!url) { if (typeof showNotification === 'function') showNotification('请填写音频链接', 'warning'); return; }
+        if (!/^https?:\/\//i.test(url)) { if (typeof showNotification === 'function') showNotification('链接必须以 http/https 开头', 'warning'); return; }
+
+        data.playlist.push({
+            id: 'song_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+            title: title,
+            sub: sub,
+            url: url,
+            lyrics: ''
+        });
+        await save();
+        renderPanel();
+        close();
+        if (typeof showNotification === 'function') showNotification('✓ 已添加《' + title + '》', 'success');
+    };
+
+    setTimeout(function () { document.getElementById('lm-lk-title').focus(); }, 150);
+}
 
     function openLyricPasteDialog() {
         var old = document.getElementById('lm-lyric-paste');
