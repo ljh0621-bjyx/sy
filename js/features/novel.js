@@ -6,7 +6,7 @@
 (function () {
     'use strict';
 
-    const KEY = 'novelData_v1';
+    const KEY = getStorageKey('novelData_v1');
 
     let data = {
         novels: [],       // [{ id, name, chapters: [{title, content}] }]

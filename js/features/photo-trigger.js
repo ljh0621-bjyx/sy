@@ -119,7 +119,7 @@
     };
 
     // ========== 随机触发开关（默认关，手动按钮开） ==========
-    const RANDOM_KEY = 'partnerRandomPhotoEnabled';
+    const RANDOM_KEY = getStorageKey('partnerRandomPhotoEnabled');
     let randomEnabled = localStorage.getItem(RANDOM_KEY) === '1';
     let randomTimer = null;
 

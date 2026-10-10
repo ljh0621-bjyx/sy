@@ -4,7 +4,7 @@
 (function () {
     'use strict';
 
-    const KEY = 'partnerImageLibrary_v1';
+    const KEY = getStorageKey('partnerImageLibrary_v1');
     let data = {
         library: [],
         selfPhotos: [],

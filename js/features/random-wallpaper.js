@@ -5,7 +5,7 @@
 (function () {
     'use strict';
 
-    const KEY = 'randomWallpaperSettings_v1';
+    const KEY = getStorageKey('randomWallpaperSettings_v1');
     let settingsRW = {
         onOpenEnabled: true,        // 每次打开随机换
         partnerEnabled: true,        // 对方换

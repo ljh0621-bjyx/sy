@@ -4,7 +4,7 @@
 (function () {
     'use strict';
 
-    const KEY = 'quickPhrases_v1';
+    const KEY = getStorageKey('quickPhrases_v1');
     const DEFAULT_PHRASES = ['早安', '晚安', '我到家了', '吃了吗？', '想你了', '在忙吗？'];
 
     let phrases = DEFAULT_PHRASES.slice();
