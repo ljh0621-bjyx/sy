@@ -205,118 +205,97 @@
 
     // ========== 渲染主体 ==========
     function renderPartnerFavBody(container) {
-        const typeMeta = [
-            { key: 'text',    icon: 'fa-comment',       label: '文字' },
-            { key: 'image',   icon: 'fa-image',         label: '图片' },
-            { key: 'sticker', icon: 'fa-sticky-note',   label: '表情包' },
-            { key: 'video',   icon: 'fa-video',         label: '视频' },
-            { key: 'music',   icon: 'fa-music',         label: '音乐' },
-            { key: 'moment',  icon: 'fa-camera-retro',  label: '朋友圈' }
-        ];
+    const typeMeta = [
+        { key: 'text',    icon: 'fa-comment',       label: '文字' },
+        { key: 'image',   icon: 'fa-image',         label: '图片' },
+        { key: 'sticker', icon: 'fa-sticky-note',   label: '表情包' },
+        { key: 'video',   icon: 'fa-video',         label: '视频' },
+        { key: 'music',   icon: 'fa-music',         label: '音乐' },
+        { key: 'moment',  icon: 'fa-camera-retro',  label: '朋友圈' }
+    ];
 
-        let html = '';
-        let total = 0;
-        typeMeta.forEach(m => {
-            const list = favData[m.key] || [];
-            total += list.length;
-        });
+    let html = '';
+    let total = 0;
+    typeMeta.forEach(m => {
+        const list = favData[m.key] || [];
+        total += list.length;
+    });
 
-        if (total === 0) {
-            container.innerHTML =
-                '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;color:var(--text-secondary);opacity:0.7;">'
-                +   '<i class="fas fa-star" style="font-size:38px;margin-bottom:14px;opacity:0.4;"></i>'
-                +   '<div style="font-size:14px;font-weight:600;margin-bottom:6px;">TA 还没有收藏</div>'
-                +   '<div style="font-size:12px;">你发消息时，有概率被收藏</div>'
-                + '</div>';
-            return;
-        }
-
-        typeMeta.forEach(m => {
-            const list = favData[m.key] || [];
-            if (list.length === 0) return;
-
-            html += '<div style="margin-bottom:18px;">';
-            html += '<div style="display:flex;align-items:center;gap:7px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border-color);">'
-                +   '<i class="fas ' + m.icon + '" style="color:var(--accent-color);font-size:13px;"></i>'
-                +   '<span style="font-size:13px;font-weight:700;color:var(--text-primary);">' + m.label + '</span>'
-                +   '<span style="font-size:11px;color:var(--text-secondary);opacity:0.7;">(' + list.length + ')</span>'
-                + '</div>';
-
-            if (m.key === 'text' || m.key === 'moment') {
-                list.forEach(item => {
-                    const content = item.text || '';
-                    const hasImg = item.url;
-                    html += '<div class="pf-item" data-type="' + m.key + '" data-id="' + item.id + '" style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:var(--primary-bg);border-radius:12px;margin-bottom:6px;position:relative;">'
-                        +   '<div style="flex:1;font-size:13px;color:var(--text-primary);line-height:1.6;word-break:break-word;">'
-                        +     (m.key === 'moment' ? '<i class="fas fa-quote-left" style="opacity:0.35;font-size:10px;margin-right:4px;"></i>' : '')
-                        +     content.replace(/</g, '&lt;')
-                        +     (hasImg ? '<img src="' + hasImg + '" style="max-width:100%;max-height:120px;margin-top:6px;border-radius:8px;display:block;">' : '')
-                        +   '</div>'
-                        +   '<button class="pf-del" data-type="' + m.key + '" data-id="' + item.id + '" style="background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:13px;padding:2px 4px;opacity:0.5;flex-shrink:0;"><i class="fas fa-times"></i></button>'
-                        + '</div>';
-                });
-            } else if (m.key === 'image' || m.key === 'sticker') {
-                html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">';
-                list.forEach(item => {
-                    html += '<div class="pf-item" data-type="' + m.key + '" data-id="' + item.id + '" style="position:relative;aspect-ratio:1/1;border-radius:10px;overflow:hidden;background:var(--primary-bg);cursor:pointer;">'
-                        +   '<img src="' + item.url + '" style="width:100%;height:100%;object-fit:cover;display:block;" loading="lazy">'
-                        +   '<button class="pf-del" data-type="' + m.key + '" data-id="' + item.id + '" style="position:absolute;top:4px;right:4px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,0.6);border:none;color:#fff;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;opacity:0.85;">×</button>'
-                        + '</div>';
-                });
-                html += '</div>';
-            } else if (m.key === 'video') {
-                list.forEach(item => {
-                    const dur = item.duration || 5;
-                    const durStr = '0:' + String(dur).padStart(2, '0');
-                    html += '<div class="pf-item" data-type="video" data-id="' + item.id + '" style="position:relative;display:inline-block;width:120px;height:80px;border-radius:10px;overflow:hidden;background:#000;margin:0 6px 6px 0;cursor:pointer;">'
-                        +   '<img src="' + item.url + '" style="width:100%;height:100%;object-fit:cover;opacity:0.85;">'
-                        +   '<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#fff;font-size:18px;">▶</div>'
-                        +   '<div style="position:absolute;bottom:4px;right:4px;background:rgba(0,0,0,0.6);color:#fff;font-size:10px;padding:1px 5px;border-radius:8px;font-family:monospace;">' + durStr + '</div>'
-                        +   '<button class="pf-del" data-type="video" data-id="' + item.id + '" style="position:absolute;top:4px;right:4px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,0.6);border:none;color:#fff;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;">×</button>'
-                        + '</div>';
-                });
-            } else if (m.key === 'music') {
-                list.forEach(item => {
-                    html += '<div class="pf-item" data-type="music" data-id="' + item.id + '" style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--primary-bg);border-radius:12px;margin-bottom:6px;">'
-                        +   '<div style="width:32px;height:32px;border-radius:8px;background:var(--accent-color);display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0;"><i class="fas fa-music" style="font-size:12px;"></i></div>'
-                        +   '<div style="flex:1;min-width:0;">'
-                        +     '<div style="font-size:13px;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + (item.title || '音乐') + '</div>'
-                        +     (item.sub ? '<div style="font-size:11px;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + item.sub + '</div>' : '')
-                        +   '</div>'
-                        +   '<button class="pf-del" data-type="music" data-id="' + item.id + '" style="background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:13px;padding:2px 4px;opacity:0.5;flex-shrink:0;"><i class="fas fa-times"></i></button>'
-                        + '</div>';
-                });
-            }
-            html += '</div>';
-        });
-
-        container.innerHTML = html;
-
-        // 绑定删除
-        container.querySelectorAll('.pf-del').forEach(btn => {
-            btn.onclick = async (e) => {
-                e.stopPropagation();
-                const type = btn.getAttribute('data-type');
-                const id = btn.getAttribute('data-id');
-                if (!type || !id) return;
-                if (!confirm('确定从 TA 的收藏里删掉这条吗？')) return;
-                favData[type] = (favData[type] || []).filter(it => it.id !== id);
-                await save();
-                renderPartnerFavBody(container);
-                if (typeof showNotification === 'function') showNotification('已删除', 'success', 1500);
-            };
-        });
-
-        // 图片点击放大
-        container.querySelectorAll('.pf-item[data-type="image"], .pf-item[data-type="sticker"]').forEach(el => {
-            el.onclick = (e) => {
-                if (e.target.closest('.pf-del')) return;
-                const img = el.querySelector('img');
-                if (img && typeof viewImage === 'function') viewImage(img.src);
-            };
-        });
+    if (total === 0) {
+        container.innerHTML =
+            '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;color:var(--text-secondary);opacity:0.7;">'
+            +   '<i class="fas fa-star" style="font-size:38px;margin-bottom:14px;opacity:0.4;"></i>'
+            +   '<div style="font-size:14px;font-weight:600;margin-bottom:6px;">TA 还没有收藏</div>'
+            +   '<div style="font-size:12px;">你发消息时，有概率被收藏</div>'
+            + '</div>';
+        return;
     }
 
+    typeMeta.forEach(m => {
+        const list = favData[m.key] || [];
+        if (list.length === 0) return;
+
+        html += '<div style="margin-bottom:18px;">';
+        html += '<div style="display:flex;align-items:center;gap:7px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border-color);">'
+            +   '<i class="fas ' + m.icon + '" style="color:var(--accent-color);font-size:13px;"></i>'
+            +   '<span style="font-size:13px;font-weight:700;color:var(--text-primary);">' + m.label + '</span>'
+            +   '<span style="font-size:11px;color:var(--text-secondary);opacity:0.7;">(' + list.length + ')</span>'
+            + '</div>';
+
+        if (m.key === 'text' || m.key === 'moment') {
+            list.forEach(item => {
+                const content = item.text || '';
+                const hasImg = item.url;
+                html += '<div class="pf-item" data-type="' + m.key + '" data-id="' + item.id + '" style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:var(--primary-bg);border-radius:12px;margin-bottom:6px;position:relative;">'
+                    +   '<div style="flex:1;font-size:13px;color:var(--text-primary);line-height:1.6;word-break:break-word;">'
+                    +     (m.key === 'moment' ? '<i class="fas fa-quote-left" style="opacity:0.35;font-size:10px;margin-right:4px;"></i>' : '')
+                    +     content.replace(/</g, '&lt;')
+                    +     (hasImg ? '<img src="' + hasImg + '" style="max-width:100%;max-height:120px;margin-top:6px;border-radius:8px;display:block;">' : '')
+                    +   '</div>'
+                    + '</div>';
+            });
+        } else if (m.key === 'image' || m.key === 'sticker') {
+            html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">';
+            list.forEach(item => {
+                html += '<div class="pf-item" data-type="' + m.key + '" data-id="' + item.id + '" style="position:relative;aspect-ratio:1/1;border-radius:10px;overflow:hidden;background:var(--primary-bg);cursor:pointer;">'
+                    +   '<img src="' + item.url + '" style="width:100%;height:100%;object-fit:cover;display:block;" loading="lazy">'
+                    + '</div>';
+            });
+            html += '</div>';
+        } else if (m.key === 'video') {
+            list.forEach(item => {
+                const dur = item.duration || 5;
+                const durStr = '0:' + String(dur).padStart(2, '0');
+                html += '<div class="pf-item" data-type="video" data-id="' + item.id + '" style="position:relative;display:inline-block;width:120px;height:80px;border-radius:10px;overflow:hidden;background:#000;margin:0 6px 6px 0;cursor:pointer;">'
+                    +   '<img src="' + item.url + '" style="width:100%;height:100%;object-fit:cover;opacity:0.85;">'
+                    +   '<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#fff;font-size:18px;">▶</div>'
+                    +   '<div style="position:absolute;bottom:4px;right:4px;background:rgba(0,0,0,0.6);color:#fff;font-size:10px;padding:1px 5px;border-radius:8px;font-family:monospace;">' + durStr + '</div>'
+                    + '</div>';
+            });
+        } else if (m.key === 'music') {
+            list.forEach(item => {
+                html += '<div class="pf-item" data-type="music" data-id="' + item.id + '" style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--primary-bg);border-radius:12px;margin-bottom:6px;">'
+                    +   '<div style="width:32px;height:32px;border-radius:8px;background:var(--accent-color);display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0;"><i class="fas fa-music" style="font-size:12px;"></i></div>'
+                    +   '<div style="flex:1;min-width:0;">'
+                    +     '<div style="font-size:13px;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + (item.title || '音乐') + '</div>'
+                    +     (item.sub ? '<div style="font-size:11px;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + item.sub + '</div>' : '')
+                    +   '</div>'
+                    + '</div>';
+            });
+        }
+        html += '</div>';
+    });
+
+    container.innerHTML = html;
+
+    // 图片点击放大
+    container.querySelectorAll('.pf-item[data-type="image"], .pf-item[data-type="sticker"]').forEach(el => {
+        el.onclick = () => {
+            const img = el.querySelector('img');
+            if (img && typeof viewImage === 'function') viewImage(img.src);
+        };
+    });
+}
     // ========== 概率设置面板 ==========
     window.openPartnerFavSettings = function () {
         const old = document.getElementById('partner-fav-settings');
