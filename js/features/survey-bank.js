@@ -5,8 +5,7 @@
 (function () {
     'use strict';
 
-    const KEY = 'surveyBank_v1';
-
+    const KEY = getStorageKey('surveyBank_v1');
     // 题库数据
     let bank = [
         // 默认几道题，你可以删了重建
