@@ -278,6 +278,15 @@ const loadData = async () => {
 
         if (savedPartnerPersonas) partnerPersonas = savedPartnerPersonas;
         if (savedSettings) Object.assign(settings, savedSettings);
+        // ★ 优先使用 localStorage override（防止保存延迟丢失）
+try {
+    if (typeof SESSION_ID !== 'undefined' && SESSION_ID && typeof APP_PREFIX !== 'undefined') {
+        const pnO = localStorage.getItem(APP_PREFIX + SESSION_ID + '_partnerName_override');
+        if (pnO) settings.partnerName = pnO;
+        const mnO = localStorage.getItem(APP_PREFIX + SESSION_ID + '_myName_override');
+        if (mnO) settings.myName = mnO;
+    }
+} catch (e) {}
 
         if (settings.showPartnerNameInChat !== undefined) {
             showPartnerNameInChat = settings.showPartnerNameInChat;
@@ -620,6 +629,15 @@ function manageAutoSendTimer() {
 }
 
 const updateUI = () => {
+    // ★ 从 localStorage override 读取名字（防止保存延迟丢失）
+    try {
+        if (typeof SESSION_ID !== 'undefined' && SESSION_ID && typeof APP_PREFIX !== 'undefined') {
+            const pnO = localStorage.getItem(APP_PREFIX + SESSION_ID + '_partnerName_override');
+            if (pnO) settings.partnerName = pnO;
+            const mnO = localStorage.getItem(APP_PREFIX + SESSION_ID + '_myName_override');
+            if (mnO) settings.myName = mnO;
+        }
+    } catch (e) {}
     const isCustomTheme = settings.colorTheme.startsWith('custom-');
     if (isCustomTheme) {
         const theme = customThemes.find(t => t.id === settings.colorTheme);
