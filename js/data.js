@@ -177,13 +177,14 @@
     }
 
     function fmt(b) {
-        if (b < 1024) return b + ' B';
-        if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
-        return (b / 1048576).toFixed(2) + ' MB';
-    }
+    if (b < 1024) return b + ' B';
+    if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+    if (b < 1073741824) return (b / 1048576).toFixed(2) + ' MB';
+    return (b / 1073741824).toFixed(2) + ' GB';
+}
 
     function applyStats(total, msgs, cfg, media) {
-        var pct = Math.min(100, total / (5 * 1024 * 1024) * 100);
+        var pct = Math.min(100, total / (100 * 1024 * 1024 * 1024) * 100);
         var g = function (id) { return document.getElementById(id); };
         var bar = g('dm-storage-bar');
         if (bar) {
@@ -194,7 +195,7 @@
                 ? 'linear-gradient(90deg,#FF9F0A,#E07000)'
                 : 'linear-gradient(90deg,var(--accent-color),rgba(var(--accent-color-rgb),0.6))';
         }
-        if (g('dm-storage-total')) g('dm-storage-total').textContent = fmt(total) + ' / ~5 MB';
+        if (g('dm-storage-total')) g('dm-storage-total').textContent = fmt(total) + ' / ~100 GB';
         if (g('dm-stat-msgs'))     g('dm-stat-msgs').textContent     = fmt(msgs);
         if (g('dm-stat-settings')) g('dm-stat-settings').textContent = fmt(cfg);
         if (g('dm-stat-media'))    g('dm-stat-media').textContent    = fmt(media);
@@ -478,9 +479,9 @@ function updateStorageUsageBar() {
                 Promise.all(promises).then(function(sizes) {
                     var total   = sizes.reduce(function(a,b){return a+b;},0);
                     var usedKB  = (total / 1024).toFixed(1);
-                    var maxBytes = 5 * 1024 * 1024;
+                   var maxBytes = 100 * 1024 * 1024 * 1024;
                     var pct     = Math.min(total / maxBytes * 100, 100).toFixed(1);
-                    var fmt     = function(b) { return b<1024 ? b+' B' : b<1048576 ? (b/1024).toFixed(1)+' KB' : (b/1048576).toFixed(2)+' MB'; };
+                    var fmt     = function(b) { return b<1024 ? b+' B' : b<1048576 ? (b/1024).toFixed(1)+' KB' : b<1073741824 ? (b/1048576).toFixed(2)+' MB' : (b/1073741824).toFixed(2)+' GB'; };
 
                     if (bar) {
                         bar.style.width = pct + '%';
@@ -491,7 +492,7 @@ function updateStorageUsageBar() {
                         else
                             bar.style.background = 'linear-gradient(90deg,var(--accent-color),rgba(var(--accent-color-rgb),0.6))';
                     }
-                    if (text) text.textContent = fmt(total) + ' / ~5 MB (' + pct + '%)';
+                    if (text) text.textContent = fmt(total) + ' / ~100 GB (' + pct + '%)';
                 });
             }).catch(function() {
                 var ls = 0;
@@ -500,7 +501,7 @@ function updateStorageUsageBar() {
                     var v = localStorage.getItem(k) || '';
                     ls += (k.length + v.length) * 2;
                 }
-                var pct = Math.min(ls / (5*1024*1024) * 100, 100).toFixed(1);
+                var pct = Math.min(ls / (100*1024*1024*1024) * 100, 100).toFixed(1);
                 if (bar) bar.style.width = pct + '%';
                 if (text) text.textContent = (ls/1024).toFixed(1) + ' KB (localStorage)';
             });
