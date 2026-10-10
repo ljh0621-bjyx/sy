@@ -663,24 +663,23 @@ function showPokeTab() {
 
 
                 fileInput.addEventListener('change', function(e) {
-                    const file = e.target.files[0];
-                    if (file) {
-                        if (file.size > MAX_IMAGE_SIZE) {
-                            showNotification('图片大小不能超过5MB', 'error');
-                            return;
-                        }
-                        showNotification('正在优化图片...', 'info', 1500);
-                        optimizeImage(file).then(optimizedData => {
-                            currentImageData = optimizedData;
-                            previewImg.src = currentImageData;
-                            previewDiv.style.display = 'block';
-                            sendBtn.disabled = false;
-                        }).catch(() => {
-                            showNotification('图片处理失败', 'error');
-                        });
-                    }
-                });
-
+    const file = e.target.files[0];
+        if (file) {
+        if (file.size > MAX_IMAGE_SIZE) {
+            showNotification('图片大小不能超过1000MB', 'error');
+            return;
+        }
+        showNotification('正在优化图片...', 'info', 1500);
+        optimizeImage(file).then(optimizedData => {
+            currentImageData = optimizedData;
+            previewImg.src = currentImageData;
+            previewDiv.style.display = 'block';
+            sendBtn.disabled = false;
+        }).catch(() => {
+            showNotification('图片处理失败', 'error');
+        });
+    }
+});
 
                 urlInput.addEventListener('input',
                     function() {
