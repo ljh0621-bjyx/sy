@@ -5,8 +5,8 @@
 (function () {
     'use strict';
 
-    const KEY = 'partnerFavorites_v1';
-    const SETTINGS_KEY = 'partnerFavSettings_v1';
+    const KEY = getStorageKey('partnerFavorites_v1');
+const SETTINGS_KEY = getStorageKey('partnerFavSettings_v1');
 
     // 默认概率
     let favSettings = {
