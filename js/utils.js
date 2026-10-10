@@ -2,7 +2,23 @@
 // getStorageKey：算当前会话的存储键（防止报错未定义）
 // ============================================================
 function getStorageKey(key) {
-    return APP_PREFIX + SESSION_ID + '_' + key;
+    let sid = (typeof SESSION_ID !== 'undefined' && SESSION_ID) ? SESSION_ID : null;
+    
+    // 如果 SESSION_ID 还没准备好，尝试从 URL 里获取
+    if (!sid) {
+        const hash = window.location.hash.substring(1);
+        if (hash) sid = hash;
+    }
+    
+    // 如果 URL 里也没有，尝试从 localStorage 找上一次使用的会话
+    if (!sid && typeof APP_PREFIX !== 'undefined') {
+        sid = localStorage.getItem(APP_PREFIX + 'lastSessionId');
+    }
+    
+    // 实在找不到，用 default 兜底（此时是极端情况）
+    if (!sid) sid = 'default';
+    
+    return APP_PREFIX + sid + '_' + key;
 }
 // ============================================================
         function safeGetItem(key) {
