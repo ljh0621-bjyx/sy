@@ -268,147 +268,156 @@ if (target.classList.contains('recall-btn')) {
         function initHeaderAndSettingsListeners() {
 
             const openNameModal = (isPartner) => {
-                const modal = DOMElements.editModal;
-                showModal(modal.modal, modal.input);
-                modal.title.textContent = `修改${isPartner ? (settings.partnerName || '对方'): '我'}的昵称`;
-                modal.input.value = isPartner ? settings.partnerName: settings.myName;
-                modal.save.disabled = !modal.input.value.trim();
-                modal.save.onclick = () => {
-                    const newName = modal.input.value.trim();
-                    if (newName) {
-                        isPartner ? settings.partnerName = newName: settings.myName = newName;
-                        throttledSaveData();
-                        updateUI();
-                        showNotification('昵称已更新', 'success');
-                    }
-                    hideModal(modal.modal);
-                };
-            };
-
-            const openAvatarModal = (isPartner) => {
-                const modal = DOMElements.avatarModal;
-
-                modal.modal.querySelector('.modal-content').innerHTML = `
-            <div class="modal-title"><i class="fas fa-portrait"></i><span>上传${isPartner ? '对方': '我'}的头像</span></div>
-            <div style="margin-bottom: 16px;">
-            <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-            <button class="modal-btn modal-btn-secondary" id="upload-file-btn" style="flex: 1;">选择文件</button>
-            <button class="modal-btn modal-btn-secondary" id="paste-url-btn" style="flex: 1;">粘贴URL</button>
-            </div>
-            <input type="file" class="modal-input" id="avatar-file-input" accept="image/*" style="display: none;">
-            <input type="text" class="modal-input" id="avatar-url-input" placeholder="输入图片URL地址" style="display: none;">
-            <div id="avatar-preview" style="text-align: center; margin-top: 10px; display: none;">
-            <img id="preview-image" style="max-width: 100px; max-height: 100px; border-radius: 50%; border: 2px solid var(--border-color);">
-            </div>
-            </div>
-            <div class="modal-buttons">
-            <button class="modal-btn modal-btn-secondary" id="cancel-avatar">取消</button>
-            <button class="modal-btn modal-btn-primary" id="save-avatar" disabled>保存</button>
-            </div>
-            `;
-
-                showModal(modal.modal);
-
-                const fileInput = document.getElementById('avatar-file-input');
-                const urlInput = document.getElementById('avatar-url-input');
-                const uploadBtn = document.getElementById('upload-file-btn');
-                const pasteUrlBtn = document.getElementById('paste-url-btn');
-                const previewDiv = document.getElementById('avatar-preview');
-                const previewImg = document.getElementById('preview-image');
-                const saveBtn = document.getElementById('save-avatar');
-                const cancelBtn = document.getElementById('cancel-avatar');
-
-                let currentAvatarData = null;
-
-
-                uploadBtn.addEventListener('click', () => {
-                    fileInput.click();
-                    urlInput.style.display = 'none';
-                    uploadBtn.classList.add('active');
-                    pasteUrlBtn.classList.remove('active');
-                });
-
-
-                pasteUrlBtn.addEventListener('click', () => {
-                    urlInput.style.display = 'block';
-                    fileInput.style.display = 'none';
-                    pasteUrlBtn.classList.add('active');
-                    uploadBtn.classList.remove('active');
-                    urlInput.focus();
-                });
-
-
-fileInput.addEventListener('change', function(e) {
-    const file = e.target.files[0];
-    if (file) {
-        if (file.size > MAX_AVATAR_SIZE) {
-            showNotification('头像图片不能超过2MB', 'error');
-            return;
+    const modal = DOMElements.editModal;
+    showModal(modal.modal, modal.input);
+    modal.title.textContent = `修改${isPartner ? (settings.partnerName || '对方'): '我'}的昵称`;
+    modal.input.value = isPartner ? settings.partnerName: settings.myName;
+    modal.save.disabled = !modal.input.value.trim();
+    
+    modal.save.onclick = async () => {
+        const newName = modal.input.value.trim();
+        if (newName) {
+            if (isPartner) {
+                settings.partnerName = newName;
+            } else {
+                settings.myName = newName;
+            }
+            
+            // ★ 立即同步写入 localStorage（防止刷新丢失）
+            try {
+                if (typeof SESSION_ID !== 'undefined' && SESSION_ID && typeof APP_PREFIX !== 'undefined') {
+                    localStorage.setItem(APP_PREFIX + SESSION_ID + '_partnerName_override', settings.partnerName || '');
+                    localStorage.setItem(APP_PREFIX + SESSION_ID + '_myName_override', settings.myName || '');
+                }
+            } catch (e) {}
+            
+            // ★ 立即保存
+            if (typeof saveData === 'function') {
+                try { await saveData(); } catch (e) { console.warn('[saveName] 保存失败:', e); }
+            } else {
+                throttledSaveData();
+            }
+            
+            updateUI();
+            showNotification('昵称已更新', 'success');
         }
+        hideModal(modal.modal);
+    };
+};
 
-        showNotification('正在裁剪处理...', 'info', 1000);
-        
-        cropImageToSquare(file, 300).then(base64Data => {
-            currentAvatarData = base64Data;
-            previewImg.src = currentAvatarData;
-            previewDiv.style.display = 'block';
-            saveBtn.disabled = false;
-        }).catch(err => {
-            console.error(err);
-            showNotification('图片处理失败', 'error');
-        });
-    }
-});
+           const openAvatarModal = (isPartner) => {
+    const modal = DOMElements.avatarModal;
 
+    modal.modal.querySelector('.modal-content').innerHTML = `
+<div class="modal-title"><i class="fas fa-portrait"></i><span>上传${isPartner ? '对方': '我'}的头像</span></div>
+<div style="margin-bottom: 16px;">
+<div style="display: flex; gap: 10px; margin-bottom: 10px;">
+<button class="modal-btn modal-btn-secondary" id="upload-file-btn" style="flex: 1;">选择文件</button>
+<button class="modal-btn modal-btn-secondary" id="paste-url-btn" style="flex: 1;">粘贴URL</button>
+</div>
+<input type="file" class="modal-input" id="avatar-file-input" accept="image/*" style="display: none;">
+<input type="text" class="modal-input" id="avatar-url-input" placeholder="输入图片URL地址" style="display: none;">
+<div id="avatar-preview" style="text-align: center; margin-top: 10px; display: none;">
+<img id="preview-image" style="max-width: 100px; max-height: 100px; border-radius: 50%; border: 2px solid var(--border-color);">
+</div>
+</div>
+<div class="modal-buttons">
+<button class="modal-btn modal-btn-secondary" id="cancel-avatar">取消</button>
+<button class="modal-btn modal-btn-primary" id="save-avatar" disabled>保存</button>
+</div>
+`;
 
-                urlInput.addEventListener('input',
-                    function() {
-                        const url = urlInput.value.trim();
-                        if (url) {
+    showModal(modal.modal);
 
-                            if (/^(https?:\/\/.*\.(?:png|jpg|jpeg|gif|webp))$/i.test(url)) {
-                                previewImg.src = url;
-                                previewDiv.style.display = 'block';
-                                currentAvatarData = url;
-                                saveBtn.disabled = false;
+    const fileInput = document.getElementById('avatar-file-input');
+    const urlInput = document.getElementById('avatar-url-input');
+    const uploadBtn = document.getElementById('upload-file-btn');
+    const pasteUrlBtn = document.getElementById('paste-url-btn');
+    const previewDiv = document.getElementById('avatar-preview');
+    const previewImg = document.getElementById('preview-image');
+    const saveBtn = document.getElementById('save-avatar');
+    const cancelBtn = document.getElementById('cancel-avatar');
 
+    let currentAvatarData = null;
 
-                                const img = new Image();
-                                img.onload = function() {
+    uploadBtn.addEventListener('click', () => {
+        fileInput.click();
+        urlInput.style.display = 'none';
+        uploadBtn.classList.add('active');
+        pasteUrlBtn.classList.remove('active');
+    });
 
-                                    previewImg.src = url;
-                                };
-                                img.onerror = function() {
-                                    showNotification('图片URL无效或无法访问', 'error');
-                                    saveBtn.disabled = true;
-                                };
-                                img.src = url;
-                            } else {
-                                saveBtn.disabled = true;
-                            }
-                        } else {
-                            saveBtn.disabled = true;
-                            previewDiv.style.display = 'none';
-                        }
-                    });
+    pasteUrlBtn.addEventListener('click', () => {
+        urlInput.style.display = 'block';
+        fileInput.style.display = 'none';
+        pasteUrlBtn.classList.add('active');
+        uploadBtn.classList.remove('active');
+        urlInput.focus();
+    });
 
+    fileInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            if (file.size > MAX_AVATAR_SIZE) {
+                showNotification('头像图片不能超过2MB', 'error');
+                return;
+            }
+            showNotification('正在裁剪处理...', 'info', 1000);
+            cropImageToSquare(file, 300).then(base64Data => {
+                currentAvatarData = base64Data;
+                previewImg.src = currentAvatarData;
+                previewDiv.style.display = 'block';
+                saveBtn.disabled = false;
+            }).catch(err => {
+                console.error(err);
+                showNotification('图片处理失败', 'error');
+            });
+        }
+    });
 
-                saveBtn.addEventListener('click',
-                    () => {
-                        if (currentAvatarData) {
-                            updateAvatar(isPartner ? DOMElements.partner.avatar: DOMElements.me.avatar, currentAvatarData);
-                            throttledSaveData();
-                            showNotification('头像已更新', 'success');
-                            hideModal(modal.modal);
-                        }
-                    });
+    urlInput.addEventListener('input', function() {
+        const url = urlInput.value.trim();
+        if (url) {
+            if (/^(https?:\/\/.*\.(?:png|jpg|jpeg|gif|webp))$/i.test(url)) {
+                previewImg.src = url;
+                previewDiv.style.display = 'block';
+                currentAvatarData = url;
+                saveBtn.disabled = false;
+                const img = new Image();
+                img.onload = function() { previewImg.src = url; };
+                img.onerror = function() {
+                    showNotification('图片URL无效或无法访问', 'error');
+                    saveBtn.disabled = true;
+                };
+                img.src = url;
+            } else {
+                saveBtn.disabled = true;
+            }
+        } else {
+            saveBtn.disabled = true;
+            previewDiv.style.display = 'none';
+        }
+    });
 
+    saveBtn.addEventListener('click', async () => {
+        if (currentAvatarData) {
+            updateAvatar(isPartner ? DOMElements.partner.avatar : DOMElements.me.avatar, currentAvatarData);
+            
+            if (typeof saveData === 'function') {
+                try { await saveData(); } catch (e) { console.warn('[saveAvatar] 保存失败:', e); }
+            } else {
+                throttledSaveData();
+            }
+            
+            showNotification('头像已更新', 'success');
+            hideModal(modal.modal);
+        }
+    });
 
-                cancelBtn.addEventListener('click',
-                    () => {
-                        hideModal(modal.modal);
-                    });
-            };
+    cancelBtn.addEventListener('click', () => {
+        hideModal(modal.modal);
+    });
+};
 
             DOMElements.partner.name.addEventListener('click', () => openNameModal(true));
             DOMElements.me.name.addEventListener('click', () => openNameModal(false));
