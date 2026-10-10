@@ -1,6 +1,7 @@
 /* ============================================================
- * message-popup.js - 对方发消息时底部弹出通知
+ * message-popup.js - 对方发消息时底部弹出通知（性能优化版）
  * 底部弹出，最多堆叠 3 条
+ * 用 Message Hook 代替 setInterval 轮询
  * ============================================================ */
 (function () {
     'use strict';
@@ -8,8 +9,8 @@
     const ENABLE_KEY = 'msgPopupEnabled';
     const MAX_STACK = 3;
     let popupContainer = null;
-    let lastMsgIds = new Set();
     let isInitialized = false;
+    let lastMsgIds = new Set();
 
     function isEnabled() {
         const v = localStorage.getItem(ENABLE_KEY);
@@ -30,7 +31,7 @@
         return popupContainer;
     }
 
-    function getAvatarSrc(senderName) {
+    function getAvatarSrc() {
         try {
             const partnerAvatar = document.querySelector('#partner-avatar img, [id*="partner-avatar"] img');
             if (partnerAvatar) return partnerAvatar.src;
@@ -42,7 +43,6 @@
         if (!isEnabled()) return;
         ensureContainer();
 
-        // 只处理对方发的消息（不是用户自己、不是系统消息）
         if (!msg || msg.sender === 'user' || msg.sender === null) return;
         if (msg.type === 'system' || msg.type === 'call-event') return;
         if (msg.type === 'survey') return;
@@ -89,7 +89,6 @@
             '</div>' +
             '<button class="msg-popup-close" style="background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:14px;padding:4px 6px;flex-shrink:0;opacity:0.6;"><i class="fas fa-times"></i></button>';
 
-        // 点击卡片 → 滚到聊天底部
         card.addEventListener('click', function (e) {
             if (e.target.closest('.msg-popup-close')) return;
             removeCard(card);
@@ -99,24 +98,18 @@
             }
         });
 
-        // 点 × 关闭
         card.querySelector('.msg-popup-close').addEventListener('click', function (e) {
             e.stopPropagation();
             removeCard(card);
         });
 
-        // 加到容器顶部（新的在上面）
         popupContainer.insertBefore(card, popupContainer.firstChild);
 
-        // 超出 3 条就删掉最老的
         const all = popupContainer.querySelectorAll('.msg-popup-card');
         if (all.length > MAX_STACK) {
-            for (let i = MAX_STACK; i < all.length; i++) {
-                all[i].remove();
-            }
+            for (let i = MAX_STACK; i < all.length; i++) all[i].remove();
         }
 
-        // 3 秒后自动消失
         setTimeout(function () { removeCard(card); }, 3000);
 
         if (!document.getElementById('msg-popup-style')) {
@@ -137,46 +130,54 @@
         }, 300);
     }
 
-    // 监听消息变化
-    function scanMessages() {
-        if (typeof messages === 'undefined' || !Array.isArray(messages)) return;
-
-        if (!isInitialized) {
-            // 首次加载，把现有消息全部记入，避免把历史消息全部弹出来
-            messages.forEach(function (m) { lastMsgIds.add(m.id); });
-            isInitialized = true;
-            return;
-        }
-
-        const newMsgs = messages.filter(function (m) { return !lastMsgIds.has(m.id); });
-        if (newMsgs.length === 0) return;
-
-        newMsgs.forEach(function (m) {
-            lastMsgIds.add(m.id);
-            if (m.sender !== 'user' && m.sender !== null && m.type !== 'system' && m.type !== 'call-event') {
-                showPopup(m);
-            }
-        });
-
-        // 保持 set 大小，避免无限增长
-        if (lastMsgIds.size > 500) {
-            const arr = Array.from(lastMsgIds).slice(-200);
-            lastMsgIds = new Set(arr);
+    // ========== 直接处理消息，不再轮询 ==========
+    function handleIncomingMessage(msg) {
+        if (!msg) return;
+        if (msg.sender !== 'user' && msg.sender !== null && msg.type !== 'system' && msg.type !== 'call-event') {
+            showPopup(msg);
         }
     }
 
-    // 初始化
-    window.initMessagePopup = function () {
-        setInterval(scanMessages, 800);
-        setTimeout(function () {
+    // 首次加载：把现有消息都记下，避免刷屏
+    function snapshotExisting() {
+        try {
             if (typeof messages !== 'undefined' && Array.isArray(messages)) {
                 messages.forEach(function (m) { lastMsgIds.add(m.id); });
-                isInitialized = true;
             }
-        }, 2000);
+        } catch (e) {}
+        isInitialized = true;
+    }
+
+    // ========== 初始化：Hook addMessage ==========
+    window.initMessagePopup = function () {
+        // 等 2 秒，让历史消息全部加载完
+        setTimeout(snapshotExisting, 2000);
+
+        // Hook addMessage：新消息立刻处理
+        function installHook() {
+            if (typeof window.addMessage !== 'function') {
+                setTimeout(installHook, 300);
+                return;
+            }
+            if (window._msgPopupHookInstalled) return;
+            window._msgPopupHookInstalled = true;
+
+            const originalAddMessage = window.addMessage;
+            window.addMessage = function (message) {
+                const result = originalAddMessage.apply(this, arguments);
+                try {
+                    // 等 100ms，让消息完全走完流程
+                    setTimeout(function () {
+                        try { handleIncomingMessage(message); } catch (e) {}
+                    }, 100);
+                } catch (e) {}
+                return result;
+            };
+        }
+        installHook();
     };
 
-    // 开关 API
+    // 开关
     window.toggleMessagePopup = function () {
         const cur = isEnabled();
         const nv = !cur;
@@ -188,16 +189,17 @@
     };
 
     window.isMessagePopupEnabled = isEnabled;
-    // ========== 自启动（不依赖 listeners） ==========
-(function autoStart() {
-    function start() {
-        try { window.initMessagePopup(); } catch (e) { console.warn('[msg-popup] 启动失败', e); }
-    }
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', function () { setTimeout(start, 800); });
-    } else {
-        setTimeout(start, 800);
-    }
-})();
+
+    // ========== 自启动 ==========
+    (function autoStart() {
+        function start() {
+            try { window.initMessagePopup(); } catch (e) { console.warn('[msg-popup] 启动失败', e); }
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function () { setTimeout(start, 800); });
+        } else {
+            setTimeout(start, 800);
+        }
+    })();
 
 })();
