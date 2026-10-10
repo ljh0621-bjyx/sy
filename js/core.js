@@ -941,7 +941,7 @@ if (!isMe) {
         if (lastSenderRef.current !== msg.sender) {
             const nameLabel = document.createElement('div');
             nameLabel.className = 'group-sender-name';
-            nameLabel.textContent = settings.partnerName || msg.sender || '对方';
+            nameLabel.textContent = msg.sender || settings.partnerName || '对方';
             contentWrapper.appendChild(nameLabel);
         }
     }
@@ -1423,16 +1423,6 @@ window.simulateReply = function() {
     messages.forEach(msg => { if (msg.sender === 'user' && msg.status !== 'read') { msg.status = 'read'; changed = true; } });
     if (changed) { _updateReadReceiptsDOM(); throttledSaveData(); }
 
-    if (partnerPersonas && partnerPersonas.length > 0 && Math.random() < 0.3) {
-        const currentPool = [...partnerPersonas];
-        if(currentPool.length > 0) {
-             const nextPersona = currentPool[Math.floor(Math.random() * currentPool.length)];
-             settings.partnerName = nextPersona.name;
-             DOMElements.partner.name.textContent = nextPersona.name;
-             if (nextPersona.avatar) { updateAvatar(DOMElements.partner.avatar, nextPersona.avatar); localforage.setItem(getStorageKey('partnerAvatar'), nextPersona.avatar); }
-             throttledSaveData();
-        }
-    }
     if (Math.random() < 0.03) {
         if (typeof window._triggerPartnerPoke === 'function') window._triggerPartnerPoke();
         return;
