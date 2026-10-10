@@ -1,6 +1,6 @@
 /* ============================================================
- * random-wallpaper.js - 随机壁纸
- * 每次打开随机换 + 对方按概率帮你换（可调）
+ * random-wallpaper.js - 随机壁纸（完整版）
+ * 每次打开随机换 + 对方按概率帮你换
  * ============================================================ */
 (function () {
     'use strict';
@@ -13,6 +13,8 @@
         partnerIntervalMin: 30,      // 最短间隔（分钟）
         partnerIntervalMax: 90       // 最长间隔（分钟）
     };
+
+    let _partnerSwapStarted = false;
 
     async function load() {
         try {
@@ -46,7 +48,10 @@
         }
 
         // 避免连续重复
-        const cur = (typeof safeGetItem === 'function') ? safeGetItem(getStorageKey('chatBackground')) : null;
+        let cur = null;
+        try {
+            cur = (typeof safeGetItem === 'function') ? safeGetItem(getStorageKey('chatBackground')) : null;
+        } catch (e) {}
         let candidates = list;
         if (list.length > 1 && cur) {
             candidates = list.filter(function (bg) { return bg.value !== cur; });
@@ -74,6 +79,7 @@
         return picked;
     }
 
+    // 手动换一张
     window.applyRandomWallpaperNow = function () {
         const picked = applyRandomBackground(false);
         if (picked && typeof showNotification === 'function') {
@@ -84,7 +90,6 @@
     // ========== 每次打开随机换 ==========
     function onOpenRandomSwap() {
         if (!settingsRW.onOpenEnabled) return;
-        // 延迟一下，等聊天背景加载完再覆盖
         setTimeout(function () {
             applyRandomBackground(true);
         }, 800);
@@ -92,33 +97,48 @@
 
     // ========== 对方帮换 ==========
     function partnerSwap() {
-        if (!settingsRW.partnerEnabled) return;
+        if (_partnerSwapStarted) return;
+        _partnerSwapStarted = true;
+        loopPartnerSwap();
+    }
+
+    function loopPartnerSwap() {
+        if (!settingsRW.partnerEnabled) {
+            // 关闭时，60 秒后再检查一次
+            setTimeout(loopPartnerSwap, 60 * 1000);
+            return;
+        }
+
         const minMs = settingsRW.partnerIntervalMin * 60 * 1000;
         const maxMs = settingsRW.partnerIntervalMax * 60 * 1000;
         const delay = minMs + Math.random() * Math.max(0, maxMs - minMs);
 
         setTimeout(function () {
             try {
-                if (Math.random() * 100 < settingsRW.partnerChance) {
+                if (settingsRW.partnerEnabled && Math.random() * 100 < settingsRW.partnerChance) {
                     const picked = applyRandomBackground(true);
                     if (picked) {
-    const pn = (typeof settings !== 'undefined' && settings.partnerName) ? settings.partnerName : '对方';
-    if (typeof addMessage === 'function') {
-        addMessage({
-            id: Date.now() + Math.random(),
-            sender: null,
-            text: pn + ' 帮你换了张新壁纸',
-            timestamp: new Date(),
-            type: 'system'
-        });
-    }
-    if (typeof playSound === 'function') playSound('favorite');
-}
+                        const pn = (typeof settings !== 'undefined' && settings.partnerName) ? settings.partnerName : '对方';
+
+                        // ✅ 灰字系统消息
+                        if (typeof addMessage === 'function') {
+                            addMessage({
+                                id: Date.now() + Math.random(),
+                                sender: null,
+                                text: pn + ' 帮你换了张新壁纸',
+                                timestamp: new Date(),
+                                type: 'system'
+                            });
+                        }
+
+                        // 音效
+                        if (typeof playSound === 'function') playSound('favorite');
+                    }
                 }
             } catch (e) {
                 console.warn('[random-wallpaper] partner swap fail', e);
             }
-            partnerSwap();
+            loopPartnerSwap();
         }, delay);
     }
 
@@ -156,7 +176,7 @@
                     </div>
                     <div style="flex:1;">
                         <div style="font-size:13px;font-weight:600;color:var(--text-primary);">每次打开随机换</div>
-                        <div style="font-size:11px;color:var(--text-secondary);margin-top:2px;" id="rw-onopen-status">已开启 — 每次打开随机一张</div>
+                        <div style="font-size:11px;color:var(--text-secondary);margin-top:2px;" id="rw-onopen-status">${settingsRW.onOpenEnabled ? '已开启 — 每次打开随机一张' : '已关闭'}</div>
                     </div>
                     <div id="rw-onopen-pill" style="width:44px;height:24px;border-radius:24px;background:${settingsRW.onOpenEnabled ? 'var(--accent-color)' : 'var(--border-color)'};position:relative;transition:background 0.3s;flex-shrink:0;">
                         <div id="rw-onopen-knob" style="position:absolute;width:18px;height:18px;border-radius:50%;background:#fff;top:3px;${settingsRW.onOpenEnabled ? 'right:3px' : 'left:3px'};transition:all 0.25s;box-shadow:0 1px 3px rgba(0,0,0,0.2);"></div>
@@ -170,7 +190,7 @@
                     </div>
                     <div style="flex:1;">
                         <div style="font-size:13px;font-weight:600;color:var(--text-primary);">对方帮我换</div>
-                        <div style="font-size:11px;color:var(--text-secondary);margin-top:2px;" id="rw-partner-status">已开启 — 偶尔会帮你换一张</div>
+                        <div style="font-size:11px;color:var(--text-secondary);margin-top:2px;" id="rw-partner-status">${settingsRW.partnerEnabled ? '已开启 — 偶尔会帮你换一张' : '已关闭'}</div>
                     </div>
                     <div id="rw-partner-pill" style="width:44px;height:24px;border-radius:24px;background:${settingsRW.partnerEnabled ? 'var(--accent-color)' : 'var(--border-color)'};position:relative;transition:background 0.3s;flex-shrink:0;">
                         <div id="rw-partner-knob" style="position:absolute;width:18px;height:18px;border-radius:50%;background:#fff;top:3px;${settingsRW.partnerEnabled ? 'right:3px' : 'left:3px'};transition:all 0.25s;box-shadow:0 1px 3px rgba(0,0,0,0.2);"></div>
@@ -304,9 +324,9 @@
         setTimeout(onOpenRandomSwap, 2000);
 
         // 启动对方换的循环
-        setTimeout(partnerSwap, 60000);
+        partnerSwap();
 
-        // 挂入口按钮（如果入口是动态加的）
+        // 挂入口按钮
         const btn = document.getElementById('random-wallpaper-function');
         if (btn && !btn.dataset.initialized) {
             btn.dataset.initialized = 'true';
