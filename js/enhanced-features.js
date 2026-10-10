@@ -4,7 +4,7 @@
 (function () {
     'use strict';
 
-    var AI_KEY = 'aiReplySettings_v1';
+    var AI_KEY = getStorageKey('aiReplySettings_v1');
     var aiSettings = { voiceChance: 10, imageChance: 15 };
 
     async function loadAI() {
