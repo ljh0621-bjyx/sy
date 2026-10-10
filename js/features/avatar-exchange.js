@@ -13,9 +13,9 @@ window.updateAvatar = window.updateAvatar || function(element, src) {
 (function () {
     'use strict';
 
-    const KEY = 'avatarExchangeData_v1';
-    const CHANCE_KEY = 'avatarExchangeChance_v1';      // 他换我头像的概率
-    const MY_CHANCE_KEY = 'myAvatarExchangeChance_v1'; // 我换他头像时他同意的概率
+    const KEY = getStorageKey('avatarExchangeData_v1');
+const CHANCE_KEY = getStorageKey('avatarExchangeChance_v1');      // 他换我头像的概率
+const MY_CHANCE_KEY = getStorageKey('myAvatarExchangeChance_v1'); // 我换他头像时他同意的概率
     let exchangeData = { myAvatar: null, partnerAvatar: null, pendingRequest: null, history: [] };
 
     async function loadData() {
