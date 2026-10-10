@@ -116,52 +116,91 @@
     }
 
     window.batchImportMusic = async function (files) {
-        if (!files || files.length === 0) return;
-        var audioCount = 0, lrcCount = 0, orphanCount = 0;
-        var audioFiles = [], lrcFiles = [];
-        for (var fi = 0; fi < files.length; fi++) {
-            var file = files[fi];
-            var name = (file.name || '').toLowerCase();
-            if (/\.(mp3|m4a|aac|ogg|wav|flac|opus)$/.test(name)) audioFiles.push(file);
-            else if (name.slice(-4) === '.lrc') lrcFiles.push(file);
-        }
-        for (var ai = 0; ai < audioFiles.length; ai++) {
-            var af = audioFiles[ai];
-            var url = URL.createObjectURL(af);
-            var title = af.name.replace(/\.[^.]+$/, '');
+    if (!files || files.length === 0) return;
+    var audioCount = 0, lrcCount = 0, orphanCount = 0;
+    var audioFiles = [], lrcFiles = [];
+    for (var fi = 0; fi < files.length; fi++) {
+        var file = files[fi];
+        var name = (file.name || '').toLowerCase();
+        if (/\.(mp3|m4a|aac|ogg|wav|flac|opus)$/.test(name)) audioFiles.push(file);
+        else if (name.slice(-4) === '.lrc') lrcFiles.push(file);
+    }
+
+    // 处理音频文件
+    for (var ai = 0; ai < audioFiles.length; ai++) {
+        var af = audioFiles[ai];
+        var title = af.name.replace(/\.[^.]+$/, '');
+        var songId = 'song_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+
+        // ★ 10MB 以下转 base64 持久化；10MB 以上提示
+        if (af.size <= 10 * 1024 * 1024) {
+            if (typeof showNotification === 'function' && af.size > 3 * 1024 * 1024) {
+                showNotification('正在处理《' + title + '》，大文件需要几秒…', 'info', 3000);
+            }
+            try {
+                var base64 = await new Promise(function (resolve, reject) {
+                    var r = new FileReader();
+                    r.onload = function () { resolve(r.result); };
+                    r.onerror = reject;
+                    r.readAsDataURL(af);
+                });
+                data.playlist.push({
+                    id: songId,
+                    title: title,
+                    url: base64,
+                    lyrics: ''
+                });
+            } catch (e) {
+                console.warn('[listen-music] base64 转换失败', e);
+                if (typeof showNotification === 'function') {
+                    showNotification('《' + title + '》处理失败，已跳过', 'error', 2500);
+                }
+                continue;
+            }
+        } else {
+            // >10MB：用 blob URL（刷新会失效）
             data.playlist.push({
-                id: 'song_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+                id: songId,
                 title: title,
-                url: url,
+                url: URL.createObjectURL(af),
                 lyrics: ''
             });
-            audioCount++;
-        }
-        if (data.orphanLyrics.length && audioCount > 0) {
-            var stillOrphan = [];
-            for (var oi = 0; oi < data.orphanLyrics.length; oi++) {
-                var o = data.orphanLyrics[oi];
-                if (tryAttachLyric(o.name, o.content)) lrcCount++;
-                else stillOrphan.push(o);
+            if (typeof showNotification === 'function') {
+                showNotification('《' + title + '》超过 10MB，刷新后会失效', 'warning', 3500);
             }
-            data.orphanLyrics = stillOrphan;
         }
-        for (var li = 0; li < lrcFiles.length; li++) {
-            try {
-                var lf = lrcFiles[li];
-                var text = await lf.text();
-                var lrcBaseName = lf.name.replace(/\.lrc$/i, '').trim();
-                if (tryAttachLyric(lrcBaseName, text)) lrcCount++;
-                else { data.orphanLyrics.push({ name: lrcBaseName, content: text }); orphanCount++; }
-            } catch (e) { console.warn('歌词读取失败', lrcFiles[li].name, e); }
+        audioCount++;
+    }
+
+    // 尝试匹配之前的孤儿歌词
+    if (data.orphanLyrics.length && audioCount > 0) {
+        var stillOrphan = [];
+        for (var oi = 0; oi < data.orphanLyrics.length; oi++) {
+            var o = data.orphanLyrics[oi];
+            if (tryAttachLyric(o.name, o.content)) lrcCount++;
+            else stillOrphan.push(o);
         }
-        await save();
-        renderPanel();
-        var msg = '已添加 ' + audioCount + ' 首歌曲';
-        if (lrcCount > 0) msg += '，' + lrcCount + ' 份歌词已匹配';
-        if (orphanCount > 0) msg += '，' + orphanCount + ' 份歌词待匹配';
-        if (typeof showNotification === 'function') showNotification(msg, 'success', 4000);
-    };
+        data.orphanLyrics = stillOrphan;
+    }
+
+    // 处理歌词文件
+    for (var li = 0; li < lrcFiles.length; li++) {
+        try {
+            var lf = lrcFiles[li];
+            var text = await lf.text();
+            var lrcBaseName = lf.name.replace(/\.lrc$/i, '').trim();
+            if (tryAttachLyric(lrcBaseName, text)) lrcCount++;
+            else { data.orphanLyrics.push({ name: lrcBaseName, content: text }); orphanCount++; }
+        } catch (e) { console.warn('歌词读取失败', lrcFiles[li].name, e); }
+    }
+
+    await save();
+    renderPanel();
+    var msg = '已添加 ' + audioCount + ' 首歌曲';
+    if (lrcCount > 0) msg += '，' + lrcCount + ' 份歌词已匹配';
+    if (orphanCount > 0) msg += '，' + orphanCount + ' 份歌词待匹配';
+    if (typeof showNotification === 'function') showNotification(msg, 'success', 4000);
+};
 
     window.batchImportLyrics = async function (files) {
         if (!files || files.length === 0) return;
