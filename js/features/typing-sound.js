@@ -150,12 +150,12 @@
 function refreshUI() {
     const mySwitch = document.getElementById('my-typing-sound-switch');
     const partnerSwitch = document.getElementById('partner-typing-sound-switch');
-    if (mySwitch) {
-        if (isMyEnabled()) mySwitch.classList.add('active'); else mySwitch.classList.remove('active');
-    }
-    if (partnerSwitch) {
-        if (isPartnerEnabled()) partnerSwitch.classList.add('active'); else partnerSwitch.classList.remove('active');
-    }
+    if (myRow) {
+    if (isMyEnabled()) myRow.classList.add('active'); else myRow.classList.remove('active');
+}
+if (partnerRow) {
+    if (isPartnerEnabled()) partnerRow.classList.add('active'); else partnerRow.classList.remove('active');
+}
     const curPreset = getPreset();
     document.querySelectorAll('.typing-preset-btn').forEach(btn => {
         const isActive = btn.dataset.preset === curPreset;
