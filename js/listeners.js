@@ -29,7 +29,8 @@ function setupEventListeners() {
     ['initDailyCheckin', typeof initDailyCheckin === 'function' ? initDailyCheckin : null],
     ['initQuickPhrases', typeof initQuickPhrases === 'function' ? initQuickPhrases : null],
     ['initAnniversaryEnhance', typeof initAnniversaryEnhance === 'function' ? initAnniversaryEnhance : null],
-    ['initMessagePopup', typeof initMessagePopup === 'function' ? initMessagePopup : null]
+    ['initMessagePopup', typeof initMessagePopup === 'function' ? initMessagePopup : null],
+    ['initRandomWallpaper', typeof initRandomWallpaper === 'function' ? initRandomWallpaper : null]
 ];
 
     tasks.forEach(function(t) {
