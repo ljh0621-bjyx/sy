@@ -5,9 +5,9 @@
 (function () {
     'use strict';
 
-    const MY_KEY = 'typingSoundEnabled';
-    const PARTNER_KEY = 'partnerTypingSoundEnabled';
-    const PRESET_KEY = 'typingSoundPreset';
+    const MY_KEY = getStorageKey('typingSoundEnabled');
+const PARTNER_KEY = getStorageKey('partnerTypingSoundEnabled');
+const PRESET_KEY = getStorageKey('typingSoundPreset');
     const THROTTLE_MS = 38;
 
     let _sharedCtx = null;

@@ -4,8 +4,8 @@
 (function () {
     'use strict';
 
-    const KEY = 'transferData_v1';
-    const SETTINGS_KEY = 'transferSettings_v1';
+   const KEY = getStorageKey('transferData_v1');
+const SETTINGS_KEY = getStorageKey('transferSettings_v1');
 
     let data = {
         myBalance: 1000,

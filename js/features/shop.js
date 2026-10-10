@@ -6,7 +6,7 @@
 (function () {
     'use strict';
 
-    const KEY = 'shopData_v1';
+    const KEY = getStorageKey('shopData_v1');
 
     const DEFAULT_ITEMS = [
         { id: 'g1',  name: '一束玫瑰',   price: 50,   icon: '🌹', category: 'flower' },

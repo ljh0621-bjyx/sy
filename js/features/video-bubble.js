@@ -4,7 +4,7 @@
 (function () {
     'use strict';
 
-    const KEY = 'videoSettings_v1';
+    const KEY = getStorageKey('videoSettings_v1');
 
     let videoSettings = {
         apiKey: '',

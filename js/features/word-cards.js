@@ -6,7 +6,7 @@
 (function () {
     'use strict';
 
-    const KEY = 'wordCardsData_v1';
+    const KEY = getStorageKey('wordCardsData_v1');
 
     let data = {
         locations: [],

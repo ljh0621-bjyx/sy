@@ -5,7 +5,7 @@
 (function () {
     'use strict';
 
-    var KEY = 'wordCardComposeCount';
+    var KEY = getStorageKey('wordCardComposeCount');
 
     // 供外部调用：抽 N 句拼成一段
     window.composeWordCard = function (count) {

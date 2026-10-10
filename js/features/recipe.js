@@ -6,7 +6,7 @@
 (function () {
     'use strict';
 
-    const KEY = 'recipeData_v1';
+    const KEY = getStorageKey('recipeData_v1');
 
     let data = {
         recipes: [],       // [{ id, name, content }]

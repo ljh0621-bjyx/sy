@@ -104,7 +104,7 @@ async function save() {
                 currentId: null,
                 chatHistory: data.chatHistory.slice(-200)
             };
-            await localforage.setItem(KEY, safe);
+            await localforage.setItem(getWMKey(), safe);
         } catch (e) { console.warn('[watch-movie] save fail', e); }
     }
 
