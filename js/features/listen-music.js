@@ -45,8 +45,9 @@
             playlist: data.playlist.map(s => ({
                 id: s.id,
                 title: s.title,
+                sub: s.sub || '',
                 lyrics: s.lyrics,
-                url: (s.url && (/^https?:/i.test(s.url) || /^data:audio\//i.test(s.url))) ? s.url : ''
+                url: (s.url && !/^blob:/i.test(s.url)) ? s.url : ''
             })),
             chatHistory: data.chatHistory.slice(-200),
             orphanLyrics: data.orphanLyrics.slice(-100)
