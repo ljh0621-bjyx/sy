@@ -5,8 +5,8 @@
 (function () {
     'use strict';
 
-    const KEY = 'dreamDivinationHistory_v1';
-    const CHANCE_KEY = 'dreamDivinationChance';
+    const KEY = getStorageKey('dreamDivinationHistory_v1');
+const CHANCE_KEY = getStorageKey('dreamDivinationChance');
 
     /* ==================== 塔罗牌（78张，含牌意） ==================== */
     const TAROT_MAJOR = [

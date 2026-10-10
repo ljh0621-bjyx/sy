@@ -4,7 +4,7 @@
 (function () {
     'use strict';
 
-    const KEY = 'dailyCheckin_v1';
+    const KEY = getStorageKey('dailyCheckin_v1');
     let data = { dates: [], streak: 0, total: 0, lastDate: null };
 
     async function load() {
