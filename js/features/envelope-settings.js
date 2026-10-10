@@ -5,7 +5,7 @@
 (function () {
     'use strict';
 
-    var STORAGE_KEY = 'envelopeTimeSettings_v1';
+    var STORAGE_KEY = getStorageKey('envelopeTimeSettings_v1');
     var DEFAULTS = { firstMin: 4, firstMax: 12, intervalMin: 20, intervalMax: 40 };
 
     // 全局设置对象（一开始就有默认值）
