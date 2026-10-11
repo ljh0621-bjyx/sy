@@ -5,7 +5,6 @@
 (function () {
     'use strict';
 
-    const KEY = getStorageKey('intimacyData_v1');
 
     const LEVELS = [
         { min: 0,    name: '初识',     icon: '🌱', color: '#9BB89D' },
@@ -26,12 +25,12 @@
 
     async function load() {
         try {
-            const saved = await localforage.getItem(KEY);
+            localforage.getItem(getStorageKey('intimacyData_v1'))
             if (saved) Object.assign(data, saved);
         } catch (e) {}
     }
     async function save() {
-        try { await localforage.setItem(KEY, data); } catch (e) {}
+        localforage.setItem(getStorageKey('intimacyData_v1'), data)
     }
 
     function getLevel(points) {
