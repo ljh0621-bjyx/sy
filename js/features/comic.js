@@ -348,6 +348,7 @@
             + '<button id="comic-emoji" style="width:36px;height:36px;border-radius:50%;border:none;background:var(--secondary-bg);color:var(--text-secondary);cursor:pointer;flex-shrink:0;"><i class="fas fa-smile"></i></button>'
             + '<button id="comic-sticker" style="width:36px;height:36px;border-radius:50%;border:none;background:var(--secondary-bg);color:var(--text-secondary);cursor:pointer;flex-shrink:0;"><i class="fas fa-image"></i></button>'
             + '<button id="comic-voice" style="width:36px;height:36px;border-radius:50%;border:none;background:var(--secondary-bg);color:var(--text-secondary);cursor:pointer;flex-shrink:0;"><i class="fas fa-microphone"></i></button>'
+            + '<button id="comic-image" style="width:36px;height:36px;border-radius:50%;border:none;background:var(--secondary-bg);color:var(--text-secondary);cursor:pointer;flex-shrink:0;"><i class="fas fa-camera"></i></button>'
             + '<input id="comic-input" type="text" placeholder="边看边聊…" style="flex:1;min-width:0;padding:8px 14px;border:1px solid var(--border-color);border-radius:20px;background:var(--secondary-bg);color:var(--text-primary);font-size:13px;outline:none;font-family:var(--font-family);">'
             + '<button id="comic-send" style="padding:8px 14px;border:none;border-radius:20px;background:var(--accent-color);color:#fff;font-size:13px;cursor:pointer;flex-shrink:0;">发送</button>'
             + '</div></div>'
@@ -453,6 +454,28 @@ if (voiceBtn) voiceBtn.onclick = () => {
         if (!audioUrl) return;   // 用户取消
         window.sendComicChat('voice', '', audioUrl, duration);
     });
+};
+// ★ 发图片
+const imageBtn = document.getElementById('comic-image');
+if (imageBtn) imageBtn.onclick = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        if (file.size > 5 * 1024 * 1024) {
+            if (typeof showNotification === 'function') showNotification('图片不能超过 5MB', 'error');
+            return;
+        }
+        try {
+            const base64 = await optimizeImage(file, 800, 0.85);
+            window.sendComicChat('image', base64);
+        } catch (err) {
+            if (typeof showNotification === 'function') showNotification('图片处理失败', 'error');
+        }
+    };
+    input.click();
 };
     }
 
