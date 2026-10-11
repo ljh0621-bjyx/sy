@@ -180,36 +180,39 @@
             if (m.sender && m.sender !== 'user' && m.type === 'normal' && !m.recalled) {
                 if (_lastPartnerMsgId === m.id) return;
                 _lastPartnerMsgId = m.id;
-                if (Math.random() < 0.2) {
-                    (function (id) {
-                        var delay = 5000 + Math.random() * 25000;
-                        setTimeout(function () {
-                            var idx = messages.findIndex(function (x) { return String(x.id) === String(id); });
-                            if (idx === -1 || messages[idx].recalled) return;
-                            messages[idx].recalled = true;
-messages[idx].recallTime = Date.now();
-if (typeof throttledSaveData === 'function') throttledSaveData();
-if (typeof renderMessages === 'function') renderMessages(true);
+                // ★ 从 localStorage 读撤回概率（默认 20%）
+var _recallChance = 20;
+try { _recallChance = parseInt(localStorage.getItem('partnerRecallChance') || '20', 10); } catch(e) {}
+if (Math.random() * 100 < _recallChance) {
+    (function (id, originalText) {
+        var delay = 5000 + Math.random() * 25000;
+        setTimeout(function () {
+            var idx = messages.findIndex(function (x) { return String(x.id) === String(id); });
+            if (idx === -1 || messages[idx].recalled) return;
+            messages[idx].recalled = true;
+            messages[idx].recallTime = Date.now();
+            if (typeof throttledSaveData === 'function') throttledSaveData();
+            if (typeof renderMessages === 'function') renderMessages(true);
 
-// ★ 加一条系统提示（像微信那样）
-try {
-    const pn = (typeof settings !== 'undefined' && settings.partnerName) ? settings.partnerName : '对方';
-    if (typeof addMessage === 'function') {
-        addMessage({
-            id: Date.now() + Math.random(),
-            sender: null,
-            text: pn + ' 撤回了一条消息',
-            timestamp: new Date(),
-            status: 'received',
-            type: 'system'
-        });
-    }
-} catch (e) {
-    console.warn('[enhanced-features] 撤回提示失败', e);
-}
-                        }, delay);
-                    })(m.id);
+            try {
+                const pn = (typeof settings !== 'undefined' && settings.partnerName) ? settings.partnerName : '对方';
+                if (typeof addMessage === 'function') {
+                    addMessage({
+                        id: Date.now() + Math.random(),
+                        sender: null,
+                        text: pn + ' 撤回了一条消息',
+                        recallText: originalText || '',
+                        timestamp: new Date(),
+                        status: 'received',
+                        type: 'system'
+                    });
                 }
+            } catch (e) {
+                console.warn('[enhanced-features] 撤回提示失败', e);
+            }
+        }, delay);
+    })(m.id, m.text || '');
+}
                 return;
             }
         }
