@@ -1,207 +1,167 @@
-/* ============================================================
- * survey-bank.js - 问卷题库
- * 顶栏点一下 → 从题库随机抽一道题发给对方
- * ============================================================ */
+/**
+ * partner-survey.js
+ * 对方主动出题（我答）— 自启动版
+ */
+
 (function () {
     'use strict';
 
-    const KEY = getStorageKey('surveyBank_v1');
+    const TRIGGER_KEY = getStorageKey('partnerSurveyTrigger_v1');
 
-    let bank = [
-        { q: '今天想我了吗？', opts: ['想了', '没想', '一直在想'], multi: false },
-        { q: '你更喜欢我什么？', opts: ['性格', '长相', '全部'], multi: false },
-        { q: '今晚想做什么？', opts: ['看电影', '聊聊天', '抱抱'], multi: false }
-    ];
-
-    async function load() {
-        try {
-            const saved = await localforage.getItem(KEY);
-            if (Array.isArray(saved) && saved.length > 0) bank = saved;
-            window._surveyBankData = bank;
-        } catch (e) {}
-    }
-    async function save() {
-        try {
-            await localforage.setItem(KEY, bank);
-            window._surveyBankData = bank;
-        } catch (e) {}
-    }
-    load();
-
-    function pickRandom() {
-        if (!bank || bank.length === 0) return null;
-        return bank[Math.floor(Math.random() * bank.length)];
-    }
-
-    window.sendRandomSurvey = async function () {
-        await load();
-        const item = pickRandom();
-        if (!item) {
-            if (typeof showNotification === 'function') {
-                showNotification('问卷题库是空的，先去"管理题库"添加', 'warning', 3000);
-            }
-            return;
+    // ---------- 让对方出题 ----------
+    function askPartnerSurvey() {
+        let bank = [];
+        if (window._surveyBankData && Array.isArray(window._surveyBankData)) {
+            bank = window._surveyBankData;
         }
 
+        if (!bank || bank.length === 0) {
+            const fallbackQuestions = [
+                '如果有一天我消失了，你会怎么办？',
+                '今天想我了吗？',
+                '如果可以许一个愿望，你想要什么？',
+                '你最喜欢我什么？',
+                '你最想和我去哪里？'
+            ];
+            const q = fallbackQuestions[Math.floor(Math.random() * fallbackQuestions.length)];
+            bank = [{ q: q, opts: [] }];
+        }
+
+        const item = bank[Math.floor(Math.random() * bank.length)];
         const q = item.q;
-        const opts = item.opts && item.opts.length ? item.opts.slice() : [];
-        const multi = !!item.multi;
+        if (!q) return false;
 
-        addMessage({
-            id: Date.now(),
-            sender: 'user',
-            text: q,
-            timestamp: new Date(),
-            status: 'sent',
-            type: 'survey',
-            survey: {
-                question: q,
-                options: opts,
-                multi: multi,
-                answered: false,
-                answer: []
-            }
-        });
-        if (typeof playSound === 'function') playSound('send');
+        const partnerName = (typeof settings !== 'undefined' && settings.partnerName) ? settings.partnerName : '对方';
 
-        const _spMin = Math.max(500, (typeof settings !== 'undefined' && settings.surveyReplyDelayMin) || 30000);
-        const _spMax = Math.max(_spMin + 500, (typeof settings !== 'undefined' && settings.surveyReplyDelayMax) || 60000);
-        const _spDelay1 = _spMin + Math.random() * (_spMax - _spMin);
-        const _spDelay2 = Math.max(400, _spMin * 0.4 + Math.random() * (_spMax - _spMin) * 0.4);
+        if (typeof addMessage === 'function') {
+            addMessage({
+                id: Date.now() + Math.floor(Math.random() * 1000),
+                sender: partnerName,
+                text: q,
+                timestamp: new Date(),
+                status: 'received',
+                type: 'survey',
+                survey: {
+                    question: q,
+                    options: [],
+                    isPartnerAsk: true,
+                    answered: false,
+                    answer: [],
+                    deadline: Date.now() + 10 * 60 * 1000
+                }
+            });
+        }
+        if (typeof playSound === 'function') playSound('message');
+        if (typeof window._sendPartnerNotification === 'function') {
+            window._sendPartnerNotification(partnerName, q);
+        }
 
-        const myMsgId = messages[messages.length - 1].id;
+        // 10 分钟未回答 → 提示
+        setTimeout(function () {
+            const msgs = (typeof messages !== 'undefined') ? messages : [];
+            for (let i = msgs.length - 1; i >= 0; i--) {
+                const m = msgs[i];
+                if (m.type === 'survey' && m.survey && m.survey.isPartnerAsk && !m.survey.answered && !m.survey.expired) {
+                    if (m.survey.deadline && Date.now() >= m.survey.deadline) {
+                        m.survey.expired = true;
+                        if (typeof throttledSaveData === 'function') throttledSaveData();
+                        if (typeof renderMessages === 'function') renderMessages(true);
 
-        setTimeout(() => {
-            const idx = messages.findIndex(m => String(m.id) === String(myMsgId));
-            if (idx === -1) return;
-            const msg = messages[idx];
-            if (!msg || msg.type !== 'survey' || msg.survey.answered) return;
-
-            if (opts.length === 0) {
-                msg.survey.answered = true;
-                msg.survey.answer = ['（自由回答）'];
-                throttledSaveData();
-                renderMessages(true);
-                setTimeout(() => {
-                    const pool = (typeof customReplies !== 'undefined' && Array.isArray(customReplies))
-                        ? customReplies.filter(t => t && String(t).trim())
-                        : [];
-                    if (pool.length > 0) {
-                        const reply = pool[Math.floor(Math.random() * pool.length)];
-                        const partnerName = (typeof settings !== 'undefined' && settings.partnerName) ? settings.partnerName : '对方';
-                        addMessage({
-                            id: Date.now() + Math.random(),
-                            sender: partnerName,
-                            text: reply,
-                            timestamp: new Date(),
-                            status: 'received',
-                            type: 'normal'
-                        });
+                        const tips = [
+                            '不想回答也没关系。',
+                            '我猜你会选…算了，不猜了。',
+                            '等你想说的时候再说吧。',
+                            '这个问题先放着吧。'
+                        ];
+                        const tip = tips[Math.floor(Math.random() * tips.length)];
+                        if (typeof addMessage === 'function') {
+                            addMessage({
+                                id: Date.now() + Math.random(),
+                                sender: partnerName,
+                                text: tip,
+                                timestamp: new Date(),
+                                status: 'received',
+                                type: 'normal'
+                            });
+                        }
                         if (typeof playSound === 'function') playSound('message');
                     }
-                }, _spDelay2);
-                return;
-            }
-
-            if (multi) {
-                const count = Math.random() < 0.5 ? 1 : 2;
-                const shuffled = opts.slice().sort(() => Math.random() - 0.5);
-                msg.survey.answer = shuffled.slice(0, Math.min(count, shuffled.length));
-            } else {
-                msg.survey.answer = [opts[Math.floor(Math.random() * opts.length)]];
-            }
-            msg.survey.answered = true;
-            msg.survey.answeredBy = 'partner';
-            throttledSaveData();
-            renderMessages(true);
-            if (typeof playSound === 'function') playSound('favorite');
-
-            setTimeout(() => {
-                const pool = (typeof customReplies !== 'undefined' && Array.isArray(customReplies))
-                    ? customReplies.filter(t => t && String(t).trim())
-                    : [];
-                if (pool.length > 0) {
-                    const reply = pool[Math.floor(Math.random() * pool.length)];
-                    const partnerName = (typeof settings !== 'undefined' && settings.partnerName) ? settings.partnerName : '对方';
-                    addMessage({
-                        id: Date.now() + Math.random(),
-                        sender: partnerName,
-                        text: reply,
-                        timestamp: new Date(),
-                        status: 'received',
-                        type: 'normal'
-                    });
-                    if (typeof playSound === 'function') playSound('message');
+                    break;
                 }
-            }, _spDelay2);
-        }, _spDelay1);
-    };
-
-    window.openSurveyBankPanel = function () {
-        const old = document.getElementById('survey-bank-panel');
-        if (old) old.remove();
-
-        const modal = document.createElement('div');
-        modal.id = 'survey-bank-panel';
-        modal.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.6);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;';
-
-        modal.innerHTML =
-            '<div style="background:var(--secondary-bg);border-radius:22px;padding:22px;width:92%;max-width:440px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(0,0,0,0.4);">'
-            +   '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">'
-            +     '<span style="font-size:16px;font-weight:700;color:var(--text-primary);"><i class="fas fa-clipboard-list" style="color:var(--accent-color);margin-right:8px;"></i>问卷题库</span>'
-            +     '<button id="sb-close" style="background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:18px;"><i class="fas fa-times"></i></button>'
-            +   '</div>'
-            +   '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:10px;line-height:1.6;">这里是你维护的问题库。顶栏点 📋 时，会从这随机抽一道发给对方。</div>'
-            +   '<div id="sb-list" style="flex:1;overflow-y:auto;margin-bottom:12px;"></div>'
-            +   '<button id="sb-add" style="padding:12px;border:none;border-radius:12px;background:var(--accent-color);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font-family);"><i class="fas fa-plus"></i> 添加新问题</button>'
-            + '</div>';
-
-        document.body.appendChild(modal);
-
-        const render = () => {
-            const listEl = modal.querySelector('#sb-list');
-            if (bank.length === 0) {
-                listEl.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-secondary);font-size:13px;">题库为空，点下面添加</div>';
-                return;
             }
-            listEl.innerHTML = bank.map((item, i) => `
-                <div style="display:flex;align-items:flex-start;gap:10px;padding:11px 12px;background:var(--primary-bg);border:1px solid var(--border-color);border-radius:12px;margin-bottom:8px;">
-                    <div style="flex:1;min-width:0;">
-                        <div style="font-size:13px;font-weight:600;color:var(--text-primary);word-break:break-word;">${(item.q || '').replace(/</g,'&lt;')}</div>
-                        ${(item.opts && item.opts.length) ? `<div style="font-size:11px;color:var(--text-secondary);margin-top:4px;">选项：${item.opts.map(o => o.replace(/</g,'&lt;')).join(' / ')}</div>` : ''}
-                    </div>
-                    <button data-del="${i}" style="background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:14px;opacity:0.6;padding:2px 4px;flex-shrink:0;"><i class="fas fa-times"></i></button>
-                </div>
-            `).join('');
-            listEl.querySelectorAll('[data-del]').forEach(btn => {
-                btn.onclick = async () => {
-                    const idx = parseInt(btn.dataset.del);
-                    if (!confirm('删除这个问题？')) return;
-                    bank.splice(idx, 1);
-                    await save();
-                    render();
-                };
-            });
-        };
+        }, 10 * 60 * 1000);
 
-        const close = () => modal.remove();
-        modal.querySelector('#sb-close').onclick = close;
-        modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+        return true;
+    }
+    window._partnerAskSurvey = askPartnerSurvey;
 
-        modal.querySelector('#sb-add').onclick = async () => {
-            const q = prompt('问题内容：');
-            if (!q || !q.trim()) return;
-            const optsStr = prompt('选项（用 / 分隔，留空则对方自由回答）：');
-            let opts = [];
-            if (optsStr && optsStr.trim()) {
-                opts = optsStr.split('/').map(s => s.trim()).filter(Boolean);
+    // ---------- 随机触发 ----------
+    function checkDailyData() {
+        const today = new Date().toDateString();
+        let data = {};
+        try { data = JSON.parse(localStorage.getItem(TRIGGER_KEY) || '{}'); } catch (e) {}
+        if (data.date !== today) {
+            data = { date: today, count: 0, max: 1 + Math.floor(Math.random() * 3) };
+            try { localStorage.setItem(TRIGGER_KEY, JSON.stringify(data)); } catch (e) {}
+        }
+        return data;
+    }
+
+    function tryTrigger() {
+        const data = checkDailyData();
+        if (data.count >= data.max) return;
+        if (Math.random() < 0.35) {
+            if (askPartnerSurvey()) {
+                data.count++;
+                try { localStorage.setItem(TRIGGER_KEY, JSON.stringify(data)); } catch (e) {}
             }
-            bank.push({ q: q.trim(), opts: opts, multi: false });
-            await save();
-            render();
-            if (typeof showNotification === 'function') showNotification('✓ 已添加', 'success');
-        };
+        }
+    }
 
-        render();
-    };
+    function scheduleRandom() {
+        setTimeout(tryTrigger, 3 * 60 * 1000);
+        setInterval(tryTrigger, 45 * 60 * 1000);
+    }
+
+    // ---------- 用户主动请求（用 input 事件，更稳） ----------
+    function hookUserInput() {
+        let _lastTrigger = '';
+        document.addEventListener('input', function (e) {
+            const input = e.target;
+            if (!input || input.id !== 'message-input') return;
+            const text = input.value.trim();
+            if (!text) { _lastTrigger = ''; return; }
+            if (_lastTrigger === text) return;
+
+            if (/^(你问我一个问题|问我一个问题|出个题|出题)$/.test(text)
+                || /你问我一个(选择题|问题)/.test(text)
+                || /^(问问我|考考我)$/.test(text)) {
+                _lastTrigger = text;
+                input.value = '';
+                input.style.height = '46px';
+                setTimeout(function () {
+                    if (askPartnerSurvey()) {
+                        if (typeof showNotification === 'function') showNotification('✦ 对方正在出题…', 'info', 1500);
+                    } else {
+                        if (typeof showNotification === 'function') showNotification('题库是空的', 'warning', 2000);
+                    }
+                }, 100);
+            }
+        });
+    }
+
+    // ---------- 自启动（不再依赖 listeners.js） ----------
+    function boot() {
+        scheduleRandom();
+        hookUserInput();
+        console.log('[partner-survey] 已启动 ✓');
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => setTimeout(boot, 1500));
+    } else {
+        setTimeout(boot, 1500);
+    }
+
+    window.initPartnerSurvey = boot;
 })();
