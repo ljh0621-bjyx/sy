@@ -3,6 +3,7 @@
  * ============================================================ */
 (function () {
     'use strict';
+    
 
     const KEY = 'memoryData_v1';
     let data = {
@@ -28,6 +29,7 @@
         return Math.round((t2 - t1) / 86400000);
     }
 
+    // 从聊天记录里找一条"值得回忆"的消息
     function pickMemoryMessage() {
         if (typeof messages === 'undefined' || !Array.isArray(messages) || messages.length === 0) return null;
 
@@ -41,8 +43,9 @@
 
             const d = new Date(m.timestamp);
             const daysAgo = daysBetween(d.getTime(), now.getTime());
-            if (daysAgo < 7) return;
+            if (daysAgo < 7) return;   // 太近的不算
 
+            // 整百天、整年、一年前的今天
             const isSameDayLastYear = d.getMonth() === now.getMonth() && d.getDate() === now.getDate() && d.getFullYear() < now.getFullYear();
             const isSameDayLastMonth = d.getDate() === now.getDate() && daysAgo >= 25 && daysAgo <= 35;
             const isMilestone = [30, 100, 200, 365, 500, 730, 1000].some(function (n) { return Math.abs(daysAgo - n) <= 1; });
@@ -62,6 +65,7 @@
         return top[Math.floor(Math.random() * top.length)];
     }
 
+    // ========== 回忆卡片 ==========
     function showMemoryCard(item) {
         const old = document.getElementById('memory-card');
         if (old) old.remove();
@@ -127,6 +131,7 @@
         setTimeout(function () { if (document.body.contains(el)) close(); }, 20000);
     }
 
+    // ========== 每天自动弹一次 ==========
     function checkToday() {
         const today = todayStr();
         if (data.lastShownDate === today) return;
@@ -137,6 +142,7 @@
         showMemoryCard(item);
     }
 
+    // ========== 手动打开 ==========
     window.openMemoryCard = function () {
         const item = pickMemoryMessage();
         if (!item) {
@@ -148,8 +154,10 @@
         showMemoryCard(item);
     };
 
+    // ========== 初始化 ==========
     window.initMemory = function () {
         load().then(function () {
+            // 页面加载 12 秒后再检查（等聊天数据都准备好）
             setTimeout(checkToday, 12000);
         });
     };
