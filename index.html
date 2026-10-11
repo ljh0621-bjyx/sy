@@ -831,6 +831,34 @@ window.addEventListener('unhandledrejection', function(e) {
                     <i class="fas fa-undo"></i> 恢复默认背景
                 </button>
             </div>
+            <div style="margin-top:18px;padding-top:14px;border-top:1px dashed var(--border-color);">
+    <div style="font-size:12px;font-weight:600;color:var(--text-primary);margin-bottom:10px;">
+        <i class="fas fa-magic" style="color:var(--accent-color);margin-right:6px;"></i>背景图效果
+    </div>
+
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+        <span style="font-size:12px;color:var(--text-secondary);width:34px;flex-shrink:0;">模糊</span>
+        <input type="range" id="bg-effect-blur" min="0" max="20" step="1" value="0" style="flex:1;accent-color:var(--accent-color);">
+        <span id="bg-effect-blur-val" style="font-size:12px;font-weight:600;color:var(--accent-color);width:42px;text-align:right;">0px</span>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+        <span style="font-size:12px;color:var(--text-secondary);width:34px;flex-shrink:0;">暗化</span>
+        <input type="range" id="bg-effect-darken" min="0" max="80" step="1" value="0" style="flex:1;accent-color:var(--accent-color);">
+        <span id="bg-effect-darken-val" style="font-size:12px;font-weight:600;color:var(--accent-color);width:42px;text-align:right;">0%</span>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+        <span style="font-size:12px;color:var(--text-secondary);width:34px;flex-shrink:0;">淡化</span>
+        <input type="range" id="bg-effect-fade" min="0" max="100" step="1" value="100" style="flex:1;accent-color:var(--accent-color);">
+        <span id="bg-effect-fade-val" style="font-size:12px;font-weight:600;color:var(--accent-color);width:42px;text-align:right;">100%</span>
+    </div>
+
+    <div style="font-size:11px;color:var(--text-secondary);opacity:0.65;line-height:1.6;margin-top:6px;">
+        淡化：100% 为原图，越小越透出底色。
+    </div>
+</div>
+
         </div>
     </div>
 
