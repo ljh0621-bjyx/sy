@@ -268,6 +268,17 @@
 
     var confirmed = [];
 
+    // ★ 打字辅助：把"已确认" + "正在打"的部分渲染出来
+    function renderPinyin(partial) {
+        var html = confirmed.map(function (c) {
+            return '<span class="rt-pinyin-tag done">' + escapeHtml(c) + '</span>';
+        }).join('');
+        if (partial) {
+            html += '<span class="rt-pinyin-tag active">' + escapeHtml(partial) + '</span>';
+        }
+        pinyinLine.innerHTML = html;
+    }
+
     for (var i = 0; i < chars.length; i++) {
         if (_playCancelled) return;
         var ch = chars[i];
@@ -282,17 +293,50 @@
             var tmp = cands[k]; cands[k] = cands[jj]; cands[jj] = tmp;
         }
 
-        var confirmedHTML = confirmed.map(function (c) {
-            return '<span class="rt-pinyin-tag done">' + escapeHtml(c) + '</span>';
-        }).join('');
-
+        // ========== 逐字母打字 ==========
         for (var j = 1; j <= py.length; j++) {
             if (_playCancelled) return;
             var partial = py.slice(0, j);
-            pinyinLine.innerHTML = confirmedHTML + '<span class="rt-pinyin-tag active">' + escapeHtml(partial) + '</span>';
+            renderPinyin(partial);
             await sleep(letterDelay);
         }
 
+        // ========== ★ 打错字（约 18% 概率，非首个字、拼音长度≥2 才触发）==========
+        if (Math.random() < 0.18 && py.length >= 2 && i > 0) {
+            // 随机敲一个错字母
+            var wrongLetter = 'abcdefghijklmnopqrstuvwxyz'.charAt(Math.floor(Math.random() * 26));
+            var wrongPy = py + wrongLetter;
+            renderPinyin(wrongPy);
+            await sleep(220 + Math.random() * 180);
+
+            // 犹豫一下
+            if (statusEl) statusEl.textContent = '嗯……';
+            await sleep(260 + Math.random() * 220);
+
+            // 逐字删除（模拟 backspace）
+            var cur = wrongPy;
+            while (cur.length > 0) {
+                if (_playCancelled) return;
+                cur = cur.slice(0, -1);
+                renderPinyin(cur || '|');
+                await sleep(55 + Math.random() * 30);
+            }
+
+            if (statusEl) statusEl.textContent = '重新打…';
+            await sleep(180 + Math.random() * 150);
+
+            // 重新打正确
+            for (var j2 = 1; j2 <= py.length; j2++) {
+                if (_playCancelled) return;
+                var partial2 = py.slice(0, j2);
+                renderPinyin(partial2);
+                await sleep(letterDelay);
+            }
+
+            if (statusEl) statusEl.textContent = '正在组句…';
+        }
+
+        // ========== 显示候选字 ==========
         candArea.innerHTML = '';
         var col = document.createElement('div');
         col.className = 'rt-cand-col';
@@ -303,6 +347,7 @@
 
         await sleep(candShowDelay);
 
+        // 高亮选中的字
         var charEls = col.querySelectorAll('.rt-cand-char');
         charEls.forEach(function (el) {
             if (el.textContent === ch) el.classList.add('selected');
@@ -310,14 +355,38 @@
 
         await sleep(selectDelay);
 
+        // ========== 确认这个字 ==========
         confirmed.push(ch);
-        pinyinLine.innerHTML = confirmed.map(function (c) {
-            return '<span class="rt-pinyin-tag done">' + escapeHtml(c) + '</span>';
-        }).join('');
-
+        renderPinyin('');
         candArea.innerHTML = '';
 
-        await sleep(200);
+        // ========== ★ 撤销上一个字（约 6% 概率）==========
+        if (Math.random() < 0.06 && confirmed.length >= 2 && i < chars.length - 1) {
+            if (statusEl) statusEl.textContent = '不对……';
+            await sleep(280 + Math.random() * 220);
+
+            // 撤销最后一个字
+            confirmed.pop();
+            renderPinyin('|');
+            await sleep(320 + Math.random() * 180);
+
+            // 把它重新打回来（简化为直接补上）
+            var backChar = chars[i];
+            // 找对应拼音
+            var backPy = charToPinyin(backChar);
+            for (var j3 = 1; j3 <= backPy.length; j3++) {
+                if (_playCancelled) return;
+                renderPinyin(backPy.slice(0, j3));
+                await sleep(letterDelay);
+            }
+            confirmed.push(backChar);
+            renderPinyin('');
+            await sleep(180);
+
+            if (statusEl) statusEl.textContent = '正在组句…';
+        }
+
+        await sleep(180);
     }
 
     if (statusEl) statusEl.textContent = '组句完成';
