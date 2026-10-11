@@ -19,9 +19,8 @@ const PRESET_KEY = getStorageKey('typingSoundPreset');
         return v === null ? true : v === '1';
     }
     function isPartnerEnabled() {
-        const v = localStorage.getItem(PARTNER_KEY);
-        return v === null ? true : v === '1';
-    }
+    return false;   // ★ 对方打字音效已关闭
+}
     function getPreset() {
         return localStorage.getItem(PRESET_KEY) || 'soft';
     }
