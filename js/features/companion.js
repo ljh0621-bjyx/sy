@@ -1,6 +1,6 @@
 /**
  * companion.js
- * 陪伴功能（一起学习 / 工作 / 睡觉 / 运动）+ 聊天
+ * 陪伴功能（一起学习 / 工作 / 睡觉 / 运动）+ 完整聊天
  */
 
 (function () {
@@ -12,30 +12,32 @@
     const ACTIVITIES = {
         study:  { name: '一起学习', emoji: '📖',
                   bg: 'linear-gradient(160deg, #e8f2ff 0%, #c5dcff 50%, #a8c9f0 100%)',
-                  bgCard: 'linear-gradient(160deg, rgba(200,220,255,0.35), rgba(168,201,240,0.15))',
-                  color: '#2a4a6b',
+                  bubbleMeBg: '#7aa8d8', bubbleMeText: '#fff',
+                  bubblePartnerBg: 'rgba(255,255,255,0.85)', bubblePartnerText: '#2a4a6b',
+                  color: '#2a4a6b', inputBg: 'rgba(255,255,255,0.75)',
                   lines: ['我陪着你，专心做你的事', '加油，我就在旁边', '认真学习的你最好看', '别急，慢慢来'] },
         work:   { name: '一起工作', emoji: '💼',
                   bg: 'linear-gradient(160deg, #f0f0f0 0%, #d8d8d8 50%, #b8b8b8 100%)',
-                  bgCard: 'linear-gradient(160deg, rgba(220,220,220,0.4), rgba(180,180,180,0.15))',
-                  color: '#3a3a3a',
+                  bubbleMeBg: '#8a8a8a', bubbleMeText: '#fff',
+                  bubblePartnerBg: 'rgba(255,255,255,0.9)', bubblePartnerText: '#333',
+                  color: '#3a3a3a', inputBg: 'rgba(255,255,255,0.8)',
                   lines: ['工作顺利，我在这里', '忙完记得喝口水', '陪你一起努力', '一件件来，不着急'] },
         sleep:  { name: '一起睡觉', emoji: '🌙',
                   bg: 'linear-gradient(160deg, #1a1a3e 0%, #0d0d28 50%, #050515 100%)',
-                  bgCard: 'linear-gradient(160deg, rgba(80,80,140,0.3), rgba(40,40,90,0.15))',
-                  color: '#e8e0ff',
+                  bubbleMeBg: 'rgba(120,110,180,0.85)', bubbleMeText: '#fff',
+                  bubblePartnerBg: 'rgba(255,255,255,0.15)', bubblePartnerText: '#e8e0ff',
+                  color: '#e8e0ff', inputBg: 'rgba(255,255,255,0.15)',
                   lines: ['晚安，做个好梦', '我陪你入睡', '闭上眼睛，我在', '梦里见'] },
         sport:  { name: '一起运动', emoji: '🏃',
                   bg: 'linear-gradient(160deg, #ffe8d0 0%, #ffcfa8 50%, #f0b080 100%)',
-                  bgCard: 'linear-gradient(160deg, rgba(255,220,180,0.4), rgba(240,176,128,0.15))',
-                  color: '#6b3a15',
+                  bubbleMeBg: '#e89a5a', bubbleMeText: '#fff',
+                  bubblePartnerBg: 'rgba(255,255,255,0.85)', bubblePartnerText: '#6b3a15',
+                  color: '#6b3a15', inputBg: 'rgba(255,255,255,0.75)',
                   lines: ['加油，你超棒！', '动起来，我陪你', '坚持住，快到了', '汗水最美'] }
     };
 
-    let activeSession = null;   // { activity, totalSec, remainSec, lastTick, timer }
+    let activeSession = null;
     let chatHistory = [];
-    let panelEl = null;
-    let fsEl = null;
     let miniEl = null;
 
     async function loadLog() {
@@ -217,9 +219,7 @@
                 activeSession.lastTick = now;
                 activeSession.remainSec = Math.max(0, activeSession.remainSec - elapsed);
                 updateTime();
-                if (activeSession.remainSec <= 0) {
-                    endCompanion(false);
-                }
+                if (activeSession.remainSec <= 0) endCompanion(false);
             }
         }, 1000);
     }
@@ -233,69 +233,61 @@
         el.id = 'companion-fullscreen';
         el.style.cssText = 'position:fixed;inset:0;z-index:999999;'
             + 'background:' + act.bg + ';'
-            + 'display:flex;flex-direction:column;font-family:var(--font-family);overflow:hidden;'
-            + 'transition:opacity 0.4s ease;';
-
-        const isDark = (activeSession.activity === 'sleep');
+            + 'display:flex;flex-direction:column;font-family:var(--font-family);overflow:hidden;';
 
         el.innerHTML =
             '<style>'
             + '@keyframes cpFloat { 0%,100%{ transform: translate(0,0); opacity:0.25; } 50%{ transform: translate(20px,-30px); opacity:0.5; } }'
             + '@keyframes cpBreath { 0%,100%{ transform: scale(1); } 50%{ transform: scale(1.06); } }'
             + '@keyframes cpGlowEnd { 0%{ opacity:0; transform:scale(0.6); } 60%{ opacity:1; transform:scale(1.2); } 100%{ opacity:0; transform:scale(2); } }'
-            + '@keyframes cpChatIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }'
-            + '.cp-particle { position:absolute; border-radius:50%; background:rgba(255,255,255,0.6); filter:blur(8px); pointer-events:none; }'
-            + '.cp-avatar-box { width:56px;height:56px;border-radius:50%;overflow:hidden;border:2.5px solid rgba(255,255,255,0.5);box-shadow:0 4px 16px rgba(0,0,0,0.15);background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;animation:cpBreath 4s ease-in-out infinite;flex-shrink:0; }'
-+ '.cp-avatar-box img { width:100% !important; height:100% !important; object-fit:cover !important; border-radius:50% !important; display:block !important; }'
-+ '.cp-avatar-box i { font-size:24px; color:rgba(255,255,255,0.85); }'
+            + '.cp-particle { position:absolute; border-radius:50%; background:rgba(255,255,255,0.55); filter:blur(8px); pointer-events:none; }'
+            + '.cp-avatar-box { width:54px;height:54px;border-radius:50%;overflow:hidden;border:2.5px solid rgba(255,255,255,0.6);box-shadow:0 4px 16px rgba(0,0,0,0.15);background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;animation:cpBreath 4s ease-in-out infinite;flex-shrink:0; }'
+            + '.cp-avatar-box img { width:100% !important; height:100% !important; object-fit:cover !important; border-radius:50% !important; display:block !important; }'
+            + '.cp-avatar-box i { font-size:22px; color:rgba(255,255,255,0.9); }'
             + '</style>'
-            + '<div id="cp-particles" style="position:absolute;inset:0;overflow:hidden;"></div>'
 
-            // 顶部：头像 + 倒计时
-            + '<div style="position:relative;z-index:2;padding:24px 20px 16px;text-align:center;flex-shrink:0;">'
-            +   '<div style="font-size:12px;letter-spacing:3px;text-transform:uppercase;opacity:0.7;color:' + act.color + ';margin-bottom:16px;">' + act.emoji + ' ' + act.name + '</div>'
+            + '<div id="cp-particles" style="position:absolute;inset:0;overflow:hidden;pointer-events:none;"></div>'
 
-            // 双方头像
-            +   '<div style="display:flex;align-items:center;justify-content:center;gap:20px;margin-bottom:18px;">'
-            +     '<div style="display:flex;flex-direction:column;align-items:center;gap:6px;">'
-            + '<div class="cp-avatar-box">'
-            +         getAvatarHTML('me')
-            +       '</div>'
-            +       '<span style="font-size:10px;opacity:0.7;color:' + act.color + ';font-weight:600;">我</span>'
+            // 顶部：双头像 + 倒计时
+            + '<div style="position:relative;z-index:2;padding:20px 20px 12px;text-align:center;flex-shrink:0;">'
+            +   '<div style="font-size:11px;letter-spacing:3px;text-transform:uppercase;opacity:0.7;color:' + act.color + ';margin-bottom:12px;">' + act.emoji + ' ' + act.name + '</div>'
+            +   '<div style="display:flex;align-items:center;justify-content:center;gap:18px;margin-bottom:10px;">'
+            +     '<div style="display:flex;flex-direction:column;align-items:center;gap:4px;">'
+            +       '<div class="cp-avatar-box">' + getAvatarHTML('me') + '</div>'
+            +       '<span style="font-size:10px;opacity:0.75;color:' + act.color + ';font-weight:600;">我</span>'
             +     '</div>'
-
-            +     '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:' + act.color + ';">'
-            +       '<div style="font-size:20px;">💞</div>'
-            +       '<div id="cp-time" style="font-size:36px;font-weight:800;font-family:Georgia,monospace;letter-spacing:1px;line-height:1;text-shadow:0 2px 12px rgba(0,0,0,0.1);">' + fmtTime(activeSession.remainSec) + '</div>'
-            +       '<span style="font-size:10px;opacity:0.55;letter-spacing:1.5px;">剩余</span>'
+            +     '<div style="display:flex;flex-direction:column;align-items:center;gap:2px;color:' + act.color + ';">'
+            +       '<div style="font-size:16px;line-height:1;">💞</div>'
+            +       '<div id="cp-time" style="font-size:32px;font-weight:800;font-family:Georgia,monospace;letter-spacing:1px;line-height:1;text-shadow:0 2px 12px rgba(0,0,0,0.1);">' + fmtTime(activeSession.remainSec) + '</div>'
+            +       '<span style="font-size:9px;opacity:0.6;letter-spacing:1.5px;">剩余</span>'
             +     '</div>'
-
-            +     '<div style="display:flex;flex-direction:column;align-items:center;gap:6px;">'
-            + '<div class="cp-avatar-box" style="animation-delay:0.5s;">'
-            +         getAvatarHTML('partner')
-            +       '</div>'
-            +       '<span style="font-size:10px;opacity:0.7;color:' + act.color + ';font-weight:600;" id="cp-partner-name">' + (typeof settings !== 'undefined' && settings.partnerName ? settings.partnerName : '对方') + '</span>'
+            +     '<div style="display:flex;flex-direction:column;align-items:center;gap:4px;">'
+            +       '<div class="cp-avatar-box" style="animation-delay:0.5s;">' + getAvatarHTML('partner') + '</div>'
+            +       '<span style="font-size:10px;opacity:0.75;color:' + act.color + ';font-weight:600;" id="cp-partner-name">' + (typeof settings !== 'undefined' && settings.partnerName ? settings.partnerName : '对方') + '</span>'
             +     '</div>'
             +   '</div>'
-
-            +   '<div id="cp-encourage" style="font-size:14px;opacity:0.85;color:' + act.color + ';max-width:280px;margin:0 auto;line-height:1.6;font-weight:500;">「' + act.lines[Math.floor(Math.random() * act.lines.length)] + '」</div>'
+            +   '<div id="cp-encourage" style="font-size:12.5px;opacity:0.85;color:' + act.color + ';max-width:280px;margin:0 auto;line-height:1.5;">「' + act.lines[Math.floor(Math.random() * act.lines.length)] + '」</div>'
             + '</div>'
 
-            // 聊天区
-            + '<div style="flex:1;min-height:0;position:relative;z-index:2;padding:0 16px;display:flex;flex-direction:column;">'
-            +   '<div id="cp-chat-scroll" style="flex:1;overflow-y:auto;padding:12px 8px;background:' + act.bgCard + ';backdrop-filter:blur(20px);border-radius:18px 18px 0 0;border:1px solid rgba(255,255,255,0.3);border-bottom:none;"></div>'
-            +   '<div style="display:flex;gap:8px;padding:10px 10px 14px;background:' + act.bgCard + ';backdrop-filter:blur(20px);border-radius:0 0 18px 18px;border:1px solid rgba(255,255,255,0.3);border-top:none;flex-shrink:0;">'
-            +     '<button id="cp-emoji" style="width:36px;height:36px;border-radius:50%;border:none;background:rgba(255,255,255,0.25);color:' + act.color + ';cursor:pointer;flex-shrink:0;"><i class="fas fa-smile"></i></button>'
-            +     '<button id="cp-voice" style="width:36px;height:36px;border-radius:50%;border:none;background:rgba(255,255,255,0.25);color:' + act.color + ';cursor:pointer;flex-shrink:0;"><i class="fas fa-microphone"></i></button>'
-            +     '<input id="cp-input" type="text" placeholder="陪你说说话…" style="flex:1;min-width:0;padding:8px 14px;border:1px solid rgba(255,255,255,0.4);border-radius:20px;background:rgba(255,255,255,0.7);color:#333;font-size:13px;outline:none;font-family:var(--font-family);">'
-            +     '<button id="cp-send" style="padding:8px 16px;border:none;border-radius:20px;background:var(--accent-color);color:#fff;font-size:13px;font-weight:600;cursor:pointer;flex-shrink:0;font-family:var(--font-family);">发送</button>'
+            // 聊天区（跟小说一样）
+            + '<div style="flex:1;min-height:0;position:relative;z-index:2;display:flex;flex-direction:column;padding:0 14px;">'
+            +   '<div style="flex:1;min-height:0;background:rgba(255,255,255,0.35);backdrop-filter:blur(14px);border-radius:18px 18px 0 0;border:1px solid rgba(255,255,255,0.4);border-bottom:none;display:flex;flex-direction:column;overflow:hidden;">'
+            +     '<div id="cp-chat-scroll" style="flex:1;overflow-y:auto;padding:14px 14px 8px;"></div>'
+            +     '<div style="display:flex;gap:6px;padding:10px 12px 12px;border-top:1px solid rgba(255,255,255,0.3);background:rgba(255,255,255,0.15);flex-shrink:0;">'
+            +       '<button id="cp-emoji" style="width:34px;height:34px;border-radius:50%;border:none;background:rgba(255,255,255,0.5);color:' + act.color + ';cursor:pointer;flex-shrink:0;font-size:14px;"><i class="fas fa-smile"></i></button>'
+            +       '<button id="cp-sticker" style="width:34px;height:34px;border-radius:50%;border:none;background:rgba(255,255,255,0.5);color:' + act.color + ';cursor:pointer;flex-shrink:0;font-size:14px;"><i class="fas fa-image"></i></button>'
+            +       '<button id="cp-img" style="width:34px;height:34px;border-radius:50%;border:none;background:rgba(255,255,255,0.5);color:' + act.color + ';cursor:pointer;flex-shrink:0;font-size:14px;"><i class="fas fa-camera"></i></button>'
+            +       '<button id="cp-voice" style="width:34px;height:34px;border-radius:50%;border:none;background:rgba(255,255,255,0.5);color:' + act.color + ';cursor:pointer;flex-shrink:0;font-size:14px;"><i class="fas fa-microphone"></i></button>'
+            +       '<input id="cp-input" type="text" placeholder="陪你说说话…" style="flex:1;min-width:0;padding:8px 14px;border:1px solid rgba(255,255,255,0.6);border-radius:20px;background:' + act.inputBg + ';color:' + (act.activity === 'sleep' ? '#fff' : '#333') + ';font-size:13px;outline:none;font-family:var(--font-family);">'
+            +       '<button id="cp-send" style="padding:8px 16px;border:none;border-radius:20px;background:var(--accent-color);color:#fff;font-size:13px;font-weight:600;cursor:pointer;flex-shrink:0;font-family:var(--font-family);">发送</button>'
+            +     '</div>'
             +   '</div>'
             + '</div>'
 
-            // 底部按钮
-            + '<div style="position:relative;z-index:2;padding:12px 20px 20px;display:flex;justify-content:center;gap:12px;flex-shrink:0;">'
-            +   '<button id="cp-min-btn" style="padding:10px 22px;border:1.5px solid rgba(255,255,255,0.4);background:rgba(255,255,255,0.15);backdrop-filter:blur(10px);color:' + act.color + ';font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-family);border-radius:50px;letter-spacing:1px;transition:all 0.25s;">最小化</button>'
-            +   '<button id="cp-end-btn" style="padding:10px 26px;border:1.5px solid rgba(255,255,255,0.5);background:rgba(255,255,255,0.25);backdrop-filter:blur(10px);color:' + act.color + ';font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font-family);border-radius:50px;letter-spacing:1px;transition:all 0.25s;">结束陪伴</button>'
+            // 底部
+            + '<div style="position:relative;z-index:2;padding:12px 20px 18px;display:flex;justify-content:center;gap:12px;flex-shrink:0;">'
+            +   '<button id="cp-min-btn" style="padding:10px 22px;border:1.5px solid rgba(255,255,255,0.5);background:rgba(255,255,255,0.2);backdrop-filter:blur(10px);color:' + act.color + ';font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-family);border-radius:50px;letter-spacing:1px;">最小化</button>'
+            +   '<button id="cp-end-btn" style="padding:10px 26px;border:1.5px solid rgba(255,255,255,0.6);background:rgba(255,255,255,0.35);backdrop-filter:blur(10px);color:' + act.color + ';font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font-family);border-radius:50px;letter-spacing:1px;">结束陪伴</button>'
             + '</div>';
 
         document.body.appendChild(el);
@@ -315,13 +307,11 @@
             pWrap.appendChild(p);
         }
 
-        // 绑定事件
+        // 事件
         el.querySelector('#cp-end-btn').onclick = function () {
             if (confirm('确定结束陪伴吗？')) endCompanion(true);
         };
-        el.querySelector('#cp-min-btn').onclick = function () {
-            minimizeToIndicator();
-        };
+        el.querySelector('#cp-min-btn').onclick = minimizeToIndicator;
 
         const input = el.querySelector('#cp-input');
         const sendBtn = el.querySelector('#cp-send');
@@ -336,16 +326,39 @@
             if (e.key === 'Enter') { e.preventDefault(); doSend(); }
         });
 
+        // 😊 表情
         el.querySelector('#cp-emoji').onclick = function () {
-            const emojis = ['☺️','💕','✨','🥺','😊','😌','🤗','💗','🌙','⭐','🍀','🌸'];
-            const emoji = emojis[Math.floor(Math.random() * emojis.length)];
-            sendChat('text', emoji);
+            const emojis = ['☺️','💕','✨','🥺','😊','😌','🤗','💗','🌙','⭐','🍀','🌸','🎀','🫶','💫','🥹','😘','💞'];
+            openCompanionPicker('选择表情', emojis.map(e => ({ type: 'emoji', content: e })));
         };
 
+        // 🖼 表情包
+        el.querySelector('#cp-sticker').onclick = function () {
+            const stickers = (typeof stickerLibrary !== 'undefined' && stickerLibrary.length > 0) ? stickerLibrary : [];
+            if (stickers.length === 0) { showNotification('对方表情库为空', 'warning'); return; }
+            openCompanionPicker('选择表情包', stickers.map(s => ({ type: 'sticker', content: s })));
+        };
+
+        // 📷 图片
+        el.querySelector('#cp-img').onclick = function () {
+            const inp = document.createElement('input');
+            inp.type = 'file'; inp.accept = 'image/*';
+            inp.onchange = async function (e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                if (file.size > 5 * 1024 * 1024) { showNotification('图片不能超过 5MB', 'error'); return; }
+                try {
+                    const base64 = await optimizeImage(file, 600, 0.8);
+                    sendChat('image', base64);
+                } catch (err) { showNotification('图片处理失败', 'error'); }
+            };
+            inp.click();
+        };
+
+        // 🎤 语音
         el.querySelector('#cp-voice').onclick = function () {
             if (!window.PanelVoiceRecorder || !window.PanelVoiceRecorder.isSupported()) {
-                showNotification('当前浏览器不支持录音', 'warning');
-                return;
+                showNotification('当前浏览器不支持录音', 'warning'); return;
             }
             window.PanelVoiceRecorder.record(function (audioUrl, duration) {
                 if (!audioUrl) return;
@@ -356,7 +369,8 @@
                 if (chatHistory.length > 200) chatHistory = chatHistory.slice(-200);
                 saveChat();
                 renderChat();
-                setTimeout(partnerReply, 1500 + Math.random() * 1500);
+                scrollChatToBottom();
+                setTimeout(partnerReply, 1200 + Math.random() * 1500);
             });
         };
 
@@ -364,11 +378,41 @@
         scrollChatToBottom();
     }
 
+    function openCompanionPicker(title, items) {
+        const old = document.getElementById('cp-picker');
+        if (old) old.remove();
+        const modal = document.createElement('div');
+        modal.id = 'cp-picker';
+        modal.style.cssText = 'position:fixed;inset:0;z-index:9999999;background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);display:flex;align-items:flex-end;justify-content:center;';
+        const gridHTML = items.map((it, i) => {
+            if (it.type === 'emoji') {
+                return '<div data-pi="' + i + '" style="display:flex;align-items:center;justify-content:center;font-size:26px;aspect-ratio:1/1;background:var(--primary-bg);border-radius:10px;cursor:pointer;padding:6px;box-sizing:border-box;">' + it.content + '</div>';
+            }
+            return '<div data-pi="' + i + '" style="aspect-ratio:1/1;background:var(--primary-bg);border-radius:10px;cursor:pointer;overflow:hidden;"><img src="' + it.content + '" style="width:100%;height:100%;object-fit:cover;display:block;"></div>';
+        }).join('');
+        modal.innerHTML =
+            '<div style="background:var(--secondary-bg);border-radius:20px 20px 0 0;width:100%;max-width:500px;max-height:60vh;display:flex;flex-direction:column;box-shadow:0 -10px 60px rgba(0,0,0,0.3);">'
+            + '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--border-color);">'
+            + '<span style="font-size:14px;font-weight:600;color:var(--text-primary);">' + title + '</span>'
+            + '<button id="cp-picker-close" style="background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:16px;"><i class="fas fa-times"></i></button>'
+            + '</div>'
+            + '<div style="flex:1;overflow-y:auto;padding:14px 20px 20px;display:grid;grid-template-columns:repeat(5,1fr);gap:8px;">' + gridHTML + '</div>'
+            + '</div>';
+        document.body.appendChild(modal);
+        document.getElementById('cp-picker-close').onclick = () => modal.remove();
+        modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+        modal.querySelectorAll('[data-pi]').forEach(el => {
+            el.onclick = () => {
+                const it = items[parseInt(el.dataset.pi)];
+                modal.remove();
+                sendChat(it.type, it.content);
+            };
+        });
+    }
+
     function updateTime() {
         const timeEl = document.getElementById('cp-time');
-        if (timeEl && activeSession) {
-            timeEl.textContent = fmtTime(activeSession.remainSec);
-        }
+        if (timeEl && activeSession) timeEl.textContent = fmtTime(activeSession.remainSec);
         if (miniEl && activeSession) {
             const t = miniEl.querySelector('.cp-mini-time');
             if (t) t.textContent = fmtTime(activeSession.remainSec);
@@ -380,33 +424,33 @@
         const el = document.getElementById('cp-chat-scroll');
         if (!el) return;
         if (chatHistory.length === 0) {
-            el.innerHTML = '<div style="text-align:center;padding:16px;color:rgba(0,0,0,0.35);font-size:11px;">陪你说说话…</div>';
+            el.innerHTML = '<div style="text-align:center;padding:16px;color:rgba(0,0,0,0.3);font-size:11px;">陪你说说话…</div>';
             return;
         }
         const act = ACTIVITIES[activeSession.activity];
-        const isDark = activeSession.activity === 'sleep';
         el.innerHTML = chatHistory.map(function (msg) {
             const isMe = msg.sender === 'me';
             let inner = '';
             if (msg.type === 'text') inner = '<span style="font-size:13px;">' + esc(msg.content) + '</span>';
+            else if (msg.type === 'emoji') inner = '<span style="font-size:24px;">' + msg.content + '</span>';
+            else if (msg.type === 'sticker' || msg.type === 'image') inner = '<img src="' + msg.content + '" style="max-width:120px;max-height:120px;border-radius:10px;display:block;">';
             else if (msg.type === 'voice') {
                 const dur = msg.duration || 3;
                 inner = '<div class="panel-voice-bubble" data-url="' + (msg.voiceUrl || '') + '" data-duration="' + dur + '" onclick="window.playPanelVoice(this)" style="display:flex;align-items:center;gap:8px;cursor:pointer;min-width:80px;padding:2px 0;">'
                     + '<i class="fas fa-volume-up" style="font-size:13px;opacity:0.9;"></i>'
-                    + '<div style="flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,0.3);min-width:24px;position:relative;overflow:hidden;">'
+                    + '<div style="flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,0.35);min-width:24px;position:relative;overflow:hidden;">'
                     + '<div class="voice-bar" style="position:absolute;left:0;top:0;bottom:0;width:0%;background:rgba(255,255,255,0.9);transition:width 0.15s linear;"></div>'
                     + '</div>'
                     + '<span style="font-size:11px;opacity:0.85;">' + dur + '"</span>'
                     + '</div>';
             }
-            const bubbleBg = isMe
-                ? 'var(--accent-color)'
-                : (isDark ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.75)');
-            const bubbleColor = isMe
-                ? '#fff'
-                : (isDark ? '#f0eaff' : '#333');
-            return '<div style="display:flex;' + (isMe ? 'justify-content:flex-end;' : '') + ';margin-bottom:6px;">'
-                + '<div style="background:' + bubbleBg + ';color:' + bubbleColor + ';padding:7px 12px;border-radius:14px;max-width:72%;word-break:break-word;backdrop-filter:blur(10px);box-shadow:0 2px 8px rgba(0,0,0,0.08);">'
+
+            const bubbleBg = isMe ? act.bubbleMeBg : act.bubblePartnerBg;
+            const bubbleColor = isMe ? act.bubbleMeText : act.bubblePartnerText;
+            const radius = isMe ? '14px 14px 4px 14px' : '14px 14px 14px 4px';
+
+            return '<div style="display:flex;' + (isMe ? 'justify-content:flex-end;' : '') + ';margin-bottom:8px;">'
+                + '<div style="background:' + bubbleBg + ';color:' + bubbleColor + ';padding:8px 12px;border-radius:' + radius + ';max-width:72%;word-break:break-word;box-shadow:0 2px 8px rgba(0,0,0,0.06);">'
                 + inner + '</div></div>';
         }).join('');
     }
@@ -427,7 +471,6 @@
 
     async function partnerReply() {
         const reply = getPartnerReply();
-        // 先弹拼音
         if (typeof window.simulatePartnerTypingProcess === 'function') {
             try { await window.simulatePartnerTypingProcess(reply); } catch (e) {}
         }
@@ -450,7 +493,6 @@
         if (miniEl) miniEl.remove();
         const act = ACTIVITIES[activeSession.activity];
         miniEl = document.createElement('div');
-        miniEl.className = 'cp-mini-indicator';
         miniEl.innerHTML =
             '<span style="font-size:18px;">' + act.emoji + '</span>'
             + '<span class="cp-mini-time" style="font-size:14px;font-weight:700;letter-spacing:1px;color:#fff;font-family:Georgia,monospace;">' + fmtTime(activeSession.remainSec) + '</span>';
@@ -458,8 +500,7 @@
             + 'display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:30px;'
             + 'background:linear-gradient(135deg, rgba(0,0,0,0.75), rgba(30,30,50,0.75));'
             + 'backdrop-filter:blur(20px);cursor:pointer;'
-            + 'box-shadow:0 6px 24px rgba(0,0,0,0.3);'
-            + 'animation:companionIn 0.3s ease;';
+            + 'box-shadow:0 6px 24px rgba(0,0,0,0.3);';
         miniEl.onclick = function () {
             if (miniEl) { miniEl.remove(); miniEl = null; }
             if (activeSession) showFullscreen(ACTIVITIES[activeSession.activity]);
@@ -477,6 +518,7 @@
         const totalMin = Math.round(activeSession.totalSec / 60);
         const doneSec = activeSession.totalSec - activeSession.remainSec;
         const doneMin = Math.max(1, Math.round(doneSec / 60));
+        const activityKey = activeSession.activity;
 
         const fs = document.getElementById('companion-fullscreen');
         if (fs) {
@@ -491,18 +533,16 @@
         setTimeout(function () {
             if (fs) fs.remove();
             if (miniEl) { miniEl.remove(); miniEl = null; }
-            finalizeEnd(act, totalMin, doneMin, userEnded);
+            finalizeEnd(act, totalMin, doneMin, userEnded, activityKey);
         }, 700);
     }
 
-    function finalizeEnd(act, totalMin, doneMin, userEnded) {
+    function finalizeEnd(act, totalMin, doneMin, userEnded, activityKey) {
         try {
             if (typeof settings !== 'undefined' && settings.soundEnabled && typeof playSound === 'function') {
                 playSound('favorite');
             }
         } catch (e) {}
-
-        const activityKey = activeSession ? activeSession.activity : '';
 
         saveLogEntry({
             activity: act.name,
@@ -515,13 +555,9 @@
 
         const partnerName = (typeof settings !== 'undefined' && settings.partnerName) ? settings.partnerName : '对方';
         let text = '';
-        if (activityKey === 'sleep') {
-            text = '晚安，做个好梦。';
-        } else if (userEnded) {
-            text = '这次就到这吧，休息一下～';
-        } else {
-            text = '我们一起' + act.name.replace('一起', '') + '了 ' + totalMin + ' 分钟，真棒！';
-        }
+        if (activityKey === 'sleep') text = '晚安，做个好梦。';
+        else if (userEnded) text = '这次就到这吧，休息一下～';
+        else text = '我们一起' + act.name.replace('一起', '') + '了 ' + totalMin + ' 分钟，真棒！';
 
         setTimeout(function () {
             if (typeof addMessage === 'function') {
