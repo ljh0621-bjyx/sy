@@ -1318,35 +1318,81 @@ if (imageChanceSlider) {
                 });
 
             const bgInput = document.getElementById('bg-gallery-input');
-            if (bgInput) {
-                bgInput.addEventListener('change', (e) => {
-                    const file = e.target.files[0];
-                    if (!file) return;
-                    if (file.size > 10 * 1024 * 1024) {
-                        showNotification('背景图片不能超过10MB', 'error');
-                        return;
-                    }
-                    if (file.size > 5 * 1024 * 1024) {
-                        showNotification('文件较大，正在处理中...', 'info', 2000);
-                    }
-                    const reader = new FileReader();
-                    reader.onload = (event) => {
-                        const base64 = event.target.result;
-                        savedBackgrounds.push({
-                            id: `user-${Date.now()}`,
-                            type: file.type === 'image/gif' ? 'gif' : 'image',
-                            value: base64
-                        });
-                        saveBackgroundGallery();
-                        renderBackgroundGallery();
-                        applyBackground(base64);
-                        localforage.setItem(getStorageKey('chatBackground'), base64);
-                        showNotification('新背景已添加并应用', 'success');
-                    };
-                    reader.readAsDataURL(file);
-                    e.target.value = '';
-                });
+if (bgInput) {
+    bgInput.addEventListener('change', async (e) => {
+        const files = Array.from(e.target.files);
+        if (files.length === 0) return;
+
+        // ===== 单张：保持原逻辑 =====
+        if (files.length === 1) {
+            const file = files[0];
+            if (file.size > 10 * 1024 * 1024) {
+                showNotification('背景图片不能超过10MB', 'error');
+                return;
             }
+            if (file.size > 5 * 1024 * 1024) {
+                showNotification('文件较大，正在处理中...', 'info', 2000);
+            }
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const base64 = event.target.result;
+                savedBackgrounds.push({
+                    id: `user-${Date.now()}`,
+                    type: file.type === 'image/gif' ? 'gif' : 'image',
+                    value: base64
+                });
+                saveBackgroundGallery();
+                renderBackgroundGallery();
+                applyBackground(base64);
+                localforage.setItem(getStorageKey('chatBackground'), base64);
+                showNotification('新背景已添加并应用', 'success');
+            };
+            reader.readAsDataURL(file);
+            e.target.value = '';
+            return;
+        }
+
+        // ===== 多张：批量处理 =====
+        showNotification('正在批量处理 ' + files.length + ' 张图片…', 'info', 2500);
+        let ok = 0, fail = 0, lastBase64 = null;
+
+        for (const file of files) {
+            if (file.size > 10 * 1024 * 1024) { fail++; continue; }
+            try {
+                const base64 = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = (ev) => resolve(ev.target.result);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(file);
+                });
+                savedBackgrounds.push({
+                    id: `user-${Date.now()}-${ok}-${Math.random().toString(36).slice(2,5)}`,
+                    type: file.type === 'image/gif' ? 'gif' : 'image',
+                    value: base64
+                });
+                lastBase64 = base64;
+                ok++;
+            } catch (err) {
+                console.warn('批量处理失败', file.name, err);
+                fail++;
+            }
+        }
+
+        saveBackgroundGallery();
+        renderBackgroundGallery();
+        if (lastBase64) {
+            applyBackground(lastBase64);
+            localforage.setItem(getStorageKey('chatBackground'), lastBase64);
+        }
+
+        if (fail > 0) {
+            showNotification(`批量导入完成：${ok} 张成功，${fail} 张失败（可能超过 10MB）`, 'warning', 4000);
+        } else {
+            showNotification(`✓ 已批量添加 ${ok} 张背景，最后一张已应用`, 'success', 2500);
+        }
+        e.target.value = '';
+    });
+}
 
 const autoSendToggle = document.getElementById('auto-send-toggle');
 const autoSendControl = document.getElementById('auto-send-control');
