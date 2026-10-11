@@ -126,7 +126,7 @@ window.openPetPanel = function () {
         // 宠物展示区
         +   '<div style="position:relative;background:linear-gradient(160deg, rgba(var(--accent-color-rgb),0.1), rgba(var(--accent-color-rgb),0.02));border-radius:20px;padding:26px 16px 20px;text-align:center;margin-bottom:16px;overflow:hidden;">'
         +     '<div style="font-size:72px;line-height:1;margin-bottom:10px;animation:petFloat 3s ease-in-out infinite;">' + stage.icon + '</div>'
-        +     '<div style="font-size:15px;font-weight:700;color:var(--text-primary);margin-bottom:4px;">' + data.name + '</div>'
+        +     '<div style="font-size:15px;font-weight:700;color:var(--text-primary);margin-bottom:4px;display:flex;align-items:center;justify-content:center;gap:8px;">' + data.name + '<button id="pet-rename" style="background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:12px;padding:2px 4px;opacity:0.6;"><i class="fas fa-pen"></i></button></div>'
         +     '<div style="font-size:11px;color:var(--text-secondary);letter-spacing:1px;margin-bottom:10px;">' + stage.name + ' · 成长值 ' + data.growth + '</div>'
         +     '<div style="font-size:12px;color:var(--text-secondary);opacity:0.8;line-height:1.7;padding:0 10px;">' + stage.desc + '</div>'
         +   '</div>'
@@ -156,6 +156,18 @@ window.openPetPanel = function () {
 
     const close = () => modal.remove();
     modal.querySelector('#pet-close').onclick = close;
+    
+modal.querySelector('#pet-rename').onclick = function () {
+    const newName = prompt('给它起个新名字：', data.name);
+    if (!newName || !newName.trim()) return;
+    data.name = newName.trim().slice(0, 12);
+    save();
+    modal.remove();
+    setTimeout(window.openPetPanel, 100);
+    if (typeof showNotification === 'function') {
+        showNotification('✓ 已改名为「' + data.name + '」', 'success', 1500);
+    }
+};
     modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
 
     // 绑定操作按钮
