@@ -194,7 +194,6 @@ window.openPetPanel = function () {
         +     buildActionBtn('pet-feed',  '🍖', '喂食')
         +     buildActionBtn('pet-clean', '🛁', '洗澡')
         +     buildActionBtn('pet-play',  '🎾', '陪玩')
-        +     buildActionBtn('pet-test-grow', '🌱', '测试成长+50')
         +   '</div>'
 
         // 底部提示
@@ -210,18 +209,6 @@ window.openPetPanel = function () {
     modal.querySelector('#pet-close').onclick = close;
     
     
-modal.querySelector('#pet-test-grow').onclick = () => {
-    const oldIdx = getStageIndex();
-    data.growth += 50;
-    const newIdx = getStageIndex();
-    save();
-    modal.remove();
-    if (newIdx > oldIdx) {
-        setTimeout(() => showStageUp(STAGES[newIdx]), 150);
-    } else {
-        setTimeout(window.openPetPanel, 150);
-    }
-};
 modal.querySelector('#pet-rename').onclick = function () {
     const newName = prompt('给它起个新名字：', data.name);
     if (!newName || !newName.trim()) return;
