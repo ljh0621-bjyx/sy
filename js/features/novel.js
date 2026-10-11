@@ -136,7 +136,7 @@ try {
     };
 
     // ---------- 聊天 ----------
-    window.sendNovelChat = async function (type, content) {
+    window.sendNovelChat = async function (type, content, voiceUrl, duration) {
     // ★ 我发语音
     if (type === 'voice') {
         const dur = Math.max(2, Math.ceil(String(content || '').length / 4));
@@ -289,6 +289,17 @@ function generatePartnerReply() {
                 else if (msg.type === 'sticker') inner = '<img src="' + msg.content + '" style="max-width:90px;max-height:90px;border-radius:8px;display:block;">';
                 else if (msg.type === 'image') inner = '<img src="' + msg.content + '" style="max-width:140px;max-height:140px;border-radius:8px;display:block;">';
                 else if (msg.type === 'voice') {
+    var dur = msg.duration || Math.max(2, Math.ceil(String(msg.content || '').length / 4));
+    inner = '<div class="panel-voice-bubble" data-url="' + (msg.voiceUrl || '') + '" data-duration="' + dur + '" onclick="playPanelVoice(this)" '
+        + 'style="display:flex;align-items:center;gap:8px;cursor:pointer;min-width:90px;padding:2px 0;">'
+        + '<i class="fas fa-volume-up" style="font-size:14px;opacity:0.9;"></i>'
+        + '<div style="flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,0.3);min-width:30px;position:relative;overflow:hidden;">'
+        +   '<div class="voice-bar" style="position:absolute;left:0;top:0;bottom:0;width:0%;background:rgba(255,255,255,0.9);transition:width 0.15s linear;"></div>'
+        + '</div>'
+        + '<span style="font-size:11px;opacity:0.85;">' + dur + '"</span>'
+        + '</div>';
+}
+                else if (msg.type === 'voice') {
     const dur = msg.duration || Math.max(2, Math.ceil(String(msg.content || '').length / 4));
     inner = '<div class="panel-voice-bubble" data-url="' + (msg.voiceUrl || '') + '" data-duration="' + dur + '" onclick="playPanelVoice(this)" '
         + 'style="display:flex;align-items:center;gap:8px;cursor:pointer;min-width:90px;padding:2px 0;">'
@@ -333,9 +344,9 @@ function generatePartnerReply() {
             + '<div id="novel-chat-scroll" style="flex:1;overflow-y:auto;padding:14px 20px;">' + chatHTML + '</div>'
             + '<div style="display:flex;gap:6px;padding:10px 14px;border-top:1px solid var(--border-color);background:var(--primary-bg);flex-shrink:0;">'
             + '<button id="nv-emoji" style="width:36px;height:36px;border-radius:50%;border:none;background:var(--secondary-bg);color:var(--text-secondary);cursor:pointer;flex-shrink:0;"><i class="fas fa-smile"></i></button>'
-            + '<button id="nv-voice" style="width:36px;height:36px;border-radius:50%;border:none;background:var(--secondary-bg);color:var(--text-secondary);cursor:pointer;flex-shrink:0;"><i class="fas fa-microphone"></i></button>'
             + '<button id="nv-sticker" style="width:36px;height:36px;border-radius:50%;border:none;background:var(--secondary-bg);color:var(--text-secondary);cursor:pointer;flex-shrink:0;"><i class="fas fa-image"></i></button>'
             + '<button id="nv-image" style="width:36px;height:36px;border-radius:50%;border:none;background:var(--secondary-bg);color:var(--text-secondary);cursor:pointer;flex-shrink:0;"><i class="fas fa-camera"></i></button>'
+            + '<button id="nv-voice" style="width:36px;height:36px;border-radius:50%;border:none;background:var(--secondary-bg);color:var(--text-secondary);cursor:pointer;flex-shrink:0;"><i class="fas fa-microphone"></i></button>'
             + '<input id="nv-input" type="text" placeholder="边看边聊…" style="flex:1;min-width:0;padding:8px 14px;border:1px solid var(--border-color);border-radius:20px;background:var(--secondary-bg);color:var(--text-primary);font-size:13px;outline:none;font-family:var(--font-family);">'
             + '<button id="nv-send" style="padding:8px 14px;border:none;border-radius:20px;background:var(--accent-color);color:#fff;font-size:13px;cursor:pointer;flex-shrink:0;">发送</button>'
             + '</div></div>'
