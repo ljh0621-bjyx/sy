@@ -212,11 +212,28 @@ function saveBackgroundGallery() { localforage.setItem(getStorageKey('background
 const applyBackground = (value) => {
     if (!value || typeof value !== 'string') return;
     try {
+        // 清掉旧的 CSS 变量（避免 var() 那层残留）
+        document.documentElement.style.removeProperty('--chat-bg-image');
+
+        // 找/建独立背景层
+        let layer = document.getElementById('__chat_bg_layer__');
+        if (!layer) {
+            layer = document.createElement('div');
+            layer.id = '__chat_bg_layer__';
+            layer.style.cssText = 'position:fixed;inset:0;z-index:-2;pointer-events:none;background-size:cover;background-position:center center;background-repeat:no-repeat;transition:opacity 0.4s ease;';
+            document.body.appendChild(layer);
+        }
+
         if (value.startsWith('linear-gradient') || value.startsWith('#') || value.startsWith('rgb')) {
-            document.documentElement.style.setProperty('--chat-bg-image', value);
+            layer.style.backgroundImage = 'none';
+            layer.style.background = value;
         } else {
-            const cssValue = value.startsWith('url(') ? value : `url(${value})`;
-            document.documentElement.style.setProperty('--chat-bg-image', cssValue);
+            const cssValue = value.startsWith('url(') ? value : `url("${value}")`;
+            layer.style.background = '';
+            layer.style.backgroundImage = cssValue;
+            layer.style.backgroundSize = 'cover';
+            layer.style.backgroundPosition = 'center center';
+            layer.style.backgroundRepeat = 'no-repeat';
         }
         document.body.classList.add('with-background');
     } catch (e) {
@@ -701,6 +718,8 @@ const updateAvatar = (element, src) => {
 
 const removeBackground = () => {
     document.documentElement.style.removeProperty('--chat-bg-image');
+    const layer = document.getElementById('__chat_bg_layer__');
+    if (layer) layer.remove();
     document.body.classList.remove('with-background');
     localforage.removeItem(getStorageKey('chatBackground'));
     safeRemoveItem(getStorageKey('chatBackground'));
