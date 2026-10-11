@@ -11482,8 +11482,15 @@ html[data-ambient="minimal"] body::before {
     display: flex;
 }
 /* ============================================================
+ * /* ============================================================
  * 聊天背景图效果（模糊 / 暗化 / 淡化）
  * ============================================================ */
+body::before {
+    filter: blur(var(--bg-blur, 0px)) opacity(var(--bg-fade, 1));
+    -webkit-filter: blur(var(--bg-blur, 0px)) opacity(var(--bg-fade, 1));
+    transition: filter 0.2s ease, -webkit-filter 0.2s ease;
+}
+
 body::after {
     content: "";
     position: fixed;
@@ -11491,7 +11498,5 @@ body::after {
     z-index: -1;
     pointer-events: none;
     background: rgba(0, 0, 0, var(--bg-darken, 0));
-    backdrop-filter: blur(var(--bg-blur, 0px));
-    -webkit-backdrop-filter: blur(var(--bg-blur, 0px));
-    transition: background 0.3s ease, backdrop-filter 0.3s ease;
+    transition: background 0.2s ease;
 }
