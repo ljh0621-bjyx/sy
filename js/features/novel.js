@@ -451,19 +451,25 @@ function generatePartnerReply() {
             const emojis = ['📖','📚','✨','💕','🥺','😊','😍','🤔','📕','📗','📘','💭'];
             openNovelQuickPicker('选择表情', emojis.map(e => ({ type: 'emoji', content: e })));
         };
-        document.getElementById('nv-sticker').onclick = () => {
-        const nvVoiceBtn = document.getElementById('nv-voice');
-if (nvVoiceBtn) nvVoiceBtn.onclick = () => {
-    const pool = (typeof customReplies !== 'undefined' && Array.isArray(customReplies))
-        ? customReplies.filter(t => t && String(t).trim()) : [];
-    if (pool.length === 0) { showNotification('字卡库为空', 'warning'); return; }
-    const text = pool[Math.floor(Math.random() * pool.length)];
-    window.sendNovelChat('voice', text);
-};
+        document.getElementById('nv-sticker').onclick = () => 
             const stickers = (typeof stickerLibrary !== 'undefined' && stickerLibrary.length > 0) ? stickerLibrary : [];
             if (stickers.length === 0) { showNotification('对方表情库为空', 'warning'); return; }
             openNovelQuickPicker('选择表情包', stickers.map(s => ({ type: 'sticker', content: s })));
         };
+        
+        // ★ 麦克风按钮 → 真录音
+const nvVoiceBtn = document.getElementById('nv-voice');
+if (nvVoiceBtn) nvVoiceBtn.onclick = () => {
+    if (!window.PanelVoiceRecorder || !window.PanelVoiceRecorder.isSupported()) {
+        if (typeof showNotification === 'function') showNotification('当前浏览器不支持录音', 'warning');
+        return;
+    }
+    window.PanelVoiceRecorder.record((audioUrl, duration) => {
+        if (!audioUrl) return;
+        window.sendNovelChat('voice', '', audioUrl, duration);
+    });
+};
+
         document.getElementById('nv-image').onclick = () => {
             const input = document.createElement('input');
             input.type = 'file';
