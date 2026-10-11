@@ -89,29 +89,26 @@
     }
 
     function installMsgHook() {
-        if (typeof window.addMessage !== 'function') {
-            setTimeout(installMsgHook, 500);
-            return;
-        }
-        if (window._intimacyMsgHook) return;
-        window._intimacyMsgHook = true;
+    // 改用轮询：每隔 1.5 秒检查 messages 数组有没有新增
+    let _lastCount = 0;
+    let _ready = false;
 
-        const orig = window.addMessage;
-        window.addMessage = function (msg) {
-            const result = orig.apply(this, arguments);
-            try {
-                if (msg && msg.type !== 'system' && msg.type !== 'call-event') {
-                    const now = Date.now();
-                    // 限流：500ms 内最多 +1，防止刷
-                    if (now - data.lastMsgTs > 500) {
-                        data.lastMsgTs = now;
-                        addPoints(1);
-                    }
-                }
-            } catch (e) {}
-            return result;
-        };
-    }
+    setInterval(function () {
+        try {
+            if (typeof messages === 'undefined' || !Array.isArray(messages)) return;
+            if (!_ready) {
+                _lastCount = messages.length;
+                _ready = true;
+                return;
+            }
+            if (messages.length > _lastCount) {
+                const diff = messages.length - _lastCount;
+                _lastCount = messages.length;
+                addPoints(diff);
+            }
+        } catch (e) {}
+    }, 1500);
+}
 
     // ========== 面板 ==========
     window.openIntimacyPanel = function () {
