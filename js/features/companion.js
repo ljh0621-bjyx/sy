@@ -245,6 +245,9 @@
             + '@keyframes cpGlowEnd { 0%{ opacity:0; transform:scale(0.6); } 60%{ opacity:1; transform:scale(1.2); } 100%{ opacity:0; transform:scale(2); } }'
             + '@keyframes cpChatIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }'
             + '.cp-particle { position:absolute; border-radius:50%; background:rgba(255,255,255,0.6); filter:blur(8px); pointer-events:none; }'
+            + '.cp-avatar-box { width:56px;height:56px;border-radius:50%;overflow:hidden;border:2.5px solid rgba(255,255,255,0.5);box-shadow:0 4px 16px rgba(0,0,0,0.15);background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;animation:cpBreath 4s ease-in-out infinite;flex-shrink:0; }'
++ '.cp-avatar-box img { width:100% !important; height:100% !important; object-fit:cover !important; border-radius:50% !important; display:block !important; }'
++ '.cp-avatar-box i { font-size:24px; color:rgba(255,255,255,0.85); }'
             + '</style>'
             + '<div id="cp-particles" style="position:absolute;inset:0;overflow:hidden;"></div>'
 
@@ -255,7 +258,7 @@
             // 双方头像
             +   '<div style="display:flex;align-items:center;justify-content:center;gap:20px;margin-bottom:18px;">'
             +     '<div style="display:flex;flex-direction:column;align-items:center;gap:6px;">'
-            +       '<div style="width:56px;height:56px;border-radius:50%;overflow:hidden;border:2.5px solid rgba(255,255,255,0.5);box-shadow:0 4px 16px rgba(0,0,0,0.15);animation:cpBreath 4s ease-in-out infinite;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;">'
+            + '<div class="cp-avatar-box">'
             +         getAvatarHTML('me')
             +       '</div>'
             +       '<span style="font-size:10px;opacity:0.7;color:' + act.color + ';font-weight:600;">我</span>'
@@ -268,7 +271,7 @@
             +     '</div>'
 
             +     '<div style="display:flex;flex-direction:column;align-items:center;gap:6px;">'
-            +       '<div style="width:56px;height:56px;border-radius:50%;overflow:hidden;border:2.5px solid rgba(255,255,255,0.5);box-shadow:0 4px 16px rgba(0,0,0,0.15);animation:cpBreath 4s ease-in-out infinite 0.5s;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;">'
+            + '<div class="cp-avatar-box" style="animation-delay:0.5s;">'
             +         getAvatarHTML('partner')
             +       '</div>'
             +       '<span style="font-size:10px;opacity:0.7;color:' + act.color + ';font-weight:600;" id="cp-partner-name">' + (typeof settings !== 'undefined' && settings.partnerName ? settings.partnerName : '对方') + '</span>'
