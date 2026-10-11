@@ -184,7 +184,6 @@ function renderBackgroundGallery() {
         item.onclick = (e) => {
             if (e.target.closest('.bg-delete-btn')) return;
             applyBackground(bg.value);
-            safeSetItem(getStorageKey('chatBackground'), bg.value);
             localforage.setItem(getStorageKey('chatBackground'), bg.value);
             renderBackgroundGallery();
             showNotification('背景已切换', 'success');
@@ -221,7 +220,7 @@ const applyBackground = (value) => {
         }
         document.body.classList.add('with-background');
     } catch (e) {
-        if (typeof removeBackground === 'function') removeBackground();
+        console.warn('[applyBackground] 失败，保留已有背景', e);
     }
 };
 
