@@ -74,7 +74,7 @@
         if (pool.length === 0) return;
 
         // 1~5 个随机
-        const count = 1 + Math.floor(Math.random() * 5);
+        const count = 1;
         for (let i = 0; i < count; i++) {
             setTimeout(function () {
                 if (!isCallActive()) return;
@@ -89,7 +89,7 @@
 
     function scheduleNextBurst() {
         if (emojiTimer) { clearTimeout(emojiTimer); emojiTimer = null; }
-        const delay = 2500 + Math.random() * 4500; // 2.5~7 秒
+        const delay = 4000 + Math.random() * 6000; // 2.5~7 秒
         emojiTimer = setTimeout(function () {
             if (!isCallActive()) return;
             burstEmoji();
