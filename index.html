@@ -275,6 +275,7 @@ window.addEventListener('unhandledrejection', function(e) {
         </div>
 
         <div class="chat-container" id="chat-container">
+        <button onclick="alert('测试OK'); if(window.openMemoryCard){window.openMemoryCard()}else{alert('函数未定义')}" style="position:fixed;top:100px;left:20px;z-index:99999;padding:10px 20px;background:red;color:#fff;font-size:14px;">测试</button>
     </div>
     <div class="empty-state" id="empty-state" style="display:none;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px;width:100%;pointer-events:none;z-index:1;">
             <div style="position:relative;margin-bottom:20px;">
