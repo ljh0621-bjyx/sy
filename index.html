@@ -2547,5 +2547,56 @@ window.addEventListener('unhandledrejection', function(e) {
     setTimeout(syncUI, 2000);
 })();
 </script>
+<script>
+(function () {
+    var AMBIENT_KEY = 'chatApp_ambientMood';
+    var VALID = ['default', 'deep-space', 'sunset', 'minimal'];
+
+    function applyAmbient(value) {
+        if (VALID.indexOf(value) === -1) value = 'default';
+        if (value === 'default') {
+            document.documentElement.removeAttribute('data-ambient');
+        } else {
+            document.documentElement.setAttribute('data-ambient', value);
+        }
+        document.querySelectorAll('.ambient-option').forEach(function (el) {
+            el.classList.toggle('active', el.dataset.ambient === value);
+        });
+    }
+
+    window._setAmbient = function (value) {
+        try { localStorage.setItem(AMBIENT_KEY, value); } catch (e) {}
+        applyAmbient(value);
+        if (typeof showNotification === 'function') {
+            var names = { 'default': '默认', 'deep-space': '深空', 'sunset': '黄昏', 'minimal': '极简' };
+            showNotification('氛围已切换为「' + (names[value] || value) + '」', 'success', 1500);
+        }
+    };
+
+    function boot() {
+        var saved = 'default';
+        try { saved = localStorage.getItem(AMBIENT_KEY) || 'default'; } catch (e) {}
+        applyAmbient(saved);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', boot);
+    } else {
+        boot();
+    }
+
+    document.addEventListener('click', function (e) {
+        if (e.target.closest('#appearance-settings')) {
+            setTimeout(function () {
+                var saved = 'default';
+                try { saved = localStorage.getItem(AMBIENT_KEY) || 'default'; } catch (err) {}
+                document.querySelectorAll('.ambient-option').forEach(function (el) {
+                    el.classList.toggle('active', el.dataset.ambient === saved);
+                });
+            }, 200);
+        }
+    });
+})();
+</script>
 </body>
 </html>
