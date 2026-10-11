@@ -1,6 +1,6 @@
 /**
  * novel.js
- * 一起看小说
+ * 一起看小说（支持文字 / 表情 / 表情包 / 图片 / 语音）
  */
 
 (function () {
@@ -9,7 +9,7 @@
     const KEY = getStorageKey('novelData_v1');
 
     let data = {
-        novels: [],       // [{ id, name, chapters: [{title, content}] }]
+        novels: [],
         currentNovelId: null,
         currentChapter: 0,
         chatHistory: []
@@ -41,37 +41,39 @@
         return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
+    // ---------- 拿"发语音概率" ----------
+    function getVoiceChance() {
+        if (typeof window.getAIReplyChance === 'function') {
+            return window.getAIReplyChance('voiceChance', 30);
+        }
+        return 30;
+    }
+
     // ---------- 批量导入小说 ----------
     window.batchImportNovels = async function (files) {
         if (!files || files.length === 0) return;
         let totalAdded = 0;
         for (const file of files) {
             try {
-               const buffer = await file.arrayBuffer();
-let text = '';
-try {
-    // 1. 优先尝试 UTF-8 严格模式
-    text = new TextDecoder('utf-8', { fatal: true }).decode(buffer);
-} catch (e) {
-    // 2. 失败则尝试 GBK 编码（解决 Windows 默认 txt 乱码）
-    try {
-        text = new TextDecoder('gbk').decode(buffer);
-    } catch (e2) {
-        // 3. 兜底：非严格 UTF-8
-        text = new TextDecoder('utf-8').decode(buffer);
-    }
-}
+                const buffer = await file.arrayBuffer();
+                let text = '';
+                try {
+                    text = new TextDecoder('utf-8', { fatal: true }).decode(buffer);
+                } catch (e) {
+                    try {
+                        text = new TextDecoder('gbk').decode(buffer);
+                    } catch (e2) {
+                        text = new TextDecoder('utf-8').decode(buffer);
+                    }
+                }
                 const name = file.name.replace(/\.[^.]+$/, '');
 
-                // 用 "第X章" 分割章节
                 const parts = text.split(/(第[一二三四五六七八九十百千万零\d]+[章节回])/);
                 const chapters = [];
 
-                // 若没有"第X章"格式，就整篇作为一章
                 if (parts.length <= 1) {
                     chapters.push({ title: '全文', content: text.trim() });
                 } else {
-                    // parts[0] 是第一个标题前的内容（可能是序章）
                     if (parts[0].trim()) {
                         chapters.push({ title: '序章', content: parts[0].trim() });
                     }
@@ -137,105 +139,110 @@ try {
 
     // ---------- 聊天 ----------
     window.sendNovelChat = async function (type, content, voiceUrl, duration) {
-    // ★ 我发语音
-    if (type === 'voice') {
-        const dur = Math.max(2, Math.ceil(String(content || '').length / 4));
-        data.chatHistory.push({
-            sender: 'me', type: 'voice', content: content,
-            duration: dur, voiceUrl: null, time: Date.now()
-        });
-        if (data.chatHistory.length > 200) data.chatHistory = data.chatHistory.slice(-200);
-        await save();
-        renderPanel();
-        scrollChatToBottom();
-        (async () => {
-            try {
-                if (typeof window.playPartnerVoice === 'function') {
-                    const speaker = (typeof settings !== 'undefined' && settings.myName) || '我';
-                    const url = await window.playPartnerVoice(content, speaker);
-                    if (url) {
-                        for (let i = data.chatHistory.length - 1; i >= 0; i--) {
-                            const h = data.chatHistory[i];
-                            if (h.sender === 'me' && h.type === 'voice' && !h.voiceUrl && h.content === content) {
-                                h.voiceUrl = url; break;
+        if (type === 'voice') {
+            if (voiceUrl) {
+                // A：我录音发的
+                const dur = duration || Math.max(2, Math.ceil(String(content || '').length / 4));
+                data.chatHistory.push({
+                    sender: 'me', type: 'voice', content: content || '',
+                    duration: dur, voiceUrl: voiceUrl, time: Date.now()
+                });
+                if (data.chatHistory.length > 200) data.chatHistory = data.chatHistory.slice(-200);
+                await save();
+                renderPanel();
+                scrollChatToBottom();
+            } else {
+                // B：兜底从字卡合成
+                const dur = Math.max(2, Math.ceil(String(content || '').length / 4));
+                data.chatHistory.push({
+                    sender: 'me', type: 'voice', content: content,
+                    duration: dur, voiceUrl: null, time: Date.now()
+                });
+                if (data.chatHistory.length > 200) data.chatHistory = data.chatHistory.slice(-200);
+                await save();
+                renderPanel();
+                scrollChatToBottom();
+                (async () => {
+                    try {
+                        if (typeof window.playPartnerVoice === 'function') {
+                            const speaker = (typeof settings !== 'undefined' && settings.myName) || '我';
+                            const url = await window.playPartnerVoice(content, speaker);
+                            if (url) {
+                                for (let i = data.chatHistory.length - 1; i >= 0; i--) {
+                                    const h = data.chatHistory[i];
+                                    if (h.sender === 'me' && h.type === 'voice' && !h.voiceUrl && h.content === content) {
+                                        h.voiceUrl = url; break;
+                                    }
+                                }
+                                await save(); renderPanel();
                             }
                         }
-                        await save(); renderPanel();
-                    }
-                }
-            } catch (e) { console.warn('[novel] my voice fail', e); }
-        })();
-    } else {
-        data.chatHistory.push({ sender: 'me', type, content, time: Date.now() });
-        if (data.chatHistory.length > 200) data.chatHistory = data.chatHistory.slice(-200);
-        await save();
-        renderPanel();
-        scrollChatToBottom();
-    }
-
-    setTimeout(async () => {
-        const reply = generatePartnerReply();
-        if (reply.type === 'text' && typeof window.simulatePartnerTypingProcess === 'function') {
-            try { await window.simulatePartnerTypingProcess(reply.content); } catch (e) {}
-        }
-        if (reply.type === 'voice') {
-            const dur = Math.max(2, Math.ceil(String(reply.content || '').length / 4));
-            let voiceUrl = null;
-            try {
-                if (typeof window.playPartnerVoice === 'function') {
-                    const speaker = (typeof settings !== 'undefined' && settings.partnerName) || '对方';
-                    voiceUrl = await window.playPartnerVoice(reply.content, speaker);
-                }
-            } catch (e) { console.warn('[novel] partner voice fail', e); }
-            data.chatHistory.push({
-                sender: 'partner', type: 'voice', content: reply.content,
-                duration: dur, voiceUrl: voiceUrl, time: Date.now()
-            });
+                    } catch (e) { console.warn('[novel] my voice fail', e); }
+                })();
+            }
         } else {
-            data.chatHistory.push({ sender: 'partner', type: reply.type, content: reply.content, time: Date.now() });
+            data.chatHistory.push({ sender: 'me', type: type, content: content, time: Date.now() });
+            if (data.chatHistory.length > 200) data.chatHistory = data.chatHistory.slice(-200);
+            await save();
+            renderPanel();
+            scrollChatToBottom();
         }
-        if (data.chatHistory.length > 200) data.chatHistory = data.chatHistory.slice(-200);
-        await save();
-        renderPanel();
-        scrollChatToBottom();
-    }, 1500 + Math.random() * 2000);
-};
-   function getVoiceChanceForNovel() {
-    if (typeof window.getAIReplyChance === 'function') return window.getAIReplyChance('voiceChance', 30);
-    return 30;
-}
-function generatePartnerReply() {
-    const rand = Math.random();
-    const pool = (typeof customReplies !== 'undefined' && Array.isArray(customReplies))
-        ? customReplies.filter(t => t && String(t).trim())
-        : [];
 
-    // ★ 按聊天设置里的"发语音"滑块决定是否发语音
-    if (pool.length > 0 && typeof window.playPartnerVoice === 'function' && Math.random() * 100 < getVoiceChanceForNovel()) {
-        return { type: 'voice', content: pool[Math.floor(Math.random() * pool.length)] };
+        setTimeout(async () => {
+            const reply = generatePartnerReply();
+            if (reply.type === 'text' && typeof window.simulatePartnerTypingProcess === 'function') {
+                try { await window.simulatePartnerTypingProcess(reply.content); } catch (e) {}
+            }
+            if (reply.type === 'voice') {
+                const dur = Math.max(2, Math.ceil(String(reply.content || '').length / 4));
+                let voiceUrl = null;
+                try {
+                    if (typeof window.playPartnerVoice === 'function') {
+                        const speaker = (typeof settings !== 'undefined' && settings.partnerName) || '对方';
+                        voiceUrl = await window.playPartnerVoice(reply.content, speaker);
+                    }
+                } catch (e) { console.warn('[novel] partner voice fail', e); }
+                data.chatHistory.push({
+                    sender: 'partner', type: 'voice', content: reply.content,
+                    duration: dur, voiceUrl: voiceUrl, time: Date.now()
+                });
+            } else {
+                data.chatHistory.push({ sender: 'partner', type: reply.type, content: reply.content, time: Date.now() });
+            }
+            if (data.chatHistory.length > 200) data.chatHistory = data.chatHistory.slice(-200);
+            await save();
+            renderPanel();
+            scrollChatToBottom();
+        }, 1500 + Math.random() * 2000);
+    };
+
+    function generatePartnerReply() {
+        const rand = Math.random();
+        const pool = (typeof customReplies !== 'undefined' && Array.isArray(customReplies))
+            ? customReplies.filter(t => t && String(t).trim())
+            : [];
+
+        // ★ 按"发语音"滑块概率决定是否发语音
+        if (pool.length > 0 && typeof window.playPartnerVoice === 'function' && Math.random() * 100 < getVoiceChance()) {
+            return { type: 'voice', content: pool[Math.floor(Math.random() * pool.length)] };
+        }
+        if (rand < 0.6 && pool.length > 0) {
+            return { type: 'text', content: pool[Math.floor(Math.random() * pool.length)] };
+        }
+        if (rand < 0.8) {
+            const emojis = ['📖','📚','✨','💕','🥺','😊','😍','🤔','📕','📗'];
+            return { type: 'emoji', content: emojis[Math.floor(Math.random() * emojis.length)] };
+        }
+        if (rand < 0.95 && typeof stickerLibrary !== 'undefined' && stickerLibrary.length > 0) {
+            return { type: 'sticker', content: stickerLibrary[Math.floor(Math.random() * stickerLibrary.length)] };
+        }
+        if (typeof window.getRandomPartnerImage === 'function') {
+            const img = window.getRandomPartnerImage();
+            if (img) return { type: 'image', content: img.url };
+        }
+        if (pool.length > 0) return { type: 'text', content: pool[Math.floor(Math.random() * pool.length)] };
+        return { type: 'text', content: '...' };
     }
-    // 60% 字卡库文字
-    if (rand < 0.6 && pool.length > 0) {
-        return { type: 'text', content: pool[Math.floor(Math.random() * pool.length)] };
-    }
-    // 20% emoji
-    if (rand < 0.8) {
-        const emojis = ['📖','📚','✨','💕','🥺','😊','😍','🤔','📕','📗'];
-        return { type: 'emoji', content: emojis[Math.floor(Math.random() * emojis.length)] };
-    }
-    // 15% 对方表情包
-    if (rand < 0.95 && typeof stickerLibrary !== 'undefined' && stickerLibrary.length > 0) {
-        return { type: 'sticker', content: stickerLibrary[Math.floor(Math.random() * stickerLibrary.length)] };
-    }
-    // 5% 对方图片库
-    if (typeof window.getRandomPartnerImage === 'function') {
-        const img = window.getRandomPartnerImage();
-        if (img) return { type: 'image', content: img.url };
-    }
-    // 兜底
-    if (pool.length > 0) return { type: 'text', content: pool[Math.floor(Math.random() * pool.length)] };
-    return { type: 'text', content: '...' };
-}
 
     function scrollChatToBottom() {
         const el = document.getElementById('novel-chat-scroll');
@@ -250,7 +257,6 @@ function generatePartnerReply() {
         const current = data.novels.find(n => n.id === data.currentNovelId);
         const chapter = current ? current.chapters[data.currentChapter] : null;
 
-        // 小说列表
         const listHTML = data.novels.length === 0
             ? '<div style="text-align:center;padding:24px;color:var(--text-secondary);font-size:12px;">暂无小说，点击上方按钮添加</div>'
             : data.novels.map(n => {
@@ -266,7 +272,6 @@ function generatePartnerReply() {
                     + '</div>';
             }).join('');
 
-        // 章节列表（折叠时用）
         let chapterListHTML = '';
         if (current) {
             chapterListHTML = current.chapters.map((ch, i) => {
@@ -278,38 +283,30 @@ function generatePartnerReply() {
             }).join('');
         }
 
-        // 聊天
         const chatHTML = data.chatHistory.length === 0
             ? '<div style="text-align:center;padding:16px;color:var(--text-secondary);font-size:11px;">还没有对话</div>'
             : data.chatHistory.map(msg => {
                 const isMe = msg.sender === 'me';
                 let inner = '';
-                if (msg.type === 'text') inner = '<span style="font-size:12px;">' + escapeHtml(msg.content) + '</span>';
-                else if (msg.type === 'emoji') inner = '<span style="font-size:20px;">' + msg.content + '</span>';
-                else if (msg.type === 'sticker') inner = '<img src="' + msg.content + '" style="max-width:90px;max-height:90px;border-radius:8px;display:block;">';
-                else if (msg.type === 'image') inner = '<img src="' + msg.content + '" style="max-width:140px;max-height:140px;border-radius:8px;display:block;">';
-                else if (msg.type === 'voice') {
-    var dur = msg.duration || Math.max(2, Math.ceil(String(msg.content || '').length / 4));
-    inner = '<div class="panel-voice-bubble" data-url="' + (msg.voiceUrl || '') + '" data-duration="' + dur + '" onclick="playPanelVoice(this)" '
-        + 'style="display:flex;align-items:center;gap:8px;cursor:pointer;min-width:90px;padding:2px 0;">'
-        + '<i class="fas fa-volume-up" style="font-size:14px;opacity:0.9;"></i>'
-        + '<div style="flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,0.3);min-width:30px;position:relative;overflow:hidden;">'
-        +   '<div class="voice-bar" style="position:absolute;left:0;top:0;bottom:0;width:0%;background:rgba(255,255,255,0.9);transition:width 0.15s linear;"></div>'
-        + '</div>'
-        + '<span style="font-size:11px;opacity:0.85;">' + dur + '"</span>'
-        + '</div>';
-}
-                else if (msg.type === 'voice') {
-    const dur = msg.duration || Math.max(2, Math.ceil(String(msg.content || '').length / 4));
-    inner = '<div class="panel-voice-bubble" data-url="' + (msg.voiceUrl || '') + '" data-duration="' + dur + '" onclick="playPanelVoice(this)" '
-        + 'style="display:flex;align-items:center;gap:8px;cursor:pointer;min-width:90px;padding:2px 0;">'
-        + '<i class="fas fa-volume-up" style="font-size:14px;opacity:0.9;"></i>'
-        + '<div style="flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,0.3);min-width:30px;position:relative;overflow:hidden;">'
-        +   '<div class="voice-bar" style="position:absolute;left:0;top:0;bottom:0;width:0%;background:rgba(255,255,255,0.9);transition:width 0.15s linear;"></div>'
-        + '</div>'
-        + '<span style="font-size:11px;opacity:0.85;">' + dur + '"</span>'
-        + '</div>';
-}
+                if (msg.type === 'text') {
+                    inner = '<span style="font-size:12px;">' + escapeHtml(msg.content) + '</span>';
+                } else if (msg.type === 'emoji') {
+                    inner = '<span style="font-size:20px;">' + msg.content + '</span>';
+                } else if (msg.type === 'sticker') {
+                    inner = '<img src="' + msg.content + '" style="max-width:90px;max-height:90px;border-radius:8px;display:block;">';
+                } else if (msg.type === 'image') {
+                    inner = '<img src="' + msg.content + '" style="max-width:140px;max-height:140px;border-radius:8px;display:block;">';
+                } else if (msg.type === 'voice') {
+                    const dur = msg.duration || Math.max(2, Math.ceil(String(msg.content || '').length / 4));
+                    inner = '<div class="panel-voice-bubble" data-url="' + (msg.voiceUrl || '') + '" data-duration="' + dur + '" onclick="playPanelVoice(this)" '
+                        + 'style="display:flex;align-items:center;gap:8px;cursor:pointer;min-width:90px;padding:2px 0;">'
+                        + '<i class="fas fa-volume-up" style="font-size:14px;opacity:0.9;"></i>'
+                        + '<div style="flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,0.3);min-width:30px;position:relative;overflow:hidden;">'
+                        +   '<div class="voice-bar" style="position:absolute;left:0;top:0;bottom:0;width:0%;background:rgba(255,255,255,0.9);transition:width 0.15s linear;"></div>'
+                        + '</div>'
+                        + '<span style="font-size:11px;opacity:0.85;">' + dur + '"</span>'
+                        + '</div>';
+                }
                 return '<div style="display:flex;' + (isMe ? 'justify-content:flex-end;' : '') + ';margin-bottom:6px;">'
                     + '<div style="background:' + (isMe ? 'var(--accent-color)' : 'var(--secondary-bg)') + ';color:' + (isMe ? '#fff' : 'var(--text-primary)') + ';padding:6px 10px;border-radius:12px;max-width:72%;word-break:break-word;">'
                     + inner + '</div></div>';
@@ -326,7 +323,6 @@ function generatePartnerReply() {
 
             + '<div style="flex:1;display:flex;flex-direction:column;overflow:hidden;">'
 
-            // 当前章节
             + '<div style="padding:14px 20px;border-bottom:1px solid var(--border-color);flex-shrink:0;">'
             + (current && chapter
                 ? '<div style="font-size:13px;font-weight:700;color:var(--text-primary);margin-bottom:6px;">' + escapeHtml(chapter.title) + '</div>'
@@ -339,7 +335,6 @@ function generatePartnerReply() {
                 : '<div style="padding:20px;text-align:center;color:var(--text-secondary);font-size:12px;background:var(--primary-bg);border-radius:12px;">请从下方列表选择小说</div>')
             + '</div>'
 
-            // 聊天
             + '<div style="flex:1;display:flex;flex-direction:column;overflow:hidden;">'
             + '<div id="novel-chat-scroll" style="flex:1;overflow-y:auto;padding:14px 20px;">' + chatHTML + '</div>'
             + '<div style="display:flex;gap:6px;padding:10px 14px;border-top:1px solid var(--border-color);background:var(--primary-bg);flex-shrink:0;">'
@@ -351,7 +346,6 @@ function generatePartnerReply() {
             + '<button id="nv-send" style="padding:8px 14px;border:none;border-radius:20px;background:var(--accent-color);color:#fff;font-size:13px;cursor:pointer;flex-shrink:0;">发送</button>'
             + '</div></div>'
 
-            // 底部：小说列表 + 章节列表（两个标签）
             + '<div style="border-top:1px solid var(--border-color);background:var(--primary-bg);flex-shrink:0;">'
             + '<div id="nv-list-toggle" style="display:flex;align-items:center;justify-content:space-between;padding:10px 20px;cursor:pointer;">'
             + '<span style="font-size:12px;font-weight:600;color:var(--text-secondary);"><i class="fas fa-list" style="margin-right:6px;"></i>' + (current ? '章节列表 (' + current.chapters.length + ')' : '小说列表 (' + data.novels.length + ')') + '</span>'
@@ -406,7 +400,6 @@ function generatePartnerReply() {
             renderPanel();
         };
 
-        // 小说列表点击
         card.querySelectorAll('[data-nv-id]').forEach(el => {
             el.onclick = (e) => {
                 if (e.target.closest('[data-del-nv]')) return;
@@ -420,20 +413,18 @@ function generatePartnerReply() {
             };
         });
 
-        // 章节点击
         card.querySelectorAll('[data-ch-idx]').forEach(el => {
             el.onclick = () => {
                 window.jumpToChapter(parseInt(el.dataset.chIdx));
             };
         });
 
-        // 上一章/下一章
         const prevBtn = document.getElementById('nv-prev');
         if (prevBtn) prevBtn.onclick = () => window.prevNovelChapter();
         const nextBtn = document.getElementById('nv-next');
         if (nextBtn) nextBtn.onclick = () => window.nextNovelChapter();
 
-        // 聊天
+        // 输入框
         const input = document.getElementById('nv-input');
         const sendBtn = document.getElementById('nv-send');
         const doSend = () => {
@@ -447,29 +438,20 @@ function generatePartnerReply() {
             if (e.key === 'Enter') { e.preventDefault(); doSend(); }
         });
 
+        // emoji
         document.getElementById('nv-emoji').onclick = () => {
             const emojis = ['📖','📚','✨','💕','🥺','😊','😍','🤔','📕','📗','📘','💭'];
             openNovelQuickPicker('选择表情', emojis.map(e => ({ type: 'emoji', content: e })));
         };
-        document.getElementById('nv-sticker').onclick = () => { 
+
+        // sticker
+        document.getElementById('nv-sticker').onclick = () => {
             const stickers = (typeof stickerLibrary !== 'undefined' && stickerLibrary.length > 0) ? stickerLibrary : [];
             if (stickers.length === 0) { showNotification('对方表情库为空', 'warning'); return; }
             openNovelQuickPicker('选择表情包', stickers.map(s => ({ type: 'sticker', content: s })));
         };
-        
-        // ★ 麦克风按钮 → 真录音
-const nvVoiceBtn = document.getElementById('nv-voice');
-if (nvVoiceBtn) nvVoiceBtn.onclick = () => {
-    if (!window.PanelVoiceRecorder || !window.PanelVoiceRecorder.isSupported()) {
-        if (typeof showNotification === 'function') showNotification('当前浏览器不支持录音', 'warning');
-        return;
-    }
-    window.PanelVoiceRecorder.record((audioUrl, duration) => {
-        if (!audioUrl) return;
-        window.sendNovelChat('voice', '', audioUrl, duration);
-    });
-};
 
+        // image
         document.getElementById('nv-image').onclick = () => {
             const input = document.createElement('input');
             input.type = 'file';
@@ -484,6 +466,19 @@ if (nvVoiceBtn) nvVoiceBtn.onclick = () => {
                 } catch (err) { showNotification('图片处理失败', 'error'); }
             };
             input.click();
+        };
+
+        // ★ 麦克风按钮 → 真录音
+        const nvVoiceBtn = document.getElementById('nv-voice');
+        if (nvVoiceBtn) nvVoiceBtn.onclick = () => {
+            if (!window.PanelVoiceRecorder || !window.PanelVoiceRecorder.isSupported()) {
+                if (typeof showNotification === 'function') showNotification('当前浏览器不支持录音', 'warning');
+                return;
+            }
+            window.PanelVoiceRecorder.record((audioUrl, duration) => {
+                if (!audioUrl) return;
+                window.sendNovelChat('voice', '', audioUrl, duration);
+            });
         };
     }
 
@@ -546,25 +541,18 @@ if (nvVoiceBtn) nvVoiceBtn.onclick = () => {
     }
 
 })();
-// === novel.js 新增入口 ===
+
+// === novel.js 入口 ===
 window.initNovelPanel = function() {
-    var btn = document.getElementById('novel-function'); // 注意：这里的 ID 必须和 HTML 里的一致
+    var btn = document.getElementById('novel-function');
     if (btn && !btn.dataset.initialized) {
         btn.dataset.initialized = 'true';
         btn.addEventListener('click', function() {
-            // 如果是从高级菜单点进来的，先关掉高级菜单
             var advancedModal = document.getElementById('advanced-modal');
             if (advancedModal && typeof hideModal === 'function') hideModal(advancedModal);
-            
-            // 打开你的小说面板
             if (typeof window.openNovelPanel === 'function') {
                 window.openNovelPanel();
             }
         });
     }
-};
-// novel.js 底部
-window.initNovelPanel = function() {
-    // 因为 HTML 里有 onclick，所以这里什么都不用做
-    console.log('小说面板初始化完成');
 };
