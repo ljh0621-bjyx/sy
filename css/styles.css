@@ -11481,3 +11481,17 @@ html[data-ambient="minimal"] body::before {
 .ambient-option.active .ambient-check {
     display: flex;
 }
+/* ============================================================
+ * 聊天背景图效果（模糊 / 暗化 / 淡化）
+ * ============================================================ */
+body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background: rgba(0, 0, 0, var(--bg-darken, 0));
+    backdrop-filter: blur(var(--bg-blur, 0px));
+    -webkit-backdrop-filter: blur(var(--bg-blur, 0px));
+    transition: background 0.3s ease, backdrop-filter 0.3s ease;
+}
