@@ -1555,8 +1555,8 @@ window.openSurveyPanel = function () {
         return editorOptions.map((opt, i) => {
             const letter = String.fromCharCode(65 + i);
             return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">'
-                + '<div style="width:36px;height:36px;border-radius:50%;background:#f8b8c8;color:#fff;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + letter + '</div>'
-                + '<input type="text" class="sp-ed-opt-input" data-idx="' + i + '" value="' + _escapeAttr(opt) + '" placeholder="输入选项内容..." style="flex:1;padding:12px 14px;border:2px solid #7dd3d8;border-radius:14px;background:#fff;color:var(--text-primary);font-size:14px;outline:none;font-family:var(--font-family);box-sizing:border-box;">'
+                + '<div style="width:36px;height:36px;border-radius:50%;background:var(--accent-color);color:#fff;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + letter + '</div>'
+                + '<input type="text" class="sp-ed-opt-input" data-idx="' + i + '" value="' + _escapeAttr(opt) + '" placeholder="输入选项内容..." style="flex:1;padding:12px 14px;border:2px solid var(--accent-color);border-radius:14px;background:#fff;color:var(--text-primary);font-size:14px;outline:none;font-family:var(--font-family);box-sizing:border-box;">'
                 + '<button type="button" class="sp-ed-opt-del" data-idx="' + i + '" style="background:none;border:none;color:#bbb;cursor:pointer;font-size:20px;padding:4px 8px;flex-shrink:0;">✕</button>'
                 + '</div>';
         }).join('');
@@ -1566,32 +1566,32 @@ window.openSurveyPanel = function () {
         '<div style="background:#fff;border-radius:24px;padding:22px 20px;width:92%;max-width:420px;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(0,0,0,0.18);">'
 
         + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-shrink:0;">'
-        +   '<div style="width:28px;height:28px;border-radius:50%;background:#f8b8c8;color:#fff;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;">?</div>'
+        +   '<div style="width:28px;height:28px;border-radius:50%;background:var(--accent-color);color:#fff;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;">?</div>'
         +   '<span style="font-size:22px;font-weight:700;color:#2a2a2a;">问问你</span>'
         +   '<div style="flex:1;"></div>'
         +   '<button id="sp-bank-btn" style="background:none;border:none;color:#aaa;cursor:pointer;font-size:17px;padding:4px 8px;" title="管理题库（他会问你的问题）"><i class="fas fa-cog"></i></button>'
-        +   '<button id="sp-ask-me-btn" style="background:none;border:none;color:#f8b8c8;cursor:pointer;font-size:17px;padding:4px 8px;" title="让他问我一个问题"><i class="fas fa-dice"></i></button>'
+        +   '<button id="sp-ask-me-btn" style="background:none;border:none;color:var(--accent-color);cursor:pointer;font-size:17px;padding:4px 8px;" title="让他问我一个问题"><i class="fas fa-dice"></i></button>'
         + '</div>'
 
-        + '<div style="padding:4px;border:2px solid #f8c8d4;border-radius:18px;background:#fff;margin-bottom:16px;flex-shrink:0;">'
+        + '<div style="padding:4px;border:2px solid rgba(var(--accent-color-rgb), 0.4);border-radius:18px;background:#fff;margin-bottom:16px;flex-shrink:0;">'
         +   '<textarea id="sp-question-input" placeholder="输入你想问的问题..." style="width:100%;min-height:64px;padding:12px 14px;border:none;background:transparent;color:#2a2a2a;font-size:15px;outline:none;font-family:var(--font-family);resize:none;box-sizing:border-box;line-height:1.5;"></textarea>'
         + '</div>'
 
         + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-shrink:0;">'
         +   '<span style="font-size:15px;font-weight:600;color:#2a2a2a;">选项</span>'
         +   '<div style="display:flex;gap:4px;padding:3px;background:#f5f5f5;border-radius:20px;">'
-        +     '<button type="button" class="sp-mode-btn" data-mode="single" style="padding:5px 16px;border:none;border-radius:16px;background:#f8b8c8;color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-family);">单选</button>'
+        +     '<button type="button" class="sp-mode-btn" data-mode="single" style="padding:5px 16px;border:none;border-radius:16px;background:var(--accent-color);color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-family);">单选</button>'
         +     '<button type="button" class="sp-mode-btn" data-mode="multi" style="padding:5px 16px;border:none;border-radius:16px;background:transparent;color:#888;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-family);">多选</button>'
         +   '</div>'
         + '</div>'
 
         + '<div id="sp-ed-options-list" style="flex:1;overflow-y:auto;margin-bottom:12px;max-height:40vh;">' + renderOptions() + '</div>'
 
-        + '<button id="sp-ed-add-opt" style="width:100%;padding:13px;border:2px dashed #7dd3d8;border-radius:14px;background:none;color:#7dd3d8;font-size:13px;cursor:pointer;font-family:var(--font-family);margin-bottom:16px;flex-shrink:0;"><i class="fas fa-plus"></i> 添加选项</button>'
+        + '<button id="sp-ed-add-opt" style="width:100%;padding:13px;border:2px dashed var(--accent-color);border-radius:14px;background:none;color:var(--accent-color);font-size:13px;cursor:pointer;font-family:var(--font-family);margin-bottom:16px;flex-shrink:0;"><i class="fas fa-plus"></i> 添加选项</button>'
 
         + '<div style="display:flex;gap:10px;flex-shrink:0;">'
         +   '<button id="sp-ed-cancel" style="flex:1;padding:14px;border:none;border-radius:14px;background:#f0f0f0;color:#666;font-size:15px;font-weight:600;cursor:pointer;font-family:var(--font-family);">取消</button>'
-        +   '<button id="sp-ed-send" style="flex:1.5;padding:14px;border:none;border-radius:14px;background:#f8b8c8;color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:var(--font-family);">发送问题</button>'
+        +   '<button id="sp-ed-send" style="flex:1.5;padding:14px;border:none;border-radius:14px;background:var(--accent-color);color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:var(--font-family);">发送问题</button>'
         + '</div>'
         + '</div>';
 
@@ -1628,7 +1628,7 @@ window.openSurveyPanel = function () {
             isMulti = btn.dataset.mode === 'multi';
             modal.querySelectorAll('.sp-mode-btn').forEach(b => {
                 const active = b.dataset.mode === btn.dataset.mode;
-                b.style.background = active ? '#f8b8c8' : 'transparent';
+                b.style.background = active ? 'var(--accent-color)' : 'transparent';
                 b.style.color = active ? '#fff' : '#888';
             });
         };
@@ -1780,8 +1780,8 @@ function _openSurveyBankManager() {
                     + '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">'
                     + '<div style="flex:1;min-width:0;font-size:13px;color:#2a2a2a;font-weight:600;">' + _escapeHtmlSurvey(item.question) + '</div>'
                     + '<div style="display:flex;gap:4px;flex-shrink:0;">'
-                    + '<button class="sp-bank-edit" data-idx="' + i + '" style="background:none;border:none;color:#7dd3d8;cursor:pointer;font-size:13px;padding:3px 6px;"><i class="fas fa-pen"></i></button>'
-                    + '<button class="sp-bank-del" data-idx="' + i + '" style="background:none;border:none;color:#f8b8c8;cursor:pointer;font-size:13px;padding:3px 6px;"><i class="fas fa-trash"></i></button>'
+                    + '<button class="sp-bank-edit" data-idx="' + i + '" style="background:none;border:none;color:var(--accent-color);cursor:pointer;font-size:13px;padding:3px 6px;"><i class="fas fa-pen"></i></button>'
+                    + '<button class="sp-bank-del" data-idx="' + i + '" style="background:none;border:none;color:var(--accent-color);cursor:pointer;font-size:13px;padding:3px 6px;"><i class="fas fa-trash"></i></button>'
                     + '</div></div>';
                 if (item.options && item.options.length) {
                     html += '<div style="font-size:11px;color:#999;margin-top:6px;line-height:1.7;">';
@@ -1800,12 +1800,12 @@ function _openSurveyBankManager() {
     mgr.innerHTML =
         '<div style="background:#fff;border-radius:24px;padding:22px;width:90%;max-width:440px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(0,0,0,0.2);">'
         + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-shrink:0;">'
-        +   '<span style="font-size:17px;font-weight:700;color:#2a2a2a;"><i class="fas fa-cog" style="color:#f8b8c8;margin-right:8px;"></i>他会问我的问题库</span>'
+        +   '<span style="font-size:17px;font-weight:700;color:#2a2a2a;"><i class="fas fa-cog" style="color:var(--accent-color);margin-right:8px;"></i>他会问我的问题库</span>'
         +   '<button id="sp-bm-close" style="background:none;border:none;color:#aaa;cursor:pointer;font-size:18px;"><i class="fas fa-times"></i></button>'
         + '</div>'
         + '<div style="font-size:11.5px;color:#999;margin-bottom:12px;line-height:1.6;">💡 这里是你维护的"他会问我"的题库。打开问卷编辑器时 30% 概率他会随机问你一题。</div>'
         + '<div id="sp-bm-list" style="flex:1;overflow-y:auto;">' + renderList() + '</div>'
-        + '<button id="sp-bm-add" style="margin-top:14px;padding:12px;border:2px dashed #f8b8c8;border-radius:12px;background:none;color:#f8b8c8;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-family);flex-shrink:0;"><i class="fas fa-plus"></i> 添加新问卷</button>'
+        + '<button id="sp-bm-add" style="margin-top:14px;padding:12px;border:2px dashed var(--accent-color);border-radius:12px;background:none;color:var(--accent-color);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-family);flex-shrink:0;"><i class="fas fa-plus"></i> 添加新问卷</button>'
         + '</div>';
 
     document.body.appendChild(mgr);
@@ -1870,9 +1870,9 @@ function _openSurveyItemEditor(item, onSave) {
         return options.map((opt, i) => {
             const letter = String.fromCharCode(65 + i);
             return '<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">'
-                + '<div style="width:32px;height:32px;border-radius:50%;background:#f8b8c8;color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + letter + '</div>'
-                + '<input type="text" class="sp-opt-input" data-idx="' + i + '" value="' + _escapeAttr(opt) + '" placeholder="选项 ' + (i + 1) + '" style="flex:1;padding:10px 12px;border:2px solid #7dd3d8;border-radius:12px;background:#fff;color:#2a2a2a;font-size:13px;outline:none;font-family:var(--font-family);box-sizing:border-box;">'
-                + '<button class="sp-opt-del" data-idx="' + i + '" style="width:32px;height:32px;border:none;border-radius:8px;background:none;color:#f8b8c8;cursor:pointer;flex-shrink:0;font-size:18px;">✕</button>'
+                + '<div style="width:32px;height:32px;border-radius:50%;background:var(--accent-color);color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + letter + '</div>'
+                + '<input type="text" class="sp-opt-input" data-idx="' + i + '" value="' + _escapeAttr(opt) + '" placeholder="选项 ' + (i + 1) + '" style="flex:1;padding:10px 12px;border:2px solid var(--accent-color);border-radius:12px;background:#fff;color:#2a2a2a;font-size:13px;outline:none;font-family:var(--font-family);box-sizing:border-box;">'
+                + '<button class="sp-opt-del" data-idx="' + i + '" style="width:32px;height:32px;border:none;border-radius:8px;background:none;color:var(--accent-color);cursor:pointer;flex-shrink:0;font-size:18px;">✕</button>'
                 + '</div>';
         }).join('');
     };
@@ -1887,20 +1887,20 @@ function _openSurveyItemEditor(item, onSave) {
         + '<div style="flex:1;overflow-y:auto;padding-right:2px;">'
 
         + '<div style="font-size:12px;color:#888;margin-bottom:6px;font-weight:600;">问题</div>'
-        + '<div style="padding:3px;border:2px solid #f8c8d4;border-radius:14px;background:#fff;margin-bottom:10px;">'
+        + '<div style="padding:3px;border:2px solid rgba(var(--accent-color-rgb), 0.4);border-radius:14px;background:#fff;margin-bottom:10px;">'
         + '<input id="sp-ed-question" type="text" value="' + _escapeAttr(initialQuestion) + '" placeholder="例如：今天想我了吗？" style="width:100%;padding:10px 12px;border:none;background:transparent;color:#2a2a2a;font-size:13px;outline:none;font-family:var(--font-family);box-sizing:border-box;">'
         + '</div>'
         + '<div style="font-size:10.5px;color:#999;margin-bottom:14px;line-height:1.6;">💡 选项留空 → 对方收到问题后可自由输入回答<br>💡 填写选项 → 以选择方式作答</div>'
 
         + '<div style="font-size:12px;color:#888;margin-bottom:6px;font-weight:600;">选项（可选）</div>'
         + '<div id="sp-ed-options">' + renderOptions() + '</div>'
-        + '<button id="sp-ed-add-opt" style="width:100%;padding:10px;border:2px dashed #7dd3d8;border-radius:12px;background:none;color:#7dd3d8;font-size:12px;cursor:pointer;font-family:var(--font-family);margin-top:4px;">+ 添加选项</button>'
+        + '<button id="sp-ed-add-opt" style="width:100%;padding:10px;border:2px dashed var(--accent-color);border-radius:12px;background:none;color:var(--accent-color);font-size:12px;cursor:pointer;font-family:var(--font-family);margin-top:4px;">+ 添加选项</button>'
 
         + '</div>'
 
         + '<div style="display:flex;gap:10px;margin-top:14px;flex-shrink:0;">'
         +   '<button id="sp-ed-cancel" style="flex:1;padding:12px;border:none;border-radius:12px;background:#f0f0f0;color:#666;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-family);">取消</button>'
-        +   '<button id="sp-ed-save" style="flex:1.5;padding:12px;border:none;border-radius:12px;background:#f8b8c8;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font-family);">保存</button>'
+        +   '<button id="sp-ed-save" style="flex:1.5;padding:12px;border:none;border-radius:12px;background:var(--accent-color);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font-family);">保存</button>'
         + '</div>'
         + '</div>';
 
