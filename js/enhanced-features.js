@@ -234,3 +234,25 @@ try {
         }
     }, 600);
 })();
+// ★ 通用：面板语音气泡播放（小说/电影/音乐/菜谱/漫画 共用）
+window.playPanelVoice = function (el) {
+    var url = el.getAttribute('data-url');
+    var dur = parseInt(el.getAttribute('data-duration'), 10) || 3;
+    var bar = el.querySelector('.voice-bar');
+    if (!url) {
+        if (typeof showNotification === 'function') showNotification('语音正在合成…请稍等', 'info', 1500);
+        return;
+    }
+    try {
+        var audio = new Audio(url);
+        audio.play().catch(function () {});
+        if (bar) {
+            bar.style.transition = 'width ' + dur + 's linear';
+            bar.style.width = '100%';
+            setTimeout(function () {
+                bar.style.transition = 'width 0.2s';
+                bar.style.width = '0%';
+            }, dur * 1000);
+        }
+    } catch (e) {}
+};
