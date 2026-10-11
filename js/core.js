@@ -772,7 +772,6 @@ function createMessageFragment(msg, prevMsg, nextMsg, lastSenderRef) {
         lastSenderRef.current = 'system';
         return fragment;
     }
-    }
 
     // ===== 转账卡片 =====
     if (msg.type === 'transfer' && msg.transfer) {
