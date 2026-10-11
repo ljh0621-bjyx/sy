@@ -556,3 +556,33 @@ window.initNovelPanel = function() {
         });
     }
 };
+
+// ★ 通用语音播放
+if (typeof window.playPanelVoice !== 'function') {
+    window.playPanelVoice = function (el) {
+        var url = el.getAttribute('data-url');
+        var dur = parseInt(el.getAttribute('data-duration'), 10) || 3;
+        var bar = el.querySelector('.voice-bar');
+        if (!url) {
+            if (typeof showNotification === 'function') showNotification('语音还在合成中…请稍等', 'info', 1500);
+            return;
+        }
+        try {
+            var audio = new Audio(url);
+            audio.play().catch(function (e) {
+                console.warn('播放失败', e);
+                if (typeof showNotification === 'function') showNotification('播放失败，可能录音损坏', 'error');
+            });
+            if (bar) {
+                bar.style.transition = 'width ' + dur + 's linear';
+                bar.style.width = '100%';
+                setTimeout(function () {
+                    bar.style.transition = 'width 0.2s';
+                    bar.style.width = '0%';
+                }, dur * 1000);
+            }
+        } catch (e) {
+            console.warn('[playPanelVoice] 失败', e);
+        }
+    };
+}
