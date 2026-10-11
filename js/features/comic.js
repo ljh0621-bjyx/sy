@@ -117,39 +117,50 @@
     };
 
     // ---------- 聊天发送（含语音） ----------
-    window.sendComicChat = async function (type, content) {
+    window.sendComicChat = async function (type, content, voiceUrl, duration) {
         // ★ 我发语音：先推占位，后台合成回填
-        if (type === 'voice') {
-            const dur = Math.max(2, Math.ceil(String(content || '').length / 4));
-            data.chatHistory.push({
-                sender: 'me', type: 'voice', content: content,
-                duration: dur, voiceUrl: null, time: Date.now()
-            });
-            if (data.chatHistory.length > 200) data.chatHistory = data.chatHistory.slice(-200);
-            await save();
-            renderPanel();
-            scrollChatToBottom();
-
-            (async () => {
-                try {
-                    if (typeof window.playPartnerVoice === 'function') {
-                        const speaker = (typeof settings !== 'undefined' && settings.myName) || '我';
-                        const url = await window.playPartnerVoice(content, speaker);
-                        if (url) {
-                            // 找到刚推入的那条
-                            for (let i = data.chatHistory.length - 1; i >= 0; i--) {
-                                const h = data.chatHistory[i];
-                                if (h.sender === 'me' && h.type === 'voice' && !h.voiceUrl && h.content === content) {
-                                    h.voiceUrl = url;
-                                    break;
-                                }
+       if (type === 'voice') {
+    // A：我录音发语音（voiceUrl 已存在）
+    if (voiceUrl) {
+        const dur = duration || Math.max(2, Math.ceil(String(content || '').length / 4));
+        data.chatHistory.push({
+            sender: 'me', type: 'voice', content: content || '',
+            duration: dur, voiceUrl: voiceUrl, time: Date.now()
+        });
+        if (data.chatHistory.length > 200) data.chatHistory = data.chatHistory.slice(-200);
+        await save();
+        renderPanel();
+        scrollChatToBottom();
+    }
+    // B：兜底 —— 没传 voiceUrl 时从字卡合成
+    else {
+        const dur = Math.max(2, Math.ceil(String(content || '').length / 4));
+        data.chatHistory.push({
+            sender: 'me', type: 'voice', content: content,
+            duration: dur, voiceUrl: null, time: Date.now()
+        });
+        if (data.chatHistory.length > 200) data.chatHistory = data.chatHistory.slice(-200);
+        await save();
+        renderPanel();
+        scrollChatToBottom();
+        (async () => {
+            try {
+                if (typeof window.playPartnerVoice === 'function') {
+                    const speaker = (typeof settings !== 'undefined' && settings.myName) || '我';
+                    const url = await window.playPartnerVoice(content, speaker);
+                    if (url) {
+                        for (let i = data.chatHistory.length - 1; i >= 0; i--) {
+                            const h = data.chatHistory[i];
+                            if (h.sender === 'me' && h.type === 'voice' && !h.voiceUrl && h.content === content) {
+                                h.voiceUrl = url; break;
                             }
-                            await save();
-                            renderPanel();
                         }
+                        await save(); renderPanel();
                     }
-                } catch (e) { console.warn('[comic] my voice fail', e); }
-            })();
+                }
+            } catch (e) { console.warn('[comic] my voice fail', e); }
+        })();
+    }
         } else {
             data.chatHistory.push({ sender: 'me', type, content, time: Date.now() });
             if (data.chatHistory.length > 200) data.chatHistory = data.chatHistory.slice(-200);
@@ -431,14 +442,18 @@
             openComicQuickPicker('选择表情包', stickers.map(s => ({ type: 'sticker', content: s })));
         };
         // ★ 麦克风按钮
-        const voiceBtn = document.getElementById('comic-voice');
-        if (voiceBtn) voiceBtn.onclick = () => {
-            const pool = (typeof customReplies !== 'undefined' && Array.isArray(customReplies))
-                ? customReplies.filter(t => t && String(t).trim()) : [];
-            if (pool.length === 0) { showNotification('字卡库为空，无法生成语音', 'warning'); return; }
-            const text = pool[Math.floor(Math.random() * pool.length)];
-            window.sendComicChat('voice', text);
-        };
+        // ★ 麦克风按钮 → 真录音
+const voiceBtn = document.getElementById('comic-voice');
+if (voiceBtn) voiceBtn.onclick = () => {
+    if (!window.PanelVoiceRecorder || !window.PanelVoiceRecorder.isSupported()) {
+        if (typeof showNotification === 'function') showNotification('当前浏览器不支持录音', 'warning');
+        return;
+    }
+    window.PanelVoiceRecorder.record((audioUrl, duration) => {
+        if (!audioUrl) return;   // 用户取消
+        window.sendComicChat('voice', '', audioUrl, duration);
+    });
+};
     }
 
     function openComicQuickPicker(title, items) {
