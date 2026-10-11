@@ -109,7 +109,10 @@
                 +   '<div style="font-size:11px;color:#F4A6B3;font-weight:600;letter-spacing:1px;margin-bottom:6px;">' + ((typeof settings !== 'undefined' && settings.partnerName) || '对方') + ' 的回答</div>'
                 +   '<div style="font-size:13px;color:var(--text-primary);line-height:1.7;white-space:pre-wrap;">' + (entry.partnerAnswer || '').replace(/</g, '&lt;') + '</div>'
                 + '</div>'
-                + '<button id="dq-history" style="width:100%;margin-top:14px;padding:10px;border:1.5px solid var(--border-color);border-radius:12px;background:none;color:var(--text-secondary);font-size:13px;cursor:pointer;font-family:var(--font-family);">查看往期</button>';
+                + '<div style="display:flex;gap:8px;margin-top:14px;">'
++   '<button id="dq-history" style="flex:1;padding:10px;border:1.5px solid var(--border-color);border-radius:12px;background:none;color:var(--text-secondary);font-size:13px;cursor:pointer;font-family:var(--font-family);">查看往期</button>'
++   '<button id="dq-manage" style="flex:1;padding:10px;border:1.5px solid var(--border-color);border-radius:12px;background:none;color:var(--text-secondary);font-size:13px;cursor:pointer;font-family:var(--font-family);">管理题库</button>'
++ '</div>';
         }
 
         modal.innerHTML =
@@ -186,8 +189,92 @@
             };
         }
     };
+    
+const manageBtn = modal.querySelector('#dq-manage');
+if (manageBtn) {
+    manageBtn.onclick = function () {
+        close();
+        window.openDailyQuestionManager();
+    };
+}
 
     // ========== 历史记录 ==========
+    // ========== 题库管理 ==========
+window.openDailyQuestionManager = function () {
+    const old = document.getElementById('dq-manager-panel');
+    if (old) old.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'dq-manager-panel';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.6);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;';
+
+    function render() {
+        const customList = (data.custom || []).map(function (q, i) {
+            return '<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--primary-bg);border:1px solid var(--border-color);border-radius:10px;margin-bottom:6px;">'
+                +   '<span style="flex:1;font-size:12.5px;color:var(--text-primary);line-height:1.5;word-break:break-word;">' + q.replace(/</g, '&lt;') + '</span>'
+                +   '<button data-del="' + i + '" style="background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:13px;padding:2px 6px;opacity:0.6;"><i class="fas fa-times"></i></button>'
+                + '</div>';
+        }).join('');
+
+        const defaultList = DEFAULT_QUESTIONS.map(function (q) {
+            return '<div style="padding:10px 12px;background:var(--primary-bg);border:1px solid var(--border-color);border-radius:10px;margin-bottom:6px;font-size:12.5px;color:var(--text-secondary);line-height:1.5;opacity:0.75;">' + q.replace(/</g, '&lt;') + '</div>';
+        }).join('');
+
+        const inner = modal.querySelector('#dq-manager-body');
+        if (!inner) return;
+        inner.innerHTML =
+            '<div style="font-size:12px;font-weight:700;color:var(--accent-color);margin-bottom:8px;letter-spacing:1px;">✏️ 我的题库 (' + (data.custom || []).length + ')</div>'
+            + ((data.custom || []).length === 0
+                ? '<div style="text-align:center;padding:16px;color:var(--text-secondary);font-size:12px;opacity:0.6;">还没有自定义题目</div>'
+                : customList)
+            + '<div style="display:flex;gap:8px;margin:12px 0 20px;">'
+            +   '<input id="dq-new-q" type="text" placeholder="输入新题目…" maxlength="60" style="flex:1;padding:10px 12px;border:1.5px solid var(--border-color);border-radius:10px;background:var(--primary-bg);color:var(--text-primary);font-size:13px;font-family:var(--font-family);outline:none;box-sizing:border-box;">'
+            +   '<button id="dq-add-q" style="padding:10px 16px;border:none;border-radius:10px;background:var(--accent-color);color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-family);white-space:nowrap;">添加</button>'
+            + '</div>'
+            + '<div style="font-size:12px;font-weight:700;color:var(--text-secondary);margin-bottom:8px;letter-spacing:1px;">📚 默认题库 (' + DEFAULT_QUESTIONS.length + ')</div>'
+            + defaultList;
+
+        inner.querySelectorAll('[data-del]').forEach(function (btn) {
+            btn.onclick = function () {
+                const i = parseInt(btn.dataset.del, 10);
+                data.custom.splice(i, 1);
+                save();
+                render();
+            };
+        });
+
+        const addBtn = inner.querySelector('#dq-add-q');
+        const input = inner.querySelector('#dq-new-q');
+        addBtn.onclick = function () {
+            const v = input.value.trim();
+            if (!v) return;
+            data.custom.push(v);
+            save();
+            input.value = '';
+            render();
+            if (typeof showNotification === 'function') showNotification('✓ 已添加', 'success', 1200);
+        };
+        input.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') addBtn.click();
+        });
+    }
+
+    modal.innerHTML =
+        '<div style="background:var(--secondary-bg);border-radius:22px;padding:22px;width:92%;max-width:420px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(0,0,0,0.4);">'
+        +   '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-shrink:0;">'
+        +     '<span style="font-size:16px;font-weight:700;color:var(--text-primary);"><i class="fas fa-list" style="color:var(--accent-color);margin-right:8px;"></i>题库管理</span>'
+        +     '<button id="dqm-close" style="background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:18px;"><i class="fas fa-times"></i></button>'
+        +   '</div>'
+        +   '<div id="dq-manager-body" style="flex:1;overflow-y:auto;"></div>'
+        + '</div>';
+
+    document.body.appendChild(modal);
+    const close = () => modal.remove();
+    modal.querySelector('#dqm-close').onclick = close;
+    modal.addEventListener('click', function (e) { if (e.target === modal) close(); });
+
+    render();
+};
     window.openDailyQuestionHistory = function () {
         const old = document.getElementById('dq-history-panel');
         if (old) old.remove();
