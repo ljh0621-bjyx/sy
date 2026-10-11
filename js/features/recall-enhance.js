@@ -1,6 +1,6 @@
 /**
  * recall-enhance.js
- * 撤回内容可点击查看 + 撤回概率设置
+ * 撤回内容可点击查看（支持文字/图片/视频/语音）+ 撤回概率设置
  */
 
 (function () {
@@ -8,22 +8,62 @@
 
     const CHANCE_KEY = 'partnerRecallChance';
 
-    function showRecallModal(text) {
+    function showRecallModal(msg) {
         const old = document.getElementById('recall-view-modal');
         if (old) old.remove();
+
         const modal = document.createElement('div');
         modal.id = 'recall-view-modal';
         modal.style.cssText = 'position:fixed;inset:0;z-index:999999;background:rgba(0,0,0,0.6);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;';
+
+        let contentHTML = '';
+
+        // 文字
+        if (msg.recallText) {
+            contentHTML += '<div style="background:var(--primary-bg);border-radius:12px;padding:14px;font-size:13.5px;color:var(--text-primary);line-height:1.7;word-break:break-word;white-space:pre-wrap;">'
+                + String(msg.recallText).replace(/</g, '&lt;')
+                + '</div>';
+        }
+
+        // 图片
+        if (msg.recallImage) {
+            contentHTML += '<div style="margin-top:' + (msg.recallText ? '10px' : '0') + ';background:var(--primary-bg);border-radius:12px;padding:8px;text-align:center;">'
+                + '<img src="' + msg.recallImage + '" style="max-width:100%;max-height:300px;border-radius:8px;display:block;margin:0 auto;">'
+                + '</div>';
+        }
+
+        // 视频
+        if (msg.recallVideo) {
+            contentHTML += '<div style="margin-top:10px;background:var(--primary-bg);border-radius:12px;padding:8px;">'
+                + '<video src="' + msg.recallVideo + '" controls style="width:100%;max-height:300px;border-radius:8px;"></video>'
+                + '</div>';
+        }
+
+        // 语音
+        if (msg.recallVoice) {
+            contentHTML += '<div style="margin-top:10px;background:var(--primary-bg);border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:10px;">'
+                + '<i class="fas fa-volume-up" style="color:var(--accent-color);font-size:16px;"></i>'
+                + '<audio src="' + msg.recallVoice + '" controls style="flex:1;height:32px;"></audio>'
+                + '</div>';
+        }
+
+        // 啥都没有（旧版消息）
+        if (!contentHTML) {
+            contentHTML = '<div style="background:var(--primary-bg);border-radius:12px;padding:14px;font-size:13px;color:var(--text-secondary);text-align:center;font-style:italic;line-height:1.7;">'
+                + '这条消息来自旧版本，<br>内容没有保存下来 😢<br>'
+                + '<span style="font-size:11px;opacity:0.7;">（升级之后撤回的消息都能看到了）</span>'
+                + '</div>';
+        }
+
         modal.innerHTML =
-            '<div style="background:var(--secondary-bg);border-radius:20px;padding:22px;width:88%;max-width:340px;box-shadow:0 20px 60px rgba(0,0,0,0.4);">'
+            '<div style="background:var(--secondary-bg);border-radius:20px;padding:22px;width:88%;max-width:360px;box-shadow:0 20px 60px rgba(0,0,0,0.4);">'
             + '<div style="font-size:15px;font-weight:700;color:var(--text-primary);margin-bottom:12px;display:flex;align-items:center;gap:8px;">'
             +   '<i class="fas fa-eye" style="color:var(--accent-color);"></i>撤回的内容'
             + '</div>'
-            + '<div style="background:var(--primary-bg);border-radius:12px;padding:14px;font-size:13.5px;color:var(--text-primary);line-height:1.7;word-break:break-word;max-height:50vh;overflow-y:auto;white-space:pre-wrap;">'
-            + String(text || '（内容为空）').replace(/</g, '&lt;')
-            + '</div>'
+            + '<div style="max-height:60vh;overflow-y:auto;">' + contentHTML + '</div>'
             + '<button id="recall-modal-close" style="width:100%;margin-top:14px;padding:11px;border:none;border-radius:12px;background:var(--accent-color);color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-family);">知道了</button>'
             + '</div>';
+
         document.body.appendChild(modal);
         modal.querySelector('#recall-modal-close').onclick = () => modal.remove();
         modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
@@ -35,29 +75,28 @@
 
         const msgs = (typeof messages !== 'undefined') ? messages : (window.messages || []);
         const domSystems = Array.from(container.querySelectorAll('.system-message'));
-        const sysMsgs = msgs.filter(m => m && m.type === 'system');
-        const pairedSys = sysMsgs.slice(-domSystems.length);
 
-        domSystems.forEach((el, i) => {
+        domSystems.forEach(el => {
             if (el.dataset._recallBound === '1') return;
-            const msg = pairedSys[i];
+            const msgId = el.dataset.id;
+            if (!msgId) return;
+
+            const msg = msgs.find(m => String(m.id) === String(msgId));
             if (!msg) return;
 
-            const domText = (el.textContent || '').trim();
-            const msgText = String(msg.text || '').trim();
-            if (domText !== msgText) return;
+            const txt = String(msg.text || '');
+            if (txt.indexOf('撤回了一条消息') === -1) return;
 
-            if (msgText.indexOf('撤回了一条消息') !== -1 && msg.recallText) {
-                el.dataset._recallBound = '1';
-                el.style.cursor = 'pointer';
-                el.style.textDecoration = 'underline dotted';
-                el.style.textDecorationColor = 'rgba(128,128,128,0.5)';
-                el.style.textUnderlineOffset = '3px';
-                el.title = '点击查看撤回的内容';
-                el.onclick = (function(text) {
-                    return function() { showRecallModal(text); };
-                })(msg.recallText);
-            }
+            // ★ 所有撤回消息都绑定（不管有没有内容）
+            el.dataset._recallBound = '1';
+            el.style.cursor = 'pointer';
+            el.style.textDecoration = 'underline dotted';
+            el.style.textDecorationColor = 'rgba(128,128,128,0.5)';
+            el.style.textUnderlineOffset = '3px';
+            el.title = '点击查看撤回的内容';
+            el.onclick = (function(m) {
+                return function() { showRecallModal(m); };
+            })(msg);
         });
     }
 
