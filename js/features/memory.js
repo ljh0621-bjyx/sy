@@ -3,6 +3,8 @@
  * ============================================================ */
 (function () {
     'use strict';
+    
+     alert('memory.js 已加载');
 
     const KEY = 'memoryData_v1';
     let data = {
