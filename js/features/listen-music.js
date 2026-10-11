@@ -531,32 +531,47 @@ if (current) {
     var audioEl = getPersistentAudio();
     if (!audioEl) return;
 
-    // 清理上一次绑定（防止重复监听）
+    // 清理上次绑定
     if (audioEl._lmSyncCleanup) {
         try { audioEl._lmSyncCleanup(); } catch (e) {}
         audioEl._lmSyncCleanup = null;
     }
 
-    var lastIdx = -2;          // -2 = 还没初始化
+    var lastIdx = -2;
     var rafId = null;
-    var fadeOutTimer = null;
+    var switching = false;
+
+    function applyHighlight(progress) {
+        var pct = (progress * 100).toFixed(2);
+        lineEl.style.background = 'linear-gradient(90deg, var(--accent-color) 0%, var(--accent-color) ' + pct + '%, var(--text-secondary) ' + pct + '%, var(--text-secondary) 100%)';
+        lineEl.style.webkitBackgroundClip = 'text';
+        lineEl.style.backgroundClip = 'text';
+        lineEl.style.webkitTextFillColor = 'transparent';
+        lineEl.style.color = 'transparent';
+    }
 
     function showLine(idx) {
         if (idx === lastIdx) return;
         lastIdx = idx;
-
-        if (fadeOutTimer) { clearTimeout(fadeOutTimer); fadeOutTimer = null; }
+        switching = true;
 
         var text = (idx >= 0 && parsed[idx]) ? parsed[idx].text : '';
 
-        // 先淡出（如果当前有字）
+        // 先淡出
         lineEl.style.opacity = '0';
 
-        // 250ms 后换成新字，再淡入
-        fadeOutTimer = setTimeout(function () {
+        setTimeout(function () {
             lineEl.textContent = text;
-            if (text) lineEl.style.opacity = '1';
-            fadeOutTimer = null;
+            if (text) {
+                var now = audioEl.currentTime || 0;
+                var start = parsed[idx].time;
+                var end = (idx + 1 < parsed.length) ? parsed[idx + 1].time : start + 4;
+                var dur = Math.max(0.3, end - start);
+                var progress = Math.max(0, Math.min(1, (now - start) / dur));
+                applyHighlight(progress);
+                lineEl.style.opacity = '1';
+            }
+            switching = false;
         }, 250);
     }
 
@@ -567,7 +582,21 @@ if (current) {
             if (parsed[i].time <= t + 0.05) idx = i;
             else break;
         }
-        if (idx !== lastIdx) showLine(idx);
+
+        if (idx !== lastIdx) {
+            showLine(idx);
+            return;
+        }
+
+        if (switching) return;
+
+        if (idx >= 0 && parsed[idx]) {
+            var start = parsed[idx].time;
+            var end = (idx + 1 < parsed.length) ? parsed[idx + 1].time : start + 4;
+            var dur = Math.max(0.3, end - start);
+            var progress = Math.max(0, Math.min(1, (t - start) / dur));
+            applyHighlight(progress);
+        }
     }
 
     function tick() {
@@ -580,9 +609,10 @@ if (current) {
     }
 
     var onPlay = function () { if (!rafId) tick(); };
-    var onSeek = function () { lastIdx = -2; render(); };
+    var onSeek = function () { lastIdx = -2; switching = false; render(); };
     var onMeta = function () {
         lastIdx = -2;
+        switching = false;
         lineEl.textContent = '';
         lineEl.style.opacity = '0';
         render();
@@ -598,7 +628,6 @@ if (current) {
 
     audioEl._lmSyncCleanup = function () {
         if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
-        if (fadeOutTimer) { clearTimeout(fadeOutTimer); fadeOutTimer = null; }
         audioEl.removeEventListener('play', onPlay);
         audioEl.removeEventListener('seeked', onSeek);
         audioEl.removeEventListener('loadedmetadata', onMeta);
@@ -606,7 +635,6 @@ if (current) {
         audioEl.removeEventListener('ended', onEnded);
     };
 
-    // 初始化第一帧
     setTimeout(render, 120);
 }
 
