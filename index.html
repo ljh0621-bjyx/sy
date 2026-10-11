@@ -1174,6 +1174,14 @@ window.addEventListener('unhandledrejection', function(e) {
                             </div>
                         </div>
                     </div>
+                    <p class="cs-group-label" style="margin-top:4px;">消息撤回</p>
+<div class="cs-card">
+    <div class="setting-pill-row" id="recall-settings-entry" onclick="window.openRecallSettings && window.openRecallSettings()">
+        <span class="setting-pill-icon"><i class="fas fa-undo"></i></span>
+        <span class="setting-pill-label">撤回概率 <span style="font-size:11px;color:var(--text-secondary);font-weight:400;" id="recall-chance-desc">点击设置对方撤回概率</span></span>
+        <i class="fas fa-chevron-right" style="color:var(--text-secondary);font-size:12px;flex-shrink:0;"></i>
+    </div>
+</div>
                 </div>
 
                 <div class="cs-panel" id="cs-panel-rhythm">
@@ -1551,9 +1559,6 @@ window.addEventListener('unhandledrejection', function(e) {
 </div>
 <div class="settings-item" id="emoji-mix-function" onclick="openEmojiMixSettings()">
     <i class="fas fa-magic"></i><span>字卡表情混合</span>
-</div>
-<div class="settings-item" id="recall-settings-function" onclick="openRecallSettings()">
-    <i class="fas fa-undo"></i><span>撤回设置</span>
 </div>
                 </div>
             </div>
