@@ -1,25 +1,23 @@
 /* ============================================================
- * transfer.js - 转账功能（Canvas 画卡片版 + 可调参数）
+ * transfer.js - 转账（微信式可点击卡片）
  * ============================================================ */
 (function () {
     'use strict';
 
-   const KEY = getStorageKey('transferData_v1');
-const SETTINGS_KEY = getStorageKey('transferSettings_v1');
+    const KEY = getStorageKey('transferData_v1');
+    const SETTINGS_KEY = getStorageKey('transferSettings_v1');
 
     let data = {
         myBalance: 1000,
         partnerBalance: 1000
     };
 
-    // 可调参数
     let settingsT = {
-        autoChance: 30,     // 对方主动转账概率 0~100
-        autoMinMin: 20,     // 最短间隔（分钟）
-        autoMaxMin: 60      // 最长间隔（分钟）
+        autoChance: 30,
+        autoMinMin: 20,
+        autoMaxMin: 60
     };
 
-    // ========== 加载/保存 ==========
     async function load() {
         try {
             const saved = await localforage.getItem(KEY);
@@ -45,67 +43,154 @@ const SETTINGS_KEY = getStorageKey('transferSettings_v1');
 
     function fmtMoney(n) { return '¥' + Number(n).toFixed(2); }
 
-    // ========== 画转账卡片 ==========
-    function drawTransferCard(amount, note, status) {
-        const W = 480, H = 260;
-        const canvas = document.createElement('canvas');
-        const dpr = window.devicePixelRatio || 1;
-        canvas.width = W * dpr;
-        canvas.height = H * dpr;
-        const ctx = canvas.getContext('2d');
-        ctx.scale(dpr, dpr);
+    // ========== 渲染转账卡片（HTML） ==========
+    window.renderTransferCardHTML = function (msg) {
+        const t = msg.transfer;
+        if (!t) return '';
+        const isMe = msg.sender === 'user';
+        const amount = Number(t.amount).toFixed(2);
+        const note = t.note ? String(t.note).replace(/</g, '&lt;').replace(/>/g, '&gt;') : '';
 
-        const bg = ctx.createLinearGradient(0, 0, W, H);
-        bg.addColorStop(0, '#FA9D3B');
-        bg.addColorStop(1, '#F58220');
-        ctx.fillStyle = bg;
-        ctx.beginPath();
-        const r = 24;
-        ctx.moveTo(r, 0);
-        ctx.lineTo(W - r, 0);
-        ctx.quadraticCurveTo(W, 0, W, r);
-        ctx.lineTo(W, H - r);
-        ctx.quadraticCurveTo(W, H, W - r, H);
-        ctx.lineTo(r, H);
-        ctx.quadraticCurveTo(0, H, 0, H - r);
-        ctx.lineTo(0, r);
-        ctx.quadraticCurveTo(0, 0, r, 0);
-        ctx.closePath();
-        ctx.fill();
-
-        ctx.fillStyle = 'rgba(255,255,255,0.9)';
-        ctx.beginPath();
-        ctx.arc(48, 48, 22, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#F58220';
-        ctx.font = 'bold 26px -apple-system, "PingFang SC", sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('¥', 48, 50);
-
-        ctx.fillStyle = '#fff';
-        ctx.textAlign = 'left';
-        ctx.font = 'bold 44px -apple-system, "PingFang SC", sans-serif';
-        ctx.fillText(fmtMoney(amount), 90, 52);
-
-        if (note) {
-            ctx.fillStyle = 'rgba(255,255,255,0.85)';
-            ctx.font = '18px -apple-system, "PingFang SC", sans-serif';
-            ctx.fillText(note, 36, 120);
+        // 状态文案
+        let statusText = '';
+        if (t.status === 'received') {
+            statusText = isMe ? '已收款 ✓' : '已收款 ✓';
+        } else if (isMe) {
+            statusText = '待对方收款';
+        } else {
+            statusText = '点击收款 →';
         }
 
-        const statusText = status === 'received' ? '已收款 ✓' : '待对方收款…';
-        ctx.fillStyle = 'rgba(255,255,255,0.75)';
-        ctx.font = '15px -apple-system, "PingFang SC", sans-serif';
-        ctx.fillText(statusText, 36, H - 40);
+        // 我发的：橙色渐变；对方发的：白色卡片 + 橙色文字
+        const cardBg = isMe
+            ? 'background:linear-gradient(135deg,#FA9D3B 0%,#F58220 100%);color:#fff;box-shadow:0 4px 16px rgba(245,130,32,0.35);'
+            : 'background:#FFF5EB;color:#F58220;border:1px solid rgba(245,130,32,0.3);box-shadow:0 2px 10px rgba(245,130,32,0.12);';
 
-        ctx.textAlign = 'right';
-        ctx.fillStyle = 'rgba(255,255,255,0.5)';
-        ctx.font = '13px -apple-system, "PingFang SC", sans-serif';
-        ctx.fillText('微信转账', W - 28, H - 40);
+        const subColor = isMe ? 'rgba(255,255,255,0.75)' : 'rgba(245,130,32,0.65)';
+        const noteColor = isMe ? 'rgba(255,255,255,0.85)' : 'rgba(120,80,40,0.7)';
 
-        return canvas.toDataURL('image/png');
+        return '<div class="transfer-card" '
+            + 'data-msg-id="' + msg.id + '" '
+            + 'onclick="window._handleTransferClick(' + msg.id + ')" '
+            + 'style="'
+            +   'display:flex;flex-direction:column;gap:6px;'
+            +   'padding:14px 16px;border-radius:14px;'
+            +   'min-width:190px;max-width:240px;cursor:pointer;'
+            +   'user-select:none;-webkit-tap-highlight-color:transparent;'
+            +   'transition:transform 0.15s ease;'
+            +   cardBg
+            + '">'
+            +   '<div style="display:flex;align-items:center;gap:6px;font-size:11px;opacity:0.85;letter-spacing:1px;">'
+            +     '<i class="fas fa-exchange-alt" style="font-size:10px;"></i>'
+            +     '<span>转账</span>'
+            +   '</div>'
+            +   '<div style="font-size:24px;font-weight:800;font-family:Georgia,serif;letter-spacing:0.5px;">¥' + amount + '</div>'
+            +   (note ? '<div style="font-size:11.5px;line-height:1.5;color:' + noteColor + ';">' + note + '</div>' : '')
+            +   '<div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;margin-top:6px;padding-top:6px;border-top:1px dashed ' + (isMe ? 'rgba(255,255,255,0.25)' : 'rgba(245,130,32,0.2)') + ';">'
+            +     '<span style="color:' + subColor + ';font-weight:600;">' + statusText + '</span>'
+            +     '<span style="opacity:0.55;color:' + subColor + ';">微信转账</span>'
+            +   '</div>'
+            + '</div>';
+    };
+
+    // ========== 点击转账卡片 ==========
+    window._handleTransferClick = async function (msgId) {
+        const msg = (typeof messages !== 'undefined' ? messages : []).find(m => String(m.id) === String(msgId));
+        if (!msg || !msg.transfer) return;
+
+        const isMe = msg.sender === 'user';
+        const t = msg.transfer;
+
+        // 已收款 → 提示
+        if (t.status === 'received') {
+            if (typeof showNotification === 'function') showNotification('这笔转账已完成', 'info', 1500);
+            return;
+        }
+
+        // 我发出的 → 等对方收
+        if (isMe) {
+            if (typeof showNotification === 'function') showNotification('等待对方收款中…', 'info', 1500);
+            return;
+        }
+
+        // 对方发来的 → 我收款
+        if (!confirm('确认收款 ' + fmtMoney(t.amount) + ' ？\n备注：' + (t.note || '无'))) return;
+
+        t.status = 'received';
+
+        // 增加我的余额
+        data.myBalance = (data.myBalance || 0) + Number(t.amount);
+        await save();
+
+        if (typeof throttledSaveData === 'function') throttledSaveData();
+        else if (typeof saveData === 'function') { try { await saveData(); } catch (e) {} }
+
+        if (typeof renderMessages === 'function') renderMessages(true);
+        if (typeof playSound === 'function') playSound('favorite');
+        if (typeof showNotification === 'function') showNotification('✓ 已收款 ' + fmtMoney(t.amount), 'success', 2000);
+
+        // 对方说一句话
+        setTimeout(function () {
+            const pool = (typeof customReplies !== 'undefined' && Array.isArray(customReplies))
+                ? customReplies.filter(function (x) { return x && String(x).trim(); })
+                : [];
+            if (pool.length === 0) return;
+            const reply = pool[Math.floor(Math.random() * pool.length)];
+            const pn = (typeof settings !== 'undefined' && settings.partnerName) ? settings.partnerName : '对方';
+            if (typeof addMessage === 'function') {
+                addMessage({
+                    id: Date.now() + Math.floor(Math.random() * 1000),
+                    sender: pn,
+                    text: reply,
+                    timestamp: new Date(),
+                    status: 'received',
+                    type: 'normal'
+                });
+            }
+            if (typeof playSound === 'function') playSound('message');
+        }, 1500 + Math.random() * 1500);
+    };
+
+    // ========== 发送转账消息 ==========
+    function sendTransferMessage(sender, amount, note) {
+        const id = Date.now() + Math.floor(Math.random() * 1000);
+
+        addMessage({
+            id: id,
+            sender: sender,
+            text: '',
+            timestamp: new Date(),
+            status: sender === 'user' ? 'sent' : 'received',
+            type: 'transfer',
+            transfer: {
+                amount: Number(amount),
+                note: note || '',
+                status: 'pending'
+            }
+        });
+
+        // 我发出的转账：几秒后对方自动收款
+        if (sender === 'user') {
+            const delay = 3000 + Math.random() * 4000;
+            setTimeout(async () => {
+                const target = (typeof messages !== 'undefined' ? messages : []).find(m => String(m.id) === String(id));
+                if (!target || !target.transfer) return;
+                if (target.transfer.status !== 'pending') return;
+
+                target.transfer.status = 'received';
+                data.partnerBalance = (data.partnerBalance || 0) + Number(amount);
+                await save();
+
+                if (typeof throttledSaveData === 'function') throttledSaveData();
+                else if (typeof saveData === 'function') { try { await saveData(); } catch (e) {} }
+
+                if (typeof renderMessages === 'function') renderMessages(true);
+                if (typeof playSound === 'function') playSound('favorite');
+                if (typeof showNotification === 'function') showNotification('对方已收款 ' + fmtMoney(amount), 'success', 2500);
+            }, delay);
+        }
     }
+    window.sendTransferMessage = sendTransferMessage;
 
     // ========== 转账窗口 ==========
     window.openTransferPanel = function () {
@@ -156,7 +241,6 @@ const SETTINGS_KEY = getStorageKey('transferSettings_v1');
         modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
         modal.querySelector('#tp-amount').focus();
 
-        // 齿轮：打开设置
         modal.querySelector('#tp-settings').onclick = () => {
             close();
             window.openTransferSettings();
@@ -175,43 +259,6 @@ const SETTINGS_KEY = getStorageKey('transferSettings_v1');
             sendTransferMessage('user', amount, note);
         };
     };
-
-    // ========== 发送转账消息 ==========
-    function sendTransferMessage(sender, amount, note) {
-        const cardUrl = drawTransferCard(amount, note, sender === 'user' ? 'pending' : 'received');
-        const id = Date.now() + Math.floor(Math.random() * 1000);
-
-        addMessage({
-            id: id,
-            sender: sender,
-            text: '',
-            image: cardUrl,
-            timestamp: new Date(),
-            status: sender === 'user' ? 'sent' : 'received',
-            type: 'normal',
-            _transfer: { amount: amount, note: note, status: sender === 'user' ? 'pending' : 'received' }
-        });
-
-        if (sender === 'user') {
-            const delay = 3000 + Math.random() * 4000;
-            setTimeout(async () => {
-                const target = messages.find(m => String(m.id) === String(id));
-                if (!target) return;
-                if (target._transfer && target._transfer.status === 'pending') {
-                    target._transfer.status = 'received';
-                    target.image = drawTransferCard(amount, note, 'received');
-                    data.partnerBalance += amount;
-                    await save();
-                    if (typeof renderMessages === 'function') renderMessages(true);
-                    if (typeof playSound === 'function') playSound('favorite');
-                    if (typeof showNotification === 'function') {
-                        showNotification('对方已收款 ' + fmtMoney(amount), 'success', 2500);
-                    }
-                }
-            }, delay);
-        }
-    }
-    window.sendTransferMessage = sendTransferMessage;
 
     // ========== 对方主动转账 ==========
     window._partnerRandomTransfer = async function () {
@@ -235,7 +282,7 @@ const SETTINGS_KEY = getStorageKey('transferSettings_v1');
         return true;
     };
 
-    // ========== 随机调度（按设置里的间隔） ==========
+    // ========== 随机调度 ==========
     function scheduleRandomTransfer() {
         if (window._transferTimer) clearTimeout(window._transferTimer);
         const minMs = settingsT.autoMinMin * 60 * 1000;
@@ -256,12 +303,11 @@ const SETTINGS_KEY = getStorageKey('transferSettings_v1');
     }
     setTimeout(scheduleRandomTransfer, 30000);
 
-    // 参数改了之后，重新调度一次
     window._rescheduleTransfer = function () {
         scheduleRandomTransfer();
     };
 
-    // ========== 设置面板（余额 + 概率 + 间隔） ==========
+    // ========== 设置面板 ==========
     window.openTransferSettings = function () {
         const old = document.getElementById('transfer-settings-panel');
         if (old) old.remove();
@@ -276,8 +322,6 @@ const SETTINGS_KEY = getStorageKey('transferSettings_v1');
             +     '<span style="font-size:16px;font-weight:700;color:var(--text-primary);"><i class="fas fa-cog" style="color:#F58220;margin-right:8px;"></i>转账设置</span>'
             +     '<button id="ts-close" style="background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:18px;"><i class="fas fa-times"></i></button>'
             +   '</div>'
-
-            // 余额
             +   '<div style="background:var(--primary-bg);border-radius:14px;padding:14px;margin-bottom:16px;border:1px solid var(--border-color);">'
             +     '<div style="font-size:12px;font-weight:700;color:#F58220;margin-bottom:10px;letter-spacing:0.5px;">💰 余额</div>'
             +     '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:4px;">我的余额</div>'
@@ -285,8 +329,6 @@ const SETTINGS_KEY = getStorageKey('transferSettings_v1');
             +     '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:4px;">对方余额</div>'
             +     '<input id="ts-partner" type="number" step="0.01" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.5px solid var(--border-color);border-radius:10px;background:var(--secondary-bg);color:var(--text-primary);font-size:14px;font-family:var(--font-family);outline:none;">'
             +   '</div>'
-
-            // 概率
             +   '<div style="background:var(--primary-bg);border-radius:14px;padding:14px;margin-bottom:16px;border:1px solid var(--border-color);">'
             +     '<div style="font-size:12px;font-weight:700;color:#F58220;margin-bottom:10px;letter-spacing:0.5px;">📊 对方主动转账</div>'
             +     '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">'
@@ -294,10 +336,7 @@ const SETTINGS_KEY = getStorageKey('transferSettings_v1');
             +       '<input id="ts-chance" type="range" min="0" max="100" step="1" style="flex:1;accent-color:#F58220;">'
             +       '<span id="ts-chance-val" style="font-size:13px;font-weight:700;color:#F58220;width:44px;text-align:right;">30%</span>'
             +     '</div>'
-            +     '<div style="font-size:11px;color:var(--text-secondary);opacity:0.75;">每次到间隔时间后，有该概率给你转账</div>'
             +   '</div>'
-
-            // 间隔
             +   '<div style="background:var(--primary-bg);border-radius:14px;padding:14px;margin-bottom:18px;border:1px solid var(--border-color);">'
             +     '<div style="font-size:12px;font-weight:700;color:#F58220;margin-bottom:10px;letter-spacing:0.5px;">⏱ 转账间隔</div>'
             +     '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">'
@@ -311,7 +350,6 @@ const SETTINGS_KEY = getStorageKey('transferSettings_v1');
             +       '<span id="ts-maxmin-val" style="font-size:13px;font-weight:700;color:#F58220;width:64px;text-align:right;">60分钟</span>'
             +     '</div>'
             +   '</div>'
-
             +   '<div style="display:flex;gap:10px;">'
             +     '<button id="ts-cancel" style="flex:1;padding:11px;border:1.5px solid var(--border-color);border-radius:12px;background:none;color:var(--text-secondary);font-size:13px;cursor:pointer;font-family:var(--font-family);">取消</button>'
             +     '<button id="ts-save" style="flex:2;padding:11px;border:none;border-radius:12px;background:#F58220;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font-family);">保存</button>'
@@ -320,8 +358,8 @@ const SETTINGS_KEY = getStorageKey('transferSettings_v1');
 
         document.body.appendChild(modal);
 
-        const $ = (id) => modal.querySelector(id);
-        $ ('#ts-my').value = data.myBalance;
+        const $ = (s) => modal.querySelector(s);
+        $('#ts-my').value = data.myBalance;
         $('#ts-partner').value = data.partnerBalance;
         $('#ts-chance').value = settingsT.autoChance;
         $('#ts-chance-val').textContent = settingsT.autoChance + '%';
@@ -330,7 +368,6 @@ const SETTINGS_KEY = getStorageKey('transferSettings_v1');
         $('#ts-maxmin').value = settingsT.autoMaxMin;
         $('#ts-maxmin-val').textContent = settingsT.autoMaxMin + '分钟';
 
-        // 滑块实时显示
         $('#ts-chance').oninput = (e) => { $('#ts-chance-val').textContent = e.target.value + '%'; };
         $('#ts-minmin').oninput = (e) => { $('#ts-minmin-val').textContent = e.target.value + '分钟'; };
         $('#ts-maxmin').oninput = (e) => { $('#ts-maxmin-val').textContent = e.target.value + '分钟'; };
@@ -343,9 +380,9 @@ const SETTINGS_KEY = getStorageKey('transferSettings_v1');
         $('#ts-save').onclick = async () => {
             const my = parseFloat($('#ts-my').value);
             const partner = parseFloat($('#ts-partner').value);
-            const chance = parseInt($('#ts-chance').value);
-            const minMin = parseInt($('#ts-minmin').value);
-            const maxMin = parseInt($('#ts-maxmin').value);
+            const chance = parseInt($('#ts-chance').value, 10);
+            const minMin = parseInt($('#ts-minmin').value, 10);
+            const maxMin = parseInt($('#ts-maxmin').value, 10);
 
             if (isNaN(my) || isNaN(partner) || my < 0 || partner < 0) {
                 showNotification('请输入有效余额', 'warning');
@@ -365,15 +402,12 @@ const SETTINGS_KEY = getStorageKey('transferSettings_v1');
             await save();
             await saveSettings();
             close();
-
-            // 按新间隔重新调度
             if (typeof window._rescheduleTransfer === 'function') window._rescheduleTransfer();
-
             showNotification('✓ 转账设置已保存', 'success');
         };
     };
 
-    // ========== 备份导入导出 ==========
+    // ========== 数据接口 ==========
     window.getTransferData = function () {
         return { myBalance: data.myBalance, partnerBalance: data.partnerBalance, settings: settingsT };
     };
