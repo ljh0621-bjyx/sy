@@ -224,17 +224,23 @@ function hexToRgb(hex) {
             +     '</div>'
             +   '</div>'
 
-            +   '<div style="font-size:11px;color:var(--text-secondary);opacity:0.65;line-height:1.7;text-align:left;padding:10px 4px;">'
-            +     '· 每发一条消息 +1<br>'
-            +     '· 每天首次打开 +5<br>'
-            +     '· 积少成多，慢慢走近'
-            +   '</div>'
-            + '</div>';
+            +   '<button id="ip-test" style="margin-top:12px;padding:9px;font-size:11px;border:1px dashed var(--border-color);border-radius:10px;background:none;color:var(--text-secondary);cursor:pointer;width:100%;font-family:var(--font-family);">🧪 测试：+50 点</button>'
++   '<div style="font-size:11px;color:var(--text-secondary);opacity:0.65;line-height:1.7;text-align:left;padding:10px 4px;">'
++     '· 每发一条消息 +1<br>'
++     '· 每天首次打开 +5<br>'
++     '· 积少成多，慢慢走近'
++   '</div>'
 
         document.body.appendChild(modal);
 
         const close = () => modal.remove();
         modal.querySelector('#ip-close').onclick = close;
+        
+modal.querySelector('#ip-test').onclick = function () {
+    addPoints(50);
+    modal.remove();
+    setTimeout(window.openIntimacyPanel, 200);
+};
         modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
     };
 
