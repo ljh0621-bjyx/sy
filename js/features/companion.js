@@ -357,7 +357,6 @@
 
         // 🎤 语音
         el.querySelector('#cp-voice').onclick = function () {
-        alert('录音按钮被点击，PanelVoiceRecorder = ' + typeof window.PanelVoiceRecorder);
             if (!window.PanelVoiceRecorder || !window.PanelVoiceRecorder.isSupported()) {
                 showNotification('当前浏览器不支持录音', 'warning'); return;
             }
