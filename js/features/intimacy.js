@@ -73,12 +73,71 @@
     }
 
     function addPoints(n) {
-        resetTodayIfNeeded();
-        data.points = Math.max(0, data.points + n);
-        data.todayPoints = Math.max(0, data.todayPoints + n);
-        save();
-        updateUI();
+    resetTodayIfNeeded();
+    const oldLevel = getLevel(data.points);
+    data.points = Math.max(0, data.points + n);
+    data.todayPoints = Math.max(0, data.todayPoints + n);
+    const newLevel = getLevel(data.points);
+    save();
+    updateUI();
+
+    // 等级提升 → 庆祝
+    if (newLevel.min > oldLevel.min) {
+        showLevelUpCelebration(newLevel);
     }
+}
+
+function showLevelUpCelebration(level) {
+    const old = document.getElementById('intimacy-levelup');
+    if (old) old.remove();
+
+    const el = document.createElement('div');
+    el.id = 'intimacy-levelup';
+    el.style.cssText = 'position:fixed;inset:0;z-index:999998;background:rgba(0,0,0,0.55);backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:center;animation:intimacyFadeIn 0.4s ease;';
+
+    el.innerHTML =
+        '<div style="position:relative;text-align:center;padding:40px 30px;max-width:340px;animation:intimacyPop 0.7s cubic-bezier(0.34,1.56,0.64,1);">'
+        +   '<div style="position:absolute;top:50%;left:50%;width:260px;height:260px;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle, rgba(' + hexToRgb(level.color) + ',0.35) 0%, transparent 70%);animation:intimacyGlow 2.5s ease-in-out infinite;pointer-events:none;"></div>'
+        +   '<div style="position:relative;font-size:76px;line-height:1;margin-bottom:20px;filter:drop-shadow(0 0 20px ' + level.color + ');animation:intimacyIcon 1s cubic-bezier(0.34,1.56,0.64,1);">' + level.icon + '</div>'
+        +   '<div style="position:relative;font-size:11px;letter-spacing:6px;text-transform:uppercase;color:rgba(255,255,255,0.55);margin-bottom:10px;">LEVEL UP</div>'
+        +   '<div style="position:relative;font-size:26px;font-weight:800;color:#fff;margin-bottom:12px;text-shadow:0 2px 16px rgba(0,0,0,0.5);">' + level.name + '</div>'
+        +   '<div style="position:relative;font-size:13px;color:rgba(255,255,255,0.75);line-height:1.8;">你们又靠近了一点<br>亲密度 <span style="color:' + level.color + ';font-weight:700;">' + data.points + '</span> 点</div>'
+        +   '<button id="intimacy-lv-close" style="position:relative;margin-top:26px;padding:10px 36px;border:1.5px solid rgba(255,255,255,0.25);border-radius:24px;background:rgba(255,255,255,0.1);color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-family);backdrop-filter:blur(8px);">继续 ✦</button>'
+        + '</div>';
+
+    if (!document.getElementById('intimacy-anim-style')) {
+        const s = document.createElement('style');
+        s.id = 'intimacy-anim-style';
+        s.textContent =
+            '@keyframes intimacyFadeIn{from{opacity:0}to{opacity:1}}' +
+            '@keyframes intimacyPop{0%{opacity:0;transform:scale(0.6)}100%{opacity:1;transform:scale(1)}}' +
+            '@keyframes intimacyIcon{0%{opacity:0;transform:scale(0.3) rotate(-20deg)}60%{opacity:1;transform:scale(1.15) rotate(8deg)}100%{transform:scale(1) rotate(0)}}' +
+            '@keyframes intimacyGlow{0%,100%{opacity:0.7;transform:translate(-50%,-50%) scale(1)}50%{opacity:1;transform:translate(-50%,-50%) scale(1.15)}}';
+        document.head.appendChild(s);
+    }
+
+    document.body.appendChild(el);
+
+    const close = () => el.remove();
+    el.querySelector('#intimacy-lv-close').onclick = close;
+    el.addEventListener('click', (e) => { if (e.target === el) close(); });
+
+    if (typeof playSound === 'function') {
+        try { playSound('favorite'); } catch (e) {}
+    }
+
+    // 15 秒后自动关闭
+    setTimeout(function () {
+        if (document.body.contains(el)) close();
+    }, 15000);
+}
+
+function hexToRgb(hex) {
+    hex = hex.replace('#', '');
+    if (hex.length === 3) hex = hex.split('').map(function (c) { return c + c; }).join('');
+    const n = parseInt(hex, 16);
+    return ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255);
+}
 
     function checkDailyLogin() {
         const today = new Date().toDateString();
