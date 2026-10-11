@@ -133,13 +133,13 @@
         document.getElementById('vs-cancel').onclick = () => modal.remove();
         modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
         
-        document.getElementById('vs-save').onclick = () => {
-            localStorage.setItem('minimax_group_id', document.getElementById('vs-groupid').value.trim());
-            localStorage.setItem('minimax_api_key', document.getElementById('vs-apikey').value.trim());
-            localStorage.setItem('minimax_voice_id', document.getElementById('vs-voiceid').value.trim());
-            localStorage.setItem('minimax_model', document.getElementById('vs-model').value);
-            showNotification('✓ 语音配置已保存', 'success');
-            modal.remove();
-        };
+       document.getElementById('vs-save').onclick = () => {
+    localStorage.setItem(getStorageKey('minimax_group_id'), document.getElementById('vs-groupid').value.trim());
+    localStorage.setItem(getStorageKey('minimax_api_key'), document.getElementById('vs-apikey').value.trim());
+    localStorage.setItem(getStorageKey('minimax_voice_id'), document.getElementById('vs-voiceid').value.trim());
+    localStorage.setItem(getStorageKey('minimax_model'), document.getElementById('vs-model').value);
+    showNotification('✓ 语音配置已保存', 'success');
+    modal.remove();
+};
     };
 })();
