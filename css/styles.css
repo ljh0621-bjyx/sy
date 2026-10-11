@@ -11577,48 +11577,46 @@ body::after {
 .typing-dot:nth-child(3),
 .ti-preview-dot:nth-child(3) { animation-delay: 0.3s !important; }
 
+
 /* ============================================================
- * 心跳 / 呼吸细节动效
+ * 心跳 / 呼吸细节动效（明显加强版）
  * ============================================================ */
 
-/* A. 顶栏头像呼吸（双方共用同一个类，所以会同时生效） */
+/* A. 顶栏头像呼吸光晕 */
 @keyframes avatarBreath {
-    0%, 100% { opacity: 0.10; }
-    50%      { opacity: 0.55; }
+    0%, 100% { opacity: 0.05; transform: scale(1); }
+    50%      { opacity: 0.85; transform: scale(1.15); }
 }
 .avatar-container::after {
-    opacity: 0 !important;
     transition: none !important;
-    animation: avatarBreath 4s ease-in-out infinite !important;
-}
-.avatar-container:hover::after {
-    animation-duration: 2s !important;
+    animation: avatarBreath 2.5s ease-in-out infinite !important;
 }
 
 /* B. 状态文字前的小点呼吸 */
 @keyframes statusDotBreath {
-    0%, 100% { opacity: 0.35; transform: scale(0.85); }
-    50%      { opacity: 1;    transform: scale(1.15); }
+    0%, 100% { opacity: 0.2; transform: scale(0.7); }
+    50%      { opacity: 1;   transform: scale(1.4); }
 }
 .status::before {
     content: '';
     display: inline-block;
-    width: 5px;
-    height: 5px;
+    width: 6px;
+    height: 6px;
     border-radius: 50%;
     background: var(--accent-color);
-    margin-right: 5px;
+    margin-right: 6px;
     vertical-align: middle;
-    animation: statusDotBreath 2.2s ease-in-out infinite;
+    box-shadow: 0 0 8px var(--accent-color);
+    animation: statusDotBreath 1.6s ease-in-out infinite;
 }
 
 /* C. 发送按钮光晕呼吸 */
 @keyframes sendBtnBreath {
     0%, 100% { box-shadow: 0 0 0 0 rgba(var(--accent-color-rgb, 197, 164, 126), 0); }
-    50%      { box-shadow: 0 0 0 8px rgba(var(--accent-color-rgb, 197, 164, 126), 0.12); }
+    50%      { box-shadow: 0 0 0 14px rgba(var(--accent-color-rgb, 197, 164, 126), 0.25); }
 }
 .send-btn {
-    animation: sendBtnBreath 3.2s ease-in-out infinite;
+    animation: sendBtnBreath 2s ease-in-out infinite;
 }
 .send-btn:hover {
     animation: none;
@@ -11626,8 +11624,8 @@ body::after {
 
 /* D. 对方气泡内发光呼吸 */
 @keyframes recvGlow {
-    0%, 100% { box-shadow: inset 0 0 20px rgba(var(--accent-color-rgb, 197, 164, 126), 0); }
-    50%      { box-shadow: inset 0 0 20px rgba(var(--accent-color-rgb, 197, 164, 126), 0.15); }
+    0%, 100% { opacity: 0; }
+    50%      { opacity: 1; }
 }
 .message-wrapper.received .message::after {
     content: '';
@@ -11635,14 +11633,15 @@ body::after {
     inset: 0;
     border-radius: inherit;
     pointer-events: none;
-    animation: recvGlow 4.2s ease-in-out infinite;
+    box-shadow: inset 0 0 30px rgba(var(--accent-color-rgb, 197, 164, 126), 0.35);
+    animation: recvGlow 2.8s ease-in-out infinite;
 }
 
 /* E. 顶部格言呼吸 */
 @keyframes mottoBreath {
-    0%, 100% { opacity: 0.7; }
+    0%, 100% { opacity: 0.35; }
     50%      { opacity: 1; }
 }
 .header-motto {
-    animation: mottoFadeIn 1.2s ease 0.6s both, mottoBreath 5s ease-in-out 1.8s infinite !important;
+    animation: mottoFadeIn 1.2s ease 0.6s both, mottoBreath 3.5s ease-in-out 1.8s infinite !important;
 }
