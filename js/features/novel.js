@@ -451,7 +451,7 @@ function generatePartnerReply() {
             const emojis = ['📖','📚','✨','💕','🥺','😊','😍','🤔','📕','📗','📘','💭'];
             openNovelQuickPicker('选择表情', emojis.map(e => ({ type: 'emoji', content: e })));
         };
-        document.getElementById('nv-sticker').onclick = () => 
+        document.getElementById('nv-sticker').onclick = () => { 
             const stickers = (typeof stickerLibrary !== 'undefined' && stickerLibrary.length > 0) ? stickerLibrary : [];
             if (stickers.length === 0) { showNotification('对方表情库为空', 'warning'); return; }
             openNovelQuickPicker('选择表情包', stickers.map(s => ({ type: 'sticker', content: s })));
