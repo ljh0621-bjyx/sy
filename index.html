@@ -858,7 +858,6 @@ window.addEventListener('unhandledrejection', function(e) {
         淡化：100% 为原图，越小越透出底色。
     </div>
 </div>
-
         </div>
     </div>
 
@@ -2622,6 +2621,102 @@ window.addEventListener('unhandledrejection', function(e) {
                     el.classList.toggle('active', el.dataset.ambient === saved);
                 });
             }, 200);
+        }
+    });
+})();
+</script>
+<script>
+(function () {
+    var KEY = 'chatApp_bgEffects';
+
+    function applyEffects(obj) {
+        obj = obj || {};
+        var blur   = parseInt(obj.blur, 10)   || 0;
+        var darken = parseInt(obj.darken, 10) || 0;
+        var fade   = (obj.fade === undefined || obj.fade === null) ? 100 : parseInt(obj.fade, 10);
+
+        var root = document.documentElement;
+        root.style.setProperty('--bg-blur',   blur + 'px');
+        root.style.setProperty('--bg-darken', (darken / 100).toFixed(3));
+        root.style.setProperty('--bg-fade',   (fade / 100).toFixed(3));
+    }
+
+    function saveEffects() {
+        var obj = {
+            blur:   parseInt(document.getElementById('bg-effect-blur').value, 10) || 0,
+            darken: parseInt(document.getElementById('bg-effect-darken').value, 10) || 0,
+            fade:   parseInt(document.getElementById('bg-effect-fade').value, 10)
+        };
+        try { localStorage.setItem(KEY, JSON.stringify(obj)); } catch (e) {}
+        applyEffects(obj);
+    }
+
+    function loadEffects() {
+        var obj = { blur: 0, darken: 0, fade: 100 };
+        try {
+            var raw = localStorage.getItem(KEY);
+            if (raw) obj = Object.assign(obj, JSON.parse(raw));
+        } catch (e) {}
+        applyEffects(obj);
+
+        setTimeout(function () {
+            var b = document.getElementById('bg-effect-blur');
+            var d = document.getElementById('bg-effect-darken');
+            var f = document.getElementById('bg-effect-fade');
+            if (b) b.value = obj.blur || 0;
+            if (d) d.value = obj.darken || 0;
+            if (f) f.value = (obj.fade === undefined) ? 100 : obj.fade;
+
+            var bv = document.getElementById('bg-effect-blur-val');
+            var dv = document.getElementById('bg-effect-darken-val');
+            var fv = document.getElementById('bg-effect-fade-val');
+            if (bv) bv.textContent = (obj.blur || 0) + 'px';
+            if (dv) dv.textContent = (obj.darken || 0) + '%';
+            if (fv) fv.textContent = ((obj.fade === undefined) ? 100 : obj.fade) + '%';
+        }, 300);
+    }
+
+    function bindUI() {
+        var b = document.getElementById('bg-effect-blur');
+        var d = document.getElementById('bg-effect-darken');
+        var f = document.getElementById('bg-effect-fade');
+        if (!b || b._bound) return;
+        b._bound = d._bound = f._bound = true;
+
+        b.addEventListener('input', function () {
+            document.getElementById('bg-effect-blur-val').textContent = b.value + 'px';
+            applyEffects({ blur: b.value, darken: d.value, fade: f.value });
+        });
+        d.addEventListener('input', function () {
+            document.getElementById('bg-effect-darken-val').textContent = d.value + '%';
+            applyEffects({ blur: b.value, darken: d.value, fade: f.value });
+        });
+        f.addEventListener('input', function () {
+            document.getElementById('bg-effect-fade-val').textContent = f.value + '%';
+            applyEffects({ blur: b.value, darken: d.value, fade: f.value });
+        });
+
+        b.addEventListener('change', saveEffects);
+        d.addEventListener('change', saveEffects);
+        f.addEventListener('change', saveEffects);
+    }
+
+    function boot() {
+        loadEffects();
+        setTimeout(bindUI, 500);
+        setTimeout(bindUI, 1500);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', boot);
+    } else {
+        boot();
+    }
+
+    document.addEventListener('click', function (e) {
+        if (e.target.closest('#appearance-settings')) {
+            setTimeout(bindUI, 200);
+            setTimeout(loadEffects, 300);
         }
     });
 })();
