@@ -1405,6 +1405,86 @@ function editItem(index, oldText) {
     renderReplyLibrary();
 }
 
+function _showEmojiBatchAddDialog() {
+    const overlay = _makeOverlay();
+    const panel = document.createElement('div');
+    panel.style.cssText = `
+        background:var(--secondary-bg);border-radius:22px;padding:24px;
+        width:92%;max-width:420px;
+        max-height:88vh;
+        display:flex;flex-direction:column;
+        box-shadow:0 24px 80px rgba(0,0,0,.45);
+        animation:popIn 0.22s cubic-bezier(.34,1.56,.64,1);
+    `;
+
+    panel.innerHTML = `
+        <style>@keyframes popIn{from{opacity:0;transform:scale(.93)}to{opacity:1;transform:scale(1)}}</style>
+        <div style="flex-shrink:0;font-size:16px;font-weight:700;color:var(--text-primary);margin-bottom:6px;">批量添加 Emoji</div>
+        <div style="flex-shrink:0;font-size:12px;color:var(--text-secondary);margin-bottom:14px;line-height:1.6;">每行一个，自动去重（可粘贴一大段）</div>
+
+        <div style="flex:1;overflow-y:auto;overflow-x:hidden;min-height:0;">
+            <textarea id="emoji-batch-input" rows="10" placeholder="☺️&#10;🥺&#10;💕&#10;✨&#10;😊" style="
+                width:100%;box-sizing:border-box;padding:12px 14px;
+                border:1.5px solid var(--border-color);border-radius:13px;
+                background:var(--primary-bg);color:var(--text-primary);
+                font-size:16px;font-family:var(--font-family);outline:none;resize:vertical;
+                line-height:1.8;transition:border 0.18s;
+            "></textarea>
+            <div style="font-size:11px;color:var(--text-secondary);margin-top:6px;">
+                <span id="emoji-batch-count">0 个</span>
+            </div>
+        </div>
+
+        <div style="flex-shrink:0;padding-top:14px;display:flex;gap:10px;">
+            <button id="eb-cancel" style="flex:1;padding:12px;border:1.5px solid var(--border-color);border-radius:13px;background:none;color:var(--text-secondary);font-size:13px;cursor:pointer;font-family:var(--font-family);">取消</button>
+            <button id="eb-confirm" style="flex:2;padding:12px;border:none;border-radius:13px;background:var(--accent-color);color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:var(--font-family);">添加</button>
+        </div>
+    `;
+    overlay.appendChild(panel);
+    document.body.appendChild(overlay);
+
+    const ta = panel.querySelector('#emoji-batch-input');
+    const countEl = panel.querySelector('#emoji-batch-count');
+
+    ta.addEventListener('input', () => {
+        const lines = ta.value.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+        countEl.textContent = lines.length + ' 个';
+    });
+    ta.addEventListener('focus', e => { e.target.style.borderColor = 'var(--accent-color)'; });
+    ta.addEventListener('blur', e => { e.target.style.borderColor = 'var(--border-color)'; });
+
+    const close = () => overlay.remove();
+    panel.querySelector('#eb-cancel').onclick = close;
+    overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+
+    panel.querySelector('#eb-confirm').onclick = () => {
+        const lines = ta.value.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+        if (!lines.length) {
+            showNotification('请输入至少一个 Emoji', 'warning');
+            return;
+        }
+
+        let added = 0, skipped = 0;
+        const existing = new Set(customEmojis);
+        lines.forEach(val => {
+            if (existing.has(val)) { skipped++; return; }
+            customEmojis.push(val);
+            existing.add(val);
+            added++;
+        });
+
+        _saveRepliesNow();
+        close();
+        renderReplyLibrary();
+        showNotification(
+            '✓ 添加 ' + added + ' 个' + (skipped ? '，跳过 ' + skipped + ' 个重复' : ''),
+            'success'
+        );
+    };
+
+    setTimeout(() => ta.focus(), 120);
+}
+
 function renderEmptyState(text) {
     return `
     <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 0;color:var(--text-secondary);opacity:0.6;grid-column:1/-1;">
@@ -2310,14 +2390,9 @@ function initReplyLibraryListeners() {
                 document.getElementById('sticker-file-input')?.click(); return;
             }
             if (currentSubTab === 'emojis') {
-                const input = prompt('请输入要添加的 Emoji（支持组合表情）:');
-                if (input?.trim()) {
-                    customEmojis.push(input.trim());
-                    _saveRepliesNow(); renderReplyLibrary();
-                    showNotification('✓ Emoji 已添加', 'success');
-                }
-                return;
-            }
+    _showEmojiBatchAddDialog();
+    return;
+}
             if (currentSubTab === 'custom' || currentSubTab === 'pokes' || currentSubTab === 'statuses') {
                 _showBatchAddDialog(); return;
             }
