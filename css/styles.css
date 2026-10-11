@@ -11500,3 +11500,24 @@ body::after {
     background: rgba(0, 0, 0, var(--bg-darken, 0));
     transition: background 0.2s ease;
 }
+/* ============================================================
+ * 消息出现动画：模糊浮现（覆盖默认 messageAppear）
+ * ============================================================ */
+@keyframes messageAppearFuzzy {
+    0% {
+        opacity: 0;
+        filter: blur(8px);
+    }
+    60% {
+        filter: blur(2px);
+    }
+    100% {
+        opacity: 1;
+        filter: blur(0);
+    }
+}
+
+.message-wrapper {
+    animation: messageAppearFuzzy 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards !important;
+    opacity: 0;
+}
