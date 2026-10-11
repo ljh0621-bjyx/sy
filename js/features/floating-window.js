@@ -310,7 +310,7 @@
             await sleep(220 + Math.random() * 180);
 
             // 犹豫一下
-            if (statusEl) statusEl.textContent = '嗯……';
+            if (statusEl) statusEl.textContent = '诶呀，打错了😼';
             await sleep(260 + Math.random() * 220);
 
             // 逐字删除（模拟 backspace）
@@ -322,7 +322,7 @@
                 await sleep(55 + Math.random() * 30);
             }
 
-            if (statusEl) statusEl.textContent = '重新打…';
+            if (statusEl) statusEl.textContent = '😸正在修改';
             await sleep(180 + Math.random() * 150);
 
             // 重新打正确
