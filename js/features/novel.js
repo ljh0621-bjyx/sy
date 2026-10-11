@@ -137,31 +137,83 @@ try {
 
     // ---------- 聊天 ----------
     window.sendNovelChat = async function (type, content) {
+    // ★ 我发语音
+    if (type === 'voice') {
+        const dur = Math.max(2, Math.ceil(String(content || '').length / 4));
+        data.chatHistory.push({
+            sender: 'me', type: 'voice', content: content,
+            duration: dur, voiceUrl: null, time: Date.now()
+        });
+        if (data.chatHistory.length > 200) data.chatHistory = data.chatHistory.slice(-200);
+        await save();
+        renderPanel();
+        scrollChatToBottom();
+        (async () => {
+            try {
+                if (typeof window.playPartnerVoice === 'function') {
+                    const speaker = (typeof settings !== 'undefined' && settings.myName) || '我';
+                    const url = await window.playPartnerVoice(content, speaker);
+                    if (url) {
+                        for (let i = data.chatHistory.length - 1; i >= 0; i--) {
+                            const h = data.chatHistory[i];
+                            if (h.sender === 'me' && h.type === 'voice' && !h.voiceUrl && h.content === content) {
+                                h.voiceUrl = url; break;
+                            }
+                        }
+                        await save(); renderPanel();
+                    }
+                }
+            } catch (e) { console.warn('[novel] my voice fail', e); }
+        })();
+    } else {
         data.chatHistory.push({ sender: 'me', type, content, time: Date.now() });
         if (data.chatHistory.length > 200) data.chatHistory = data.chatHistory.slice(-200);
         await save();
         renderPanel();
         scrollChatToBottom();
+    }
 
-        setTimeout(async () => {
-            const reply = generatePartnerReply();
-            if (reply.type === 'text' && typeof window.simulatePartnerTypingProcess === 'function') {
-    try { await window.simulatePartnerTypingProcess(reply.content); } catch (e) { console.warn('浮窗失败', e); }
-}
+    setTimeout(async () => {
+        const reply = generatePartnerReply();
+        if (reply.type === 'text' && typeof window.simulatePartnerTypingProcess === 'function') {
+            try { await window.simulatePartnerTypingProcess(reply.content); } catch (e) {}
+        }
+        if (reply.type === 'voice') {
+            const dur = Math.max(2, Math.ceil(String(reply.content || '').length / 4));
+            let voiceUrl = null;
+            try {
+                if (typeof window.playPartnerVoice === 'function') {
+                    const speaker = (typeof settings !== 'undefined' && settings.partnerName) || '对方';
+                    voiceUrl = await window.playPartnerVoice(reply.content, speaker);
+                }
+            } catch (e) { console.warn('[novel] partner voice fail', e); }
+            data.chatHistory.push({
+                sender: 'partner', type: 'voice', content: reply.content,
+                duration: dur, voiceUrl: voiceUrl, time: Date.now()
+            });
+        } else {
             data.chatHistory.push({ sender: 'partner', type: reply.type, content: reply.content, time: Date.now() });
-            await save();
-            renderPanel();
-            scrollChatToBottom();
-        }, 1500 + Math.random() * 2000);
-    };
-
-   function generatePartnerReply() {
+        }
+        if (data.chatHistory.length > 200) data.chatHistory = data.chatHistory.slice(-200);
+        await save();
+        renderPanel();
+        scrollChatToBottom();
+    }, 1500 + Math.random() * 2000);
+};
+   function getVoiceChanceForNovel() {
+    if (typeof window.getAIReplyChance === 'function') return window.getAIReplyChance('voiceChance', 30);
+    return 30;
+}
+function generatePartnerReply() {
     const rand = Math.random();
-
     const pool = (typeof customReplies !== 'undefined' && Array.isArray(customReplies))
         ? customReplies.filter(t => t && String(t).trim())
         : [];
 
+    // ★ 按聊天设置里的"发语音"滑块决定是否发语音
+    if (pool.length > 0 && typeof window.playPartnerVoice === 'function' && Math.random() * 100 < getVoiceChanceForNovel()) {
+        return { type: 'voice', content: pool[Math.floor(Math.random() * pool.length)] };
+    }
     // 60% 字卡库文字
     if (rand < 0.6 && pool.length > 0) {
         return { type: 'text', content: pool[Math.floor(Math.random() * pool.length)] };
@@ -236,6 +288,17 @@ try {
                 else if (msg.type === 'emoji') inner = '<span style="font-size:20px;">' + msg.content + '</span>';
                 else if (msg.type === 'sticker') inner = '<img src="' + msg.content + '" style="max-width:90px;max-height:90px;border-radius:8px;display:block;">';
                 else if (msg.type === 'image') inner = '<img src="' + msg.content + '" style="max-width:140px;max-height:140px;border-radius:8px;display:block;">';
+                else if (msg.type === 'voice') {
+    const dur = msg.duration || Math.max(2, Math.ceil(String(msg.content || '').length / 4));
+    inner = '<div class="panel-voice-bubble" data-url="' + (msg.voiceUrl || '') + '" data-duration="' + dur + '" onclick="playPanelVoice(this)" '
+        + 'style="display:flex;align-items:center;gap:8px;cursor:pointer;min-width:90px;padding:2px 0;">'
+        + '<i class="fas fa-volume-up" style="font-size:14px;opacity:0.9;"></i>'
+        + '<div style="flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,0.3);min-width:30px;position:relative;overflow:hidden;">'
+        +   '<div class="voice-bar" style="position:absolute;left:0;top:0;bottom:0;width:0%;background:rgba(255,255,255,0.9);transition:width 0.15s linear;"></div>'
+        + '</div>'
+        + '<span style="font-size:11px;opacity:0.85;">' + dur + '"</span>'
+        + '</div>';
+}
                 return '<div style="display:flex;' + (isMe ? 'justify-content:flex-end;' : '') + ';margin-bottom:6px;">'
                     + '<div style="background:' + (isMe ? 'var(--accent-color)' : 'var(--secondary-bg)') + ';color:' + (isMe ? '#fff' : 'var(--text-primary)') + ';padding:6px 10px;border-radius:12px;max-width:72%;word-break:break-word;">'
                     + inner + '</div></div>';
@@ -270,6 +333,7 @@ try {
             + '<div id="novel-chat-scroll" style="flex:1;overflow-y:auto;padding:14px 20px;">' + chatHTML + '</div>'
             + '<div style="display:flex;gap:6px;padding:10px 14px;border-top:1px solid var(--border-color);background:var(--primary-bg);flex-shrink:0;">'
             + '<button id="nv-emoji" style="width:36px;height:36px;border-radius:50%;border:none;background:var(--secondary-bg);color:var(--text-secondary);cursor:pointer;flex-shrink:0;"><i class="fas fa-smile"></i></button>'
+            + '<button id="nv-voice" style="width:36px;height:36px;border-radius:50%;border:none;background:var(--secondary-bg);color:var(--text-secondary);cursor:pointer;flex-shrink:0;"><i class="fas fa-microphone"></i></button>'
             + '<button id="nv-sticker" style="width:36px;height:36px;border-radius:50%;border:none;background:var(--secondary-bg);color:var(--text-secondary);cursor:pointer;flex-shrink:0;"><i class="fas fa-image"></i></button>'
             + '<button id="nv-image" style="width:36px;height:36px;border-radius:50%;border:none;background:var(--secondary-bg);color:var(--text-secondary);cursor:pointer;flex-shrink:0;"><i class="fas fa-camera"></i></button>'
             + '<input id="nv-input" type="text" placeholder="边看边聊…" style="flex:1;min-width:0;padding:8px 14px;border:1px solid var(--border-color);border-radius:20px;background:var(--secondary-bg);color:var(--text-primary);font-size:13px;outline:none;font-family:var(--font-family);">'
@@ -377,6 +441,14 @@ try {
             openNovelQuickPicker('选择表情', emojis.map(e => ({ type: 'emoji', content: e })));
         };
         document.getElementById('nv-sticker').onclick = () => {
+        const nvVoiceBtn = document.getElementById('nv-voice');
+if (nvVoiceBtn) nvVoiceBtn.onclick = () => {
+    const pool = (typeof customReplies !== 'undefined' && Array.isArray(customReplies))
+        ? customReplies.filter(t => t && String(t).trim()) : [];
+    if (pool.length === 0) { showNotification('字卡库为空', 'warning'); return; }
+    const text = pool[Math.floor(Math.random() * pool.length)];
+    window.sendNovelChat('voice', text);
+};
             const stickers = (typeof stickerLibrary !== 'undefined' && stickerLibrary.length > 0) ? stickerLibrary : [];
             if (stickers.length === 0) { showNotification('对方表情库为空', 'warning'); return; }
             openNovelQuickPicker('选择表情包', stickers.map(s => ({ type: 'sticker', content: s })));
