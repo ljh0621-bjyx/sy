@@ -1603,7 +1603,7 @@ window.addEventListener('unhandledrejection', function(e) {
 <div class="settings-item" id="quick-phrases-function" onclick="openQuickPhrasesManager()">
     <i class="fas fa-bolt"></i><span>快捷短语</span>
 </div>
-<div class="settings-item" onclick="window.openMemoryCard && window.openMemoryCard()">
+<div class="settings-item" onclick="if(window.openMemoryCard){window.openMemoryCard()}else{alert('函数未定义')}">
     <i class="fas fa-clock-rotate-left"></i><span>那年今日</span>
 </div>
 <div class="settings-item" id="random-wallpaper-function" onclick="openRandomWallpaperSettings()">
