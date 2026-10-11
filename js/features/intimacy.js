@@ -89,25 +89,31 @@
     }
 
     function installMsgHook() {
-    // 改用轮询：每隔 1.5 秒检查 messages 数组有没有新增
-    let _lastCount = 0;
-    let _ready = false;
+    let _lastCount = -1;
 
-    setInterval(function () {
+    function check() {
         try {
-            if (typeof messages === 'undefined' || !Array.isArray(messages)) return;
-            if (!_ready) {
+            if (typeof messages === 'undefined' || !Array.isArray(messages)) {
+                return;
+            }
+            if (_lastCount === -1) {
                 _lastCount = messages.length;
-                _ready = true;
+                console.log('[intimacy] 初始化完成，当前消息数：', _lastCount, '，点数：', data.points);
                 return;
             }
             if (messages.length > _lastCount) {
                 const diff = messages.length - _lastCount;
                 _lastCount = messages.length;
+                console.log('[intimacy] 新增 ' + diff + ' 条消息，点数 →', data.points + diff);
                 addPoints(diff);
             }
-        } catch (e) {}
-    }, 1500);
+        } catch (e) {
+            console.warn('[intimacy] check err', e);
+        }
+    }
+
+    check();
+    setInterval(check, 1500);
 }
 
     // ========== 面板 ==========
