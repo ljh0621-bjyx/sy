@@ -567,26 +567,33 @@
             }
         }
         body::before {
-            content: "";
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: -1;
-            pointer-events: none;
-            background-color: var(--primary-bg);
-            background-image:
-                radial-gradient(700px 360px at 15% 0%, rgba(var(--accent-color-rgb,197,164,126), 0.06) 0%, transparent 60%),
-                radial-gradient(650px 340px at 90% 10%, rgba(var(--accent-color-rgb,197,164,126), 0.05) 0%, transparent 62%),
-                linear-gradient(180deg, rgba(0,0,0,0.02) 0%, rgba(0,0,0,0) 48%, rgba(0,0,0,0.03) 100%),
-                var(--chat-bg-image, linear-gradient(rgba(0,0,0,0), rgba(0,0,0,0)));
-            background-size: cover;
-            background-position: center center;
-            background-repeat: no-repeat;
-            transition: background-color 0.5s ease;
-            will-change: transform;
-        }
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    pointer-events: none;
+    background-color: var(--primary-bg);
+    background-image:
+        radial-gradient(820px 420px at 12% 0%, rgba(var(--accent-color-rgb,197,164,126), 0.07) 0%, transparent 62%),
+        radial-gradient(760px 400px at 92% 8%, rgba(var(--accent-color-rgb,197,164,126), 0.055) 0%, transparent 64%),
+        radial-gradient(680px 380px at 30% 100%, rgba(var(--accent-color-rgb,197,164,126), 0.04) 0%, transparent 66%),
+        linear-gradient(180deg, rgba(0,0,0,0.02) 0%, rgba(0,0,0,0) 48%, rgba(0,0,0,0.03) 100%),
+        var(--chat-bg-image, linear-gradient(rgba(0,0,0,0), rgba(0,0,0,0)));
+    background-size: cover;
+    background-position: center center;
+    background-repeat: no-repeat;
+    transition: background-color 0.5s ease;
+    will-change: transform, background-position;
+    animation: ambientBreath 12s ease-in-out infinite;
+}
+
+@keyframes ambientBreath {
+    0%, 100% { background-position: 0% 0%, 0% 0%, 0% 0%, center, center center; }
+    50%      { background-position: 2% -2%, -2% 2%, 2% -1%, center, center center; }
+}
 
         .header {
             padding: 0;
