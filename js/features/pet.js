@@ -26,14 +26,14 @@
     };
 
     async function load() {
-        try {
-            const saved = await localforage.getItem(KEY);
-            if (saved) Object.assign(data, saved);
-        } catch (e) {}
-    }
-    async function save() {
-        try { await localforage.setItem(KEY, data); } catch (e) {}
-    }
+    try {
+        const saved = await localforage.getItem(getStorageKey('petData_v1'));
+        if (saved) Object.assign(data, saved);
+    } catch (e) {}
+}
+async function save() {
+    try { await localforage.setItem(getStorageKey('petData_v1'), data); } catch (e) {}
+}
 
     function getStage() {
         for (let i = STAGES.length - 1; i >= 0; i--) {
@@ -69,11 +69,62 @@
 
     // 根据当前状态算今天的成长值
     function tickGrowth() {
-        const avg = (data.hunger + data.clean + data.mood) / 3;
-        if (avg >= 60) {
-            data.growth = Math.min(9999, data.growth + 1);
+    const avg = (data.hunger + data.clean + data.mood) / 3;
+    if (avg >= 60) {
+        const oldIdx = getStageIndex();
+        data.growth = Math.min(9999, data.growth + 1);
+        const newIdx = getStageIndex();
+        if (newIdx > oldIdx) {
+            data.stageIndex = newIdx;
+            save();
+            showStageUp(STAGES[newIdx]);
         }
     }
+}
+
+function showStageUp(stage) {
+    const old = document.getElementById('pet-stageup');
+    if (old) old.remove();
+
+    const el = document.createElement('div');
+    el.id = 'pet-stageup';
+    el.style.cssText = 'position:fixed;inset:0;z-index:999999;background:rgba(0,0,0,0.6);backdrop-filter:blur(14px);display:flex;align-items:center;justify-content:center;animation:petFadeIn 0.4s ease;';
+
+    el.innerHTML =
+        '<div style="position:relative;text-align:center;padding:40px 30px;max-width:340px;">'
+        +   '<div style="position:absolute;top:50%;left:50%;width:280px;height:280px;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle, rgba(var(--accent-color-rgb),0.35) 0%, transparent 70%);animation:petGlow 2.5s ease-in-out infinite;pointer-events:none;"></div>'
+        +   '<div style="position:relative;font-size:88px;line-height:1;margin-bottom:16px;filter:drop-shadow(0 0 24px var(--accent-color));animation:petPop 1s cubic-bezier(0.34,1.56,0.64,1);">' + stage.icon + '</div>'
+        +   '<div style="position:relative;font-size:11px;letter-spacing:6px;text-transform:uppercase;color:rgba(255,255,255,0.55);margin-bottom:10px;">GROWING UP</div>'
+        +   '<div style="position:relative;font-size:24px;font-weight:800;color:#fff;margin-bottom:14px;text-shadow:0 2px 16px rgba(0,0,0,0.5);">' + data.name + ' 长大了</div>'
+        +   '<div style="position:relative;font-size:13px;color:rgba(255,255,255,0.8);line-height:1.8;margin-bottom:6px;">' + stage.desc + '</div>'
+        +   '<div style="position:relative;font-size:12px;color:rgba(255,255,255,0.55);">已进入「' + stage.name + '」阶段</div>'
+        +   '<button id="pet-lv-close" style="position:relative;margin-top:26px;padding:10px 36px;border:1.5px solid rgba(255,255,255,0.25);border-radius:24px;background:rgba(255,255,255,0.1);color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-family);backdrop-filter:blur(8px);">好耶 ✦</button>'
+        + '</div>';
+
+    if (!document.getElementById('pet-stageup-style')) {
+        const s = document.createElement('style');
+        s.id = 'pet-stageup-style';
+        s.textContent =
+            '@keyframes petFadeIn{from{opacity:0}to{opacity:1}}' +
+            '@keyframes petPop{0%{opacity:0;transform:scale(0.4) rotate(-20deg)}60%{opacity:1;transform:scale(1.15) rotate(8deg)}100%{transform:scale(1) rotate(0)}}' +
+            '@keyframes petGlow{0%,100%{opacity:0.7;transform:translate(-50%,-50%) scale(1)}50%{opacity:1;transform:translate(-50%,-50%) scale(1.15)}}';
+        document.head.appendChild(s);
+    }
+
+    document.body.appendChild(el);
+
+    const close = () => el.remove();
+    el.querySelector('#pet-lv-close').onclick = close;
+    el.addEventListener('click', (e) => { if (e.target === el) close(); });
+
+    if (typeof playSound === 'function') {
+        try { playSound('favorite'); } catch (e) {}
+    }
+
+    setTimeout(function () {
+        if (document.body.contains(el)) close();
+    }, 15000);
+}
 
     function updateUI() {
         const el = document.getElementById('pet-btn-icon');
@@ -143,6 +194,7 @@ window.openPetPanel = function () {
         +     buildActionBtn('pet-feed',  '🍖', '喂食')
         +     buildActionBtn('pet-clean', '🛁', '洗澡')
         +     buildActionBtn('pet-play',  '🎾', '陪玩')
+        +     buildActionBtn('pet-test-grow', '🌱', '测试成长+50')
         +   '</div>'
 
         // 底部提示
@@ -157,6 +209,19 @@ window.openPetPanel = function () {
     const close = () => modal.remove();
     modal.querySelector('#pet-close').onclick = close;
     
+    
+modal.querySelector('#pet-test-grow').onclick = () => {
+    const oldIdx = getStageIndex();
+    data.growth += 50;
+    const newIdx = getStageIndex();
+    save();
+    modal.remove();
+    if (newIdx > oldIdx) {
+        setTimeout(() => showStageUp(STAGES[newIdx]), 150);
+    } else {
+        setTimeout(window.openPetPanel, 150);
+    }
+};
 modal.querySelector('#pet-rename').onclick = function () {
     const newName = prompt('给它起个新名字：', data.name);
     if (!newName || !newName.trim()) return;
@@ -175,7 +240,6 @@ modal.querySelector('#pet-rename').onclick = function () {
     modal.querySelector('#pet-clean').onclick = () => doPetAction('clean');
     modal.querySelector('#pet-play').onclick = () => doPetAction('play');
 };
-
 function buildStatBar(icon, label, value, color) {
     const pct = Math.max(0, Math.min(100, value));
     return '<div style="display:flex;align-items:center;gap:10px;">'
