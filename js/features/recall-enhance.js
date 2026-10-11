@@ -34,31 +34,29 @@
         if (!container) return;
 
         const msgs = (typeof messages !== 'undefined') ? messages : (window.messages || []);
-        const recallMsgs = msgs.filter(m => m && m.type === 'system' && m.text && m.text.indexOf('撤回了一条消息') !== -1);
-
         const domSystems = Array.from(container.querySelectorAll('.system-message'));
-        let recallIdx = 0;
+        const sysMsgs = msgs.filter(m => m && m.type === 'system');
+        const pairedSys = sysMsgs.slice(-domSystems.length);
 
-        domSystems.forEach(el => {
+        domSystems.forEach((el, i) => {
             if (el.dataset._recallBound === '1') return;
-            const domText = el.textContent || '';
-            if (domText.indexOf('撤回了一条消息') === -1) return;
+            const msg = pairedSys[i];
+            if (!msg) return;
 
-            for (let i = recallIdx; i < recallMsgs.length; i++) {
-                if (recallMsgs[i].text === domText) {
-                    recallIdx = i + 1;
-                    const recallText = recallMsgs[i].recallText;
-                    if (!recallText) break;
+            const domText = (el.textContent || '').trim();
+            const msgText = String(msg.text || '').trim();
+            if (domText !== msgText) return;
 
-                    el.dataset._recallBound = '1';
-                    el.style.cursor = 'pointer';
-                    el.style.textDecoration = 'underline dotted';
-                    el.style.textDecorationColor = 'rgba(128,128,128,0.5)';
-                    el.style.textUnderlineOffset = '3px';
-                    el.title = '点击查看撤回的内容';
-                    el.onclick = () => showRecallModal(recallText);
-                    break;
-                }
+            if (msgText.indexOf('撤回了一条消息') !== -1 && msg.recallText) {
+                el.dataset._recallBound = '1';
+                el.style.cursor = 'pointer';
+                el.style.textDecoration = 'underline dotted';
+                el.style.textDecorationColor = 'rgba(128,128,128,0.5)';
+                el.style.textUnderlineOffset = '3px';
+                el.title = '点击查看撤回的内容';
+                el.onclick = (function(text) {
+                    return function() { showRecallModal(text); };
+                })(msg.recallText);
             }
         });
     }
@@ -125,8 +123,17 @@
         modal.querySelector('#rs-save').onclick = () => {
             try { localStorage.setItem(CHANCE_KEY, String(chance.value)); } catch(e) {}
             close();
+            if (typeof window.refreshRecallChanceDesc === 'function') window.refreshRecallChanceDesc();
             if (typeof showNotification === 'function') showNotification('✓ 撤回概率已保存', 'success');
         };
+    };
+
+    window.refreshRecallChanceDesc = function () {
+        const el = document.getElementById('recall-chance-desc');
+        if (!el) return;
+        let v = 20;
+        try { v = parseInt(localStorage.getItem(CHANCE_KEY) || '20', 10); } catch(e) {}
+        el.textContent = '当前 ' + v + '%（点击设置）';
     };
 
     if (document.readyState === 'loading') {
