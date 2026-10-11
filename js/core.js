@@ -511,7 +511,7 @@ function initializeRandomUI() {
     const starsContainer = document.getElementById('stars-container');
     if (starsContainer) {
         starsContainer.innerHTML = '';
-        for (let i = 0; i < 80; i++) {
+        for (let i = 0; i < 50; i++) {
             const star = document.createElement('div');
             star.className = 'star';
             star.style.left = `${Math.random() * 100}%`;
@@ -527,7 +527,7 @@ function initializeRandomUI() {
     if (particlesContainer) {
         particlesContainer.innerHTML = '';
         const types = ['petal', 'petal', 'petal', 'sparkle', 'sparkle'];
-        for (let i = 0; i < 22; i++) {
+        for (let i = 0; i < 14; i++) {
             const p = document.createElement('div');
             const type = types[i % types.length];
             p.className = `wp ${type}`;
@@ -543,27 +543,27 @@ function initializeRandomUI() {
         }
     }
     const meteorsContainer = document.getElementById('welcome-meteors');
-    if (meteorsContainer) {
-        meteorsContainer.innerHTML = '';
-        let meteorCount = 0;
-        const createMeteor = () => {
-            if (meteorCount >= 12) return;
-            meteorCount++;
-            const m = document.createElement('div');
-            m.className = 'meteor';
-            m.style.left = (Math.random() * 100) + '%';
-            m.style.top = (Math.random() * 35) + '%';
-            const dur = (Math.random() * 0.8 + 0.7);
-            m.style.setProperty('--mDur', dur + 's');
-            m.style.setProperty('--mDel', '0s');
-            m.style.setProperty('--mRot', (25 + Math.random() * 20) + 'deg');
-            meteorsContainer.appendChild(m);
-            setTimeout(() => { m.remove(); meteorCount = Math.max(0, meteorCount - 1); }, (dur + 0.1) * 1000);
-        };
-        for (let i = 0; i < 8; i++) setTimeout(createMeteor, i * 350);
-        const meteorTimer = setInterval(createMeteor, 600);
-        setTimeout(() => clearInterval(meteorTimer), 5000);
-    }
+if (meteorsContainer) {
+    meteorsContainer.innerHTML = '';
+    let meteorCount = 0;
+    const createMeteor = () => {
+        if (meteorCount >= 5) return;
+        meteorCount++;
+        const m = document.createElement('div');
+        m.className = 'meteor';
+        m.style.left = (Math.random() * 100) + '%';
+        m.style.top = (Math.random() * 35) + '%';
+        const dur = (Math.random() * 0.8 + 0.7);
+        m.style.setProperty('--mDur', dur + 's');
+        m.style.setProperty('--mDel', '0s');
+        m.style.setProperty('--mRot', (25 + Math.random() * 20) + 'deg');
+        meteorsContainer.appendChild(m);
+        setTimeout(() => { m.remove(); meteorCount = Math.max(0, meteorCount - 1); }, (dur + 0.1) * 1000);
+    };
+    for (let i = 0; i < 3; i++) setTimeout(createMeteor, i * 700);
+    const meteorTimer = setInterval(createMeteor, 1200);
+    setTimeout(() => clearInterval(meteorTimer), 3000);
+}
     const loaderBarEl = document.getElementById('loader-tech-bar');
     if (loaderBarEl) setTimeout(() => loaderBarEl.classList.add('pulsing'), 300);
     const welcomeIcon = getRandomItem(CONSTANTS.WELCOME_ICONS);
