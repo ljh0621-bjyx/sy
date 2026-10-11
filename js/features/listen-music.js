@@ -355,14 +355,15 @@
             : '';
 
         var lyricsBlock = '';
-        if (current) {
-            if (current.lyrics) {
-                lyricsBlock = '<div id="lm-lyrics" style="max-height:130px;overflow-y:auto;padding:4px 16px 10px;border-bottom:1px solid var(--border-color);flex-shrink:0;">'
-                    + '<div style="text-align:center;padding:20px 0;font-size:11px;color:var(--text-secondary);opacity:0.5;">歌词加载中…</div></div>';
-            } else {
-                lyricsBlock = '<div id="lm-lyrics" style="padding:10px 16px 14px;border-bottom:1px solid var(--border-color);flex-shrink:0;text-align:center;font-size:11px;color:var(--text-secondary);opacity:0.5;">暂无歌词 · 上传 .lrc 后显示</div>';
-            }
-        }
+if (current) {
+    if (current.lyrics) {
+        lyricsBlock = '<div id="lm-lyrics" style="min-height:64px;padding:14px 24px;display:flex;align-items:center;justify-content:center;text-align:center;border-bottom:1px solid var(--border-color);flex-shrink:0;overflow:hidden;">'
+            + '<div id="lm-line-current" style="font-family:var(--font-family);font-size:15px;font-weight:600;color:var(--accent-color);line-height:1.6;letter-spacing:0.5px;opacity:0;transition:opacity 0.35s ease;max-width:100%;word-break:break-word;"></div>'
+            + '</div>';
+    } else {
+        lyricsBlock = '<div id="lm-lyrics" style="padding:16px 24px;border-bottom:1px solid var(--border-color);flex-shrink:0;text-align:center;font-size:11px;color:var(--text-secondary);opacity:0.5;">暂无歌词 · 上传 .lrc 后显示</div>';
+    }
+}
 
         card.innerHTML =
             '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border-color);flex-shrink:0;gap:6px;">'
@@ -514,100 +515,100 @@
     }
 
     function setupLyricsSync() {
-        var current = data.playlist[data.currentIndex];
-        if (!current || !current.lyrics) return;
+    var current = data.playlist[data.currentIndex];
+    if (!current || !current.lyrics) return;
 
-        var container = document.getElementById('lm-lyrics');
-        if (!container) return;
+    var lineEl = document.getElementById('lm-line-current');
+    if (!lineEl) return;
 
-        var parsed = parseLrc(current.lyrics);
-        if (parsed.length === 0) {
-            container.innerHTML = '<div style="text-align:center;padding:8px 0;font-size:11px;color:var(--text-secondary);opacity:0.6;">歌词格式无法解析</div>';
-            return;
-        }
-
-        container.style.scrollBehavior = 'auto';
-        var LINE_H = 32;
-        container.innerHTML = parsed.map(function (item, i) {
-            return '<div class="lm-line" data-i="' + i + '" style="text-align:center;padding:0 12px;height:' + LINE_H + 'px;line-height:32px;overflow:hidden;font-family:var(--font-family);">'
-                + '<span class="lm-line-txt" style="display:inline-block;color:var(--text-secondary);opacity:0.5;font-size:12px;transition:opacity 0.2s;">' + escapeHtml(item.text) + '</span></div>';
-        }).join('');
-
-        var lineEls = container.querySelectorAll('.lm-line');
-        var audioEl = getPersistentAudio();
-        if (!audioEl) return;
-
-        var lastIdx = -1;
-        var rafId = null;
-        var scrollTarget = 0;
-        var scrollCurrent = 0;
-
-        function computeTargetByIdx(idx) {
-            if (idx < 0) return 0;
-            var total = container.scrollHeight;
-            var viewH = container.clientHeight;
-            var centerOffset = viewH / 2 - LINE_H / 2;
-            return Math.max(0, Math.min(total - viewH, idx * LINE_H - centerOffset));
-        }
-
-        function render(t) {
-            var idx = -1;
-            for (var i = 0; i < parsed.length; i++) {
-                if (parsed[i].time <= t + 0.05) idx = i;
-                else break;
-            }
-            var progress = 0;
-            if (idx >= 0) {
-                var start = parsed[idx].time;
-                var end = (idx + 1 < parsed.length) ? parsed[idx + 1].time : start + 4;
-                var dur = Math.max(0.3, end - start);
-                progress = Math.max(0, Math.min(1, (t - start) / dur));
-            }
-            for (var j = 0; j < lineEls.length; j++) {
-                var span = lineEls[j].querySelector('.lm-line-txt');
-                if (!span) continue;
-                if (j === idx) {
-                    var pct = (progress * 100).toFixed(2);
-                    span.style.background = 'linear-gradient(90deg, var(--accent-color) 0%, var(--accent-color) ' + pct + '%, var(--text-secondary) ' + pct + '%, var(--text-secondary) 100%)';
-                    span.style.webkitBackgroundClip = 'text';
-                    span.style.backgroundClip = 'text';
-                    span.style.webkitTextFillColor = 'transparent';
-                    span.style.color = 'transparent';
-                    span.style.opacity = '1';
-                    span.style.fontWeight = '700';
-                } else {
-                    span.style.background = 'none';
-                    span.style.webkitBackgroundClip = '';
-                    span.style.backgroundClip = '';
-                    span.style.webkitTextFillColor = '';
-                    span.style.color = 'var(--text-secondary)';
-                    span.style.opacity = (j < idx) ? '0.5' : '0.4';
-                    span.style.fontWeight = '400';
-                }
-            }
-            if (idx !== lastIdx) { lastIdx = idx; scrollTarget = computeTargetByIdx(idx); }
-        }
-
-        function tick() {
-            var t = audioEl.currentTime || 0;
-            render(t);
-            var diff = scrollTarget - scrollCurrent;
-            if (Math.abs(diff) < 0.6) scrollCurrent = scrollTarget;
-            else scrollCurrent += diff * 0.16;
-            container.scrollTop = scrollCurrent;
-            if (!audioEl.paused && !audioEl.ended) rafId = requestAnimationFrame(tick);
-            else rafId = null;
-        }
-
-        audioEl.addEventListener('play', function () { if (!rafId) { scrollCurrent = container.scrollTop; tick(); } });
-        audioEl.addEventListener('seeked', function () { lastIdx = -1; render(audioEl.currentTime || 0); scrollCurrent = scrollTarget; container.scrollTop = scrollCurrent; });
-        audioEl.addEventListener('loadedmetadata', function () { lastIdx = -1; scrollCurrent = 0; scrollTarget = 0; container.scrollTop = 0; render(0); });
-        audioEl.addEventListener('timeupdate', function () { if (!rafId) { render(audioEl.currentTime || 0); scrollCurrent = scrollTarget; container.scrollTop = scrollCurrent; } });
-        audioEl.addEventListener('pause', function () { render(audioEl.currentTime || 0); scrollCurrent = scrollTarget; container.scrollTop = scrollCurrent; });
-        audioEl.addEventListener('ended', function () { lastIdx = -1; });
-
-        setTimeout(function () { render(0); scrollCurrent = 0; scrollTarget = 0; container.scrollTop = 0; }, 150);
+    var parsed = parseLrc(current.lyrics);
+    if (parsed.length === 0) {
+        lineEl.textContent = '歌词格式无法解析';
+        lineEl.style.opacity = '0.5';
+        return;
     }
+
+    var audioEl = getPersistentAudio();
+    if (!audioEl) return;
+
+    // 清理上一次绑定（防止重复监听）
+    if (audioEl._lmSyncCleanup) {
+        try { audioEl._lmSyncCleanup(); } catch (e) {}
+        audioEl._lmSyncCleanup = null;
+    }
+
+    var lastIdx = -2;          // -2 = 还没初始化
+    var rafId = null;
+    var fadeOutTimer = null;
+
+    function showLine(idx) {
+        if (idx === lastIdx) return;
+        lastIdx = idx;
+
+        if (fadeOutTimer) { clearTimeout(fadeOutTimer); fadeOutTimer = null; }
+
+        var text = (idx >= 0 && parsed[idx]) ? parsed[idx].text : '';
+
+        // 先淡出（如果当前有字）
+        lineEl.style.opacity = '0';
+
+        // 250ms 后换成新字，再淡入
+        fadeOutTimer = setTimeout(function () {
+            lineEl.textContent = text;
+            if (text) lineEl.style.opacity = '1';
+            fadeOutTimer = null;
+        }, 250);
+    }
+
+    function render() {
+        var t = audioEl.currentTime || 0;
+        var idx = -1;
+        for (var i = 0; i < parsed.length; i++) {
+            if (parsed[i].time <= t + 0.05) idx = i;
+            else break;
+        }
+        if (idx !== lastIdx) showLine(idx);
+    }
+
+    function tick() {
+        if (!audioEl.paused && !audioEl.ended) {
+            render();
+            rafId = requestAnimationFrame(tick);
+        } else {
+            rafId = null;
+        }
+    }
+
+    var onPlay = function () { if (!rafId) tick(); };
+    var onSeek = function () { lastIdx = -2; render(); };
+    var onMeta = function () {
+        lastIdx = -2;
+        lineEl.textContent = '';
+        lineEl.style.opacity = '0';
+        render();
+    };
+    var onTime = function () { if (!rafId) render(); };
+    var onEnded = function () { lastIdx = -2; };
+
+    audioEl.addEventListener('play', onPlay);
+    audioEl.addEventListener('seeked', onSeek);
+    audioEl.addEventListener('loadedmetadata', onMeta);
+    audioEl.addEventListener('timeupdate', onTime);
+    audioEl.addEventListener('ended', onEnded);
+
+    audioEl._lmSyncCleanup = function () {
+        if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+        if (fadeOutTimer) { clearTimeout(fadeOutTimer); fadeOutTimer = null; }
+        audioEl.removeEventListener('play', onPlay);
+        audioEl.removeEventListener('seeked', onSeek);
+        audioEl.removeEventListener('loadedmetadata', onMeta);
+        audioEl.removeEventListener('timeupdate', onTime);
+        audioEl.removeEventListener('ended', onEnded);
+    };
+
+    // 初始化第一帧
+    setTimeout(render, 120);
+}
 
     function openLinkPasteDialog() {
         var old = document.getElementById('lm-link-paste');
