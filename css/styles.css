@@ -11579,44 +11579,47 @@ body::after {
 
 
 /* ============================================================
- * 心跳 / 呼吸细节动效（明显加强版）
+ * 心跳 / 呼吸细节动效（显著版）
  * ============================================================ */
 
 /* A. 顶栏头像呼吸光晕 */
 @keyframes avatarBreath {
-    0%, 100% { opacity: 0.05; transform: scale(1); }
-    50%      { opacity: 0.85; transform: scale(1.15); }
+    0%, 100% { opacity: 0;    transform: scale(1); }
+    50%      { opacity: 1;    transform: scale(1.25); }
 }
 .avatar-container::after {
+    background: linear-gradient(135deg, var(--accent-color), rgba(var(--accent-color-rgb), 0.3)) !important;
+    filter: blur(4px);
+    z-index: -1 !important;
     transition: none !important;
-    animation: avatarBreath 2.5s ease-in-out infinite !important;
+    animation: avatarBreath 1.8s ease-in-out infinite !important;
 }
 
 /* B. 状态文字前的小点呼吸 */
 @keyframes statusDotBreath {
-    0%, 100% { opacity: 0.2; transform: scale(0.7); }
-    50%      { opacity: 1;   transform: scale(1.4); }
+    0%, 100% { opacity: 0.15; transform: scale(0.6); }
+    50%      { opacity: 1;    transform: scale(1.6); }
 }
 .status::before {
     content: '';
     display: inline-block;
-    width: 6px;
-    height: 6px;
+    width: 7px;
+    height: 7px;
     border-radius: 50%;
     background: var(--accent-color);
-    margin-right: 6px;
+    margin-right: 7px;
     vertical-align: middle;
-    box-shadow: 0 0 8px var(--accent-color);
-    animation: statusDotBreath 1.6s ease-in-out infinite;
+    box-shadow: 0 0 12px var(--accent-color), 0 0 4px var(--accent-color);
+    animation: statusDotBreath 1.2s ease-in-out infinite;
 }
 
 /* C. 发送按钮光晕呼吸 */
 @keyframes sendBtnBreath {
     0%, 100% { box-shadow: 0 0 0 0 rgba(var(--accent-color-rgb, 197, 164, 126), 0); }
-    50%      { box-shadow: 0 0 0 14px rgba(var(--accent-color-rgb, 197, 164, 126), 0.25); }
+    50%      { box-shadow: 0 0 0 20px rgba(var(--accent-color-rgb, 197, 164, 126), 0.35); }
 }
 .send-btn {
-    animation: sendBtnBreath 2s ease-in-out infinite;
+    animation: sendBtnBreath 1.6s ease-in-out infinite;
 }
 .send-btn:hover {
     animation: none;
@@ -11633,15 +11636,15 @@ body::after {
     inset: 0;
     border-radius: inherit;
     pointer-events: none;
-    box-shadow: inset 0 0 30px rgba(var(--accent-color-rgb, 197, 164, 126), 0.35);
-    animation: recvGlow 2.8s ease-in-out infinite;
+    box-shadow: inset 0 0 40px rgba(var(--accent-color-rgb, 197, 164, 126), 0.6);
+    animation: recvGlow 2s ease-in-out infinite;
 }
 
 /* E. 顶部格言呼吸 */
 @keyframes mottoBreath {
-    0%, 100% { opacity: 0.35; }
+    0%, 100% { opacity: 0.15; }
     50%      { opacity: 1; }
 }
 .header-motto {
-    animation: mottoFadeIn 1.2s ease 0.6s both, mottoBreath 3.5s ease-in-out 1.8s infinite !important;
+    animation: mottoFadeIn 1.2s ease 0.6s both, mottoBreath 2.5s ease-in-out 1.8s infinite !important;
 }
