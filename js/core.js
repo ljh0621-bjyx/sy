@@ -772,6 +772,46 @@ function createMessageFragment(msg, prevMsg, nextMsg, lastSenderRef) {
         lastSenderRef.current = 'system';
         return fragment;
     }
+    }
+
+    // ===== 转账卡片 =====
+    if (msg.type === 'transfer' && msg.transfer) {
+        const transferWrapper = document.createElement('div');
+        transferWrapper.className = 'transfer-message-wrapper';
+        transferWrapper.dataset.id = msg.id;
+        transferWrapper.dataset.msgId = msg.id;
+        transferWrapper.style.display = 'flex';
+        transferWrapper.style.justifyContent = (msg.sender === 'user') ? 'flex-end' : 'flex-start';
+        transferWrapper.style.marginBottom = '12px';
+        transferWrapper.style.alignItems = 'flex-end';
+
+        const isMe = msg.sender === 'user';
+
+        // 头像
+        if (settings.inChatAvatarEnabled) {
+            const av = document.createElement('div');
+            av.className = 'message-avatar';
+            const avatarElement = isMe ? DOMElements.me.avatar : DOMElements.partner.avatar;
+            av.innerHTML = avatarElement.innerHTML;
+            const avatarShape = isMe ? (settings.myAvatarShape || 'circle') : (settings.partnerAvatarShape || 'circle');
+            if (avatarShape !== 'none') av.classList.add('shape-' + avatarShape);
+            av.style.flexShrink = '0';
+            av.style.margin = isMe ? '0 0 0 10px' : '0 10px 0 0';
+            av.style.order = isMe ? 2 : 0;
+            transferWrapper.appendChild(av);
+        }
+
+        const cardBox = document.createElement('div');
+        cardBox.style.order = isMe ? 1 : 2;
+        cardBox.innerHTML = (typeof window.renderTransferCardHTML === 'function')
+            ? window.renderTransferCardHTML(msg)
+            : '<div style="padding:12px;background:#F58220;color:#fff;border-radius:12px;">转账 ¥' + Number(msg.transfer.amount).toFixed(2) + '</div>';
+        transferWrapper.appendChild(cardBox);
+
+        fragment.appendChild(transferWrapper);
+        lastSenderRef.current = 'transfer';
+        return fragment;
+    }
 
 // ===== 问卷卡片 =====
 if (msg.type === 'survey' && msg.survey) {
