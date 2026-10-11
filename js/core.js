@@ -736,6 +736,8 @@ window.scrollToQuotedMessage = function(el) {
 // ==================== 4. 消息渲染 + 语音转文字（黑灰色） ====================
 function createMessageFragment(msg, prevMsg, nextMsg, lastSenderRef) {
     const fragment = new DocumentFragment();
+    // ★ 撤回的消息不渲染
+if (msg.recalled === true) return fragment;
     const messageDate = new Date(msg.timestamp).toDateString();
     const prevDate = prevMsg ? new Date(prevMsg.timestamp).toDateString() : null;
 
