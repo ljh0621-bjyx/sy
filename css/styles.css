@@ -11520,3 +11520,28 @@ body::after {
     animation: messageAppearFuzzy 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards !important;
     opacity: 0;
 }
+
+/* ============================================================
+ * 面板打开动画：下坠 + 小回弹
+ * ============================================================ */
+@keyframes modalAppearDrop {
+    0% {
+        opacity: 0;
+        transform: translateY(-40px) scale(0.96);
+    }
+    55% {
+        opacity: 1;
+        transform: translateY(6px) scale(1.01);
+    }
+    75% {
+        transform: translateY(-3px) scale(1);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.modal-content {
+    animation: modalAppearDrop 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards !important;
+}
