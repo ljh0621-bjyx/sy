@@ -1603,6 +1603,9 @@ window.addEventListener('unhandledrejection', function(e) {
 <div class="settings-item" id="quick-phrases-function" onclick="openQuickPhrasesManager()">
     <i class="fas fa-bolt"></i><span>快捷短语</span>
 </div>
+<div class="settings-item" onclick="window.openMemoryCard && window.openMemoryCard()">
+    <i class="fas fa-clock-rotate-left"></i><span>那年今日</span>
+</div>
 <div class="settings-item" id="random-wallpaper-function" onclick="openRandomWallpaperSettings()">
     <i class="fas fa-image"></i><span>随机壁纸</span>
 </div>
@@ -2561,6 +2564,7 @@ window.addEventListener('unhandledrejection', function(e) {
 <script src="js/features/pet.js?v=4"></script>
 <script src="js/features/achievements.js"></script>
 <script src="js/features/daily-question.js"></script>
+<script src="js/features/memory.js"></script>
     <script>
 (function () {
     var KEY = 'partnerTypingAnimEnabled';
