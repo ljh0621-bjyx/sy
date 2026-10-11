@@ -213,8 +213,9 @@
         showFullscreen(act);
 
         activeSession.timer = setInterval(function () {
-            const now = Date.now();
-            const elapsed = Math.floor((now - activeSession.lastTick) / 1000);
+    if (!activeSession) return;
+    const now = Date.now();
+    const elapsed = Math.floor((now - activeSession.lastTick) / 1000);
             if (elapsed > 0) {
                 activeSession.lastTick = now;
                 activeSession.remainSec = Math.max(0, activeSession.remainSec - elapsed);
