@@ -779,9 +779,11 @@ if (msg.type === 'survey' && msg.survey) {
     const surveyDiv = document.createElement('div');
     surveyDiv.className = 'survey-message-wrapper';
     surveyDiv.dataset.id = msg.id;
-    // 根据 sender 靠左或靠右
-surveyDiv.style.display = 'flex';
-surveyDiv.style.justifyContent = (msg.sender === 'user') ? 'flex-end' : 'flex-start';
+    surveyDiv.dataset.msgId = msg.id;
+    surveyDiv.style.display = 'flex';
+    surveyDiv.style.justifyContent = (msg.sender === 'user') ? 'flex-end' : 'flex-start';
+    surveyDiv.style.marginBottom = '12px';
+    surveyDiv.style.alignItems = 'flex-end';
 
     const isMe = msg.sender === 'user';
     const survey = msg.survey;
@@ -789,113 +791,170 @@ surveyDiv.style.justifyContent = (msg.sender === 'user') ? 'flex-end' : 'flex-st
     const opts = survey.options || [];
     const answered = survey.answered || false;
     const answer = survey.answer || [];
+    const expired = survey.expired || false;
 
-    // 样式
-    const bgColor = isMe ? '#F8C8DC' : '#FFF0F5';
-    const borderColor = isMe ? '#F4A6B3' : '#F4A6B3';
-    const textColor = '#5a3a44';
-
-    let optsHTML = '';
-    if (opts.length > 0) {
-        optsHTML = opts.map((opt, i) => {
-            const letter = String.fromCharCode(65 + i); // A, B, C...
-            const isChosen = answered && answer.indexOf(opt) !== -1;
-            return `
-                <div class="survey-option" style="
-                    display:flex;align-items:center;gap:10px;
-                    padding:10px 14px;margin-bottom:8px;
-                    border-radius:14px;
-                    background:${isChosen ? '#FFD6E5' : '#fff'};
-                    border:1.5px solid ${isChosen ? '#F4A6B3' : 'rgba(244,166,179,0.35)'};
-                    transition:all 0.25s;
-                ">
-                    <div style="
-                        width:22px;height:22px;border-radius:50%;
-                        background:${isChosen ? '#F4A6B3' : '#fff'};
-                        border:1.5px solid ${isChosen ? '#F4A6B3' : 'rgba(244,166,179,0.5)'};
-                        display:flex;align-items:center;justify-content:center;
-                        flex-shrink:0;color:#fff;font-size:12px;font-weight:700;
-                    ">${isChosen ? '✓' : letter}</div>
-                    <div style="font-size:13px;color:${textColor};font-weight:500;">${opt.replace(/</g,'&lt;')}</div>
-                </div>
-            `;
-        }).join('');
-    } else {
-        optsHTML = '<div style="font-size:12px;color:#9a7a84;opacity:0.7;padding:6px 0;">（自由回答）</div>';
+    // 头像
+    if (settings.inChatAvatarEnabled) {
+        const av = document.createElement('div');
+        av.className = 'message-avatar';
+        const avatarElement = isMe ? DOMElements.me.avatar : DOMElements.partner.avatar;
+        av.innerHTML = avatarElement.innerHTML;
+        const avatarShape = isMe ? (settings.myAvatarShape || 'circle') : (settings.partnerAvatarShape || 'circle');
+        if (avatarShape !== 'none') av.classList.add('shape-' + avatarShape);
+        av.style.flexShrink = '0';
+        av.style.margin = isMe ? '0 0 0 10px' : '0 10px 0 0';
+        av.style.order = isMe ? 2 : 0;
+        surveyDiv.appendChild(av);
     }
 
-    surveyDiv.innerHTML = `
-        <div style="
-            background:linear-gradient(135deg, ${bgColor}, #fff);
-            border:2px dashed ${borderColor};
-            border-radius:18px;
-            padding:16px 16px 12px;
-            max-width:260px;
-            box-shadow:0 4px 16px rgba(244,166,179,0.25);
-            margin:6px 0;
-        ">
-            <div style="
-                display:flex;align-items:flex-start;gap:6px;
-                margin-bottom:14px;padding-bottom:10px;
-                border-bottom:1px dashed rgba(244,166,179,0.4);
-            ">
-                <span style="font-size:14px;line-height:1.4;">🌸</span>
-                <div style="flex:1;font-size:13.5px;font-weight:700;color:#5a3a44;line-height:1.5;">${q.replace(/</g,'&lt;')}</div>
-                ${opts.length > 0 ? '<span style="font-size:10px;color:#b88a96;background:rgba(244,166,179,0.18);padding:2px 8px;border-radius:10px;flex-shrink:0;white-space:nowrap;">单选</span>' : ''}
-            </div>
-            ${optsHTML}
-        </div>
-    `;
-    // ★ 如果是对方发来的问卷，加一个"回复输入框"
-if (!isMe) {
-    const replyBox = document.createElement('div');
-    replyBox.style.cssText = 'margin-top:10px;display:flex;gap:6px;';
-    const inputId = 'survey-reply-' + msg.id;
-    replyBox.innerHTML = `
-        <input id="${inputId}" type="text" placeholder="回复…" style="
-            flex:1;padding:8px 12px;border:1.5px solid rgba(244,166,179,0.4);
-            border-radius:10px;background:#fff;color:#5a3a44;
-            font-size:12px;outline:none;font-family:var(--font-family);box-sizing:border-box;
-        ">
-        <button id="${inputId}-btn" style="
-            padding:8px 14px;border:none;border-radius:10px;
-            background:#F4A6B3;color:#fff;font-size:12px;font-weight:600;
-            cursor:pointer;font-family:var(--font-family);flex-shrink:0;
-        ">发送</button>
-    `;
-    surveyDiv.querySelector('div').appendChild(replyBox);
+    const cardBox = document.createElement('div');
+    cardBox.style.order = isMe ? 1 : 2;
+    cardBox.style.maxWidth = '280px';
+    cardBox.style.minWidth = '200px';
 
-    // 绑定发送
-    setTimeout(() => {
-        const inp = document.getElementById(inputId);
-        const btn = document.getElementById(inputId + '-btn');
-        if (!btn) return;
-        const doSend = () => {
-            const v = (inp && inp.value || '').trim();
-            if (!v) return;
-            // 发一条你的消息
-            if (typeof addMessage === 'function') {
-                addMessage({
-                    id: Date.now(),
-                    sender: 'user',
-                    text: v,
-                    timestamp: new Date(),
-                    status: 'sent',
-                    type: 'normal'
-                });
-            }
-            if (typeof playSound === 'function') playSound('send');
-            if (inp) inp.value = '';
-        };
-        btn.onclick = doSend;
-        if (inp) {
-            inp.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') { e.preventDefault(); doSend(); }
-            });
+    const bgColor = isMe ? 'rgba(var(--accent-color-rgb), 0.08)' : 'var(--secondary-bg)';
+const borderColor = 'rgba(var(--accent-color-rgb), 0.35)';
+
+    let contentHTML = '';
+
+    // 问题标题
+    contentHTML += '<div style="font-size:14.5px;font-weight:700;color:var(--text-primary);line-height:1.6;margin-bottom:12px;word-break:break-word;">'
+        + '<i class="fas fa-question-circle" style="color:var(--accent-color);margin-right:6px;font-size:13px;"></i>'
+        + q.replace(/</g, '&lt;')
+        + '</div>';
+
+    if (!isMe) {
+        // ========== 对方出的题：显示输入框 ==========
+        if (answered && answer.length > 0) {
+            contentHTML += '<div style="background:rgba(var(--accent-color-rgb), 0.1);border-radius:10px;padding:10px 12px;font-size:13px;color:var(--text-primary);line-height:1.6;">'
+                + '<div style="font-size:11px;color:var(--text-secondary);margin-bottom:4px;">我的回答</div>'
+                + String(answer[0] || '').replace(/</g, '&lt;')
+                + '</div>';
+        } else if (expired) {
+            contentHTML += '<div style="font-size:12px;color:var(--text-secondary);opacity:0.6;font-style:italic;padding:4px 0;">（已作废）</div>';
+        } else {
+            const inputId = 'survey-answer-' + msg.id;
+            contentHTML += '<div style="display:flex;flex-direction:column;gap:8px;">'
+                + '<textarea id="' + inputId + '" placeholder="写下你的答案…" rows="2" style="'
+                +   'width:100%;box-sizing:border-box;padding:10px 12px;'
+                +   'border:1.5px solid var(--border-color);border-radius:12px;'
+                +   'background:var(--primary-bg);color:var(--text-primary);'
+                +   'font-size:13px;font-family:var(--font-family);resize:none;outline:none;line-height:1.5;'
+                + '"></textarea>'
+                + '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">'
+                +   '<span style="font-size:11px;color:var(--text-secondary);font-style:italic;">请写下你的答案…</span>'
+                +   '<button id="' + inputId + '-btn" style="'
+                +     'padding:7px 16px;border:none;border-radius:10px;'
+                +     'background:var(--accent-color);color:#fff;'
+                +     'font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-family);'
+                +   '">确认</button>'
+                + '</div>'
+                + '</div>';
         }
-    }, 50);
-}
+    } else {
+        // ========== 我出的题：显示选项 ==========
+        if (opts.length > 0) {
+            contentHTML += '<div style="display:flex;flex-direction:column;gap:8px;">';
+            opts.forEach((opt, i) => {
+                const letter = String.fromCharCode(65 + i);
+                const isChosen = answered && answer.indexOf(opt) !== -1;
+                contentHTML += '<div class="survey-option-row" style="'
+                    + 'display:flex;align-items:center;gap:10px;padding:10px 12px;'
+                    + 'border-radius:12px;'
+                    + 'background:' + (isChosen ? 'rgba(var(--accent-color-rgb), 0.15)' : 'var(--primary-bg)') + ';'
+                    + 'border:1.5px solid ' + (isChosen ? 'var(--accent-color)' : 'var(--border-color)') + ';'
+                    + 'font-size:13px;color:var(--text-primary);transition:all 0.25s;'
+                    + '">'
+                    + '<div style="'
+                    +   'width:20px;height:20px;border-radius:50%;flex-shrink:0;'
+                    +   'background:' + (isChosen ? 'var(--accent-color)' : 'transparent') + ';'
+                    +   'border:1.5px solid ' + (isChosen ? 'var(--accent-color)' : 'var(--border-color)') + ';'
+                    +   'display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700;'
+                    + '">' + (isChosen ? '✓' : letter) + '</div>'
+                    + '<span style="flex:1;word-break:break-word;">' + String(opt).replace(/</g, '&lt;') + '</span>'
+                    + '</div>';
+            });
+            contentHTML += '</div>';
+        } else {
+            contentHTML += '<div style="font-size:12px;color:var(--text-secondary);opacity:0.7;padding:6px 0;font-style:italic;">（等待对方回答）</div>';
+        }
+
+        if (answered && answer.length > 0) {
+            contentHTML += '<div style="margin-top:10px;font-size:11px;color:var(--accent-color);font-weight:600;">'
+                + '<i class="fas fa-check-circle"></i> 对方选择了：' + answer.map(a => String(a).replace(/</g, '&lt;')).join('、')
+                + '</div>';
+        }
+    }
+
+    // 底部小字
+    if (!answered && !expired && !isMe) {
+        contentHTML += '<div style="margin-top:8px;font-size:10.5px;color:var(--text-secondary);font-style:italic;opacity:0.7;">请选择你的答案</div>';
+    }
+
+    cardBox.innerHTML = '<div style="'
+        + 'background:' + bgColor + ';'
+        + 'border:1.5px solid ' + borderColor + ';'
+        + 'border-radius:18px;'
+        + 'padding:16px 16px 14px;'
+        + 'box-shadow:0 2px 12px rgba(0,0,0,0.06);'
+        + '">'
+        + contentHTML
+        + '</div>';
+
+    surveyDiv.appendChild(cardBox);
     fragment.appendChild(surveyDiv);
+
+    // 绑定输入框事件
+    if (!isMe && !answered && !expired) {
+        setTimeout(function () {
+            const inputEl = document.getElementById('survey-answer-' + msg.id);
+            const btnEl = document.getElementById('survey-answer-' + msg.id + '-btn');
+            if (!inputEl || !btnEl) return;
+
+            const doSubmit = function () {
+                const v = inputEl.value.trim();
+                if (!v) return;
+
+                msg.survey.answered = true;
+                msg.survey.answer = [v];
+                msg.survey.answeredBy = 'me';
+                msg.survey.expired = false;
+                if (typeof throttledSaveData === 'function') throttledSaveData();
+                if (typeof renderMessages === 'function') renderMessages(true);
+
+                // 对方回应
+                setTimeout(function () {
+                    const partnerName = (typeof settings !== 'undefined' && settings.partnerName) ? settings.partnerName : '对方';
+                    const pool = (typeof customReplies !== 'undefined' && Array.isArray(customReplies))
+                        ? customReplies.filter(function (t) { return t && String(t).trim(); })
+                        : [];
+                    const reply = pool.length > 0
+                        ? pool[Math.floor(Math.random() * pool.length)]
+                        : '嗯，我知道了。';
+                    if (typeof addMessage === 'function') {
+                        addMessage({
+                            id: Date.now() + Math.random(),
+                            sender: partnerName,
+                            text: reply,
+                            timestamp: new Date(),
+                            status: 'received',
+                            type: 'normal'
+                        });
+                    }
+                    if (typeof playSound === 'function') playSound('message');
+                }, 1500 + Math.random() * 2000);
+            };
+
+            btnEl.onclick = doSubmit;
+            inputEl.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    doSubmit();
+                }
+            });
+        }, 50);
+    }
+
     lastSenderRef.current = 'system';
     return fragment;
 }
