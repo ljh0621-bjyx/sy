@@ -726,6 +726,23 @@ window.addEventListener('unhandledrejection', function(e) {
         <i class="fas fa-user-circle"></i><span>聊天头像</span>
     </div>
 </div>
+<div id="appearance-nav-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:4px 0 12px;">
+    <div class="settings-card" onclick="showAppearancePanel('theme')" style="cursor:pointer;">
+        <i class="fas fa-paint-roller"></i><span>主题配色</span>
+    </div>
+    <div class="settings-card" onclick="showAppearancePanel('font-bg')" style="cursor:pointer;">
+        <i class="fas fa-font"></i><span>背景 & 字体</span>
+    </div>
+    <div class="settings-card" onclick="showAppearancePanel('bubble-css')" style="cursor:pointer;">
+        <i class="fas fa-comment"></i><span>气泡 & CSS</span>
+    </div>
+    <div class="settings-card" onclick="showAppearancePanel('avatar')" style="cursor:pointer;">
+        <i class="fas fa-user-circle"></i><span>聊天头像</span>
+    </div>
+    <div class="settings-card" onclick="showAppearancePanel('ambient')" style="cursor:pointer;">
+        <i class="fas fa-moon"></i><span>氛围</span>
+    </div>
+</div>
 
 <div id="appearance-panel-container" style="display:none;">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
@@ -1006,6 +1023,37 @@ window.addEventListener('unhandledrejection', function(e) {
             <input type="file" id="partner-frame-file-input-2" class="file-input" accept="image/png, image/webp, image/gif">
         </div>
     </div>
+
+<div id="appearance-panel-ambient" class="appearance-sub-panel" style="display:none;">
+    <div class="settings-section">
+        <div class="settings-section-title"><i class="fas fa-moon"></i>页面氛围</div>
+        <div style="font-size:11px;color:var(--text-secondary);margin-bottom:12px;line-height:1.6;opacity:0.75;">
+            选择聊天页的底色氛围，切换后立即生效。
+        </div>
+        <div class="ambient-picker" id="ambient-picker">
+            <div class="ambient-option" data-ambient="default" onclick="window._setAmbient('default')">
+                <div class="ambient-preview"></div>
+                <div class="ambient-label">默认</div>
+                <div class="ambient-check">✓</div>
+            </div>
+            <div class="ambient-option" data-ambient="deep-space" onclick="window._setAmbient('deep-space')">
+                <div class="ambient-preview"></div>
+                <div class="ambient-label">深空</div>
+                <div class="ambient-check">✓</div>
+            </div>
+            <div class="ambient-option" data-ambient="sunset" onclick="window._setAmbient('sunset')">
+                <div class="ambient-preview"></div>
+                <div class="ambient-label">黄昏</div>
+                <div class="ambient-check">✓</div>
+            </div>
+            <div class="ambient-option" data-ambient="minimal" onclick="window._setAmbient('minimal')">
+                <div class="ambient-preview"></div>
+                <div class="ambient-label">极简</div>
+                <div class="ambient-check">✓</div>
+            </div>
+        </div>
+    </div>
+</div>
 
     <div id="appearance-panel-css" class="appearance-sub-panel" style="display:none;">
         <div class="settings-section">
