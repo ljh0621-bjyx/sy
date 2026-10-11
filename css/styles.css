@@ -11344,3 +11344,140 @@
     grid-template-columns: repeat(2, 1fr);
     gap: 12px;
 }
+/* ============================================================
+ * 氛围预设（ambient-mood）
+ * ============================================================ */
+html[data-ambient="deep-space"] body::before {
+    background-color: #0a0d1a;
+    background-image:
+        radial-gradient(900px 500px at 15% 0%, rgba(120,140,255,0.10) 0%, transparent 62%),
+        radial-gradient(800px 460px at 90% 8%, rgba(180,120,220,0.08) 0%, transparent 64%),
+        radial-gradient(700px 420px at 30% 100%, rgba(60,90,180,0.07) 0%, transparent 66%),
+        linear-gradient(180deg, rgba(0,0,0,0.25) 0%, rgba(0,0,0,0.35) 100%),
+        var(--chat-bg-image, linear-gradient(rgba(0,0,0,0), rgba(0,0,0,0)));
+}
+html[data-ambient="deep-space"] body {
+    --primary-bg: #0a0d1a;
+}
+
+html[data-ambient="sunset"] body::before {
+    background-color: #fff5ec;
+    background-image:
+        radial-gradient(900px 480px at 10% 0%, rgba(255,150,110,0.14) 0%, transparent 62%),
+        radial-gradient(820px 440px at 95% 6%, rgba(255,180,200,0.12) 0%, transparent 64%),
+        radial-gradient(700px 400px at 40% 100%, rgba(255,200,140,0.10) 0%, transparent 66%),
+        linear-gradient(180deg, rgba(255,200,160,0.08) 0%, rgba(255,180,140,0.05) 100%),
+        var(--chat-bg-image, linear-gradient(rgba(0,0,0,0), rgba(0,0,0,0)));
+}
+html[data-ambient="sunset"] body {
+    --primary-bg: #fff5ec;
+}
+
+html[data-theme="dark"][data-ambient="sunset"] body::before {
+    background-color: #1a1410;
+    background-image:
+        radial-gradient(900px 480px at 10% 0%, rgba(255,140,90,0.16) 0%, transparent 62%),
+        radial-gradient(820px 440px at 95% 6%, rgba(255,100,140,0.12) 0%, transparent 64%),
+        radial-gradient(700px 400px at 40% 100%, rgba(255,180,120,0.10) 0%, transparent 66%),
+        linear-gradient(180deg, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.45) 100%),
+        var(--chat-bg-image, linear-gradient(rgba(0,0,0,0), rgba(0,0,0,0)));
+}
+html[data-theme="dark"][data-ambient="sunset"] body {
+    --primary-bg: #1a1410;
+}
+
+html[data-ambient="minimal"] body::before {
+    background-image:
+        var(--chat-bg-image, linear-gradient(rgba(0,0,0,0), rgba(0,0,0,0)));
+    animation: none !important;
+}
+
+/* 氛围选择面板的样式 */
+.ambient-picker {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 14px;
+}
+.ambient-option {
+    position: relative;
+    border-radius: 14px;
+    border: 2px solid var(--border-color);
+    padding: 12px 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: var(--primary-bg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+.ambient-option:hover {
+    border-color: var(--accent-color);
+    transform: translateY(-1px);
+}
+.ambient-option.active {
+    border-color: var(--accent-color);
+    background: rgba(var(--accent-color-rgb), 0.06);
+}
+.ambient-option .ambient-preview {
+    width: 100%;
+    height: 42px;
+    border-radius: 8px;
+    position: relative;
+    overflow: hidden;
+}
+.ambient-option .ambient-preview::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 8px;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.06);
+}
+.ambient-option[data-ambient="default"] .ambient-preview {
+    background:
+        radial-gradient(60px 30px at 20% 20%, rgba(197,164,126,0.35) 0%, transparent 70%),
+        radial-gradient(60px 30px at 80% 30%, rgba(197,164,126,0.28) 0%, transparent 70%),
+        #f9f9f9;
+}
+.ambient-option[data-ambient="deep-space"] .ambient-preview {
+    background:
+        radial-gradient(70px 40px at 20% 20%, rgba(120,140,255,0.55) 0%, transparent 70%),
+        radial-gradient(70px 40px at 80% 30%, rgba(180,120,220,0.45) 0%, transparent 70%),
+        #0a0d1a;
+}
+.ambient-option[data-ambient="sunset"] .ambient-preview {
+    background:
+        radial-gradient(70px 40px at 20% 20%, rgba(255,150,110,0.65) 0%, transparent 70%),
+        radial-gradient(70px 40px at 80% 30%, rgba(255,180,200,0.55) 0%, transparent 70%),
+        #fff5ec;
+}
+.ambient-option[data-ambient="minimal"] .ambient-preview {
+    background: #f9f9f9;
+}
+.ambient-option .ambient-label {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text-primary);
+    letter-spacing: 0.3px;
+}
+.ambient-option.active .ambient-label {
+    color: var(--accent-color);
+}
+.ambient-option .ambient-check {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--accent-color);
+    color: #fff;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+}
+.ambient-option.active .ambient-check {
+    display: flex;
+}
