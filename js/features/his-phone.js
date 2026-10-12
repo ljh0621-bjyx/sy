@@ -257,7 +257,6 @@
         const old = document.getElementById('his-phone-panel');
         if (old) old.remove();
 
-        // ✅ 关键：打开时确保数据已加载
         await load();
         await updateIfNeeded();
 
