@@ -79,11 +79,9 @@
             const allReplies = getAllReplies();
             if (allReplies.length === 0) return;
 
-            // 检查用户发的消息里有没有"跟字卡内容很像"的
             newMsgs.forEach(function (m) {
                 if (!m || m.sender !== 'user' || !m.text) return;
                 const text = String(m.text).trim();
-                // 找字卡库里有完全一样 或者 是用户消息子串的
                 const hit = allReplies.find(function (r) {
                     const rt = String(r).trim();
                     return rt === text || text.indexOf(rt) !== -1 || rt.indexOf(text) !== -1;
@@ -108,14 +106,11 @@
         }).length;
         const percent = total > 0 ? Math.round(learnedCount / total * 100) : 0;
 
-        // 最近 5 条
         const recent = data.history.slice(0, 5);
 
-        // 未学的（随机取 5 条展示）
         const unlearnedPool = allReplies.filter(function (t) { return data.learned.indexOf(t) === -1; });
         const suggestPool = unlearnedPool.slice().sort(function () { return Math.random() - 0.5; }).slice(0, 5);
 
-        // 进度文案
         let feedback = '';
         if (total === 0) feedback = '字卡库还是空的，先去「自定义回复」里加几张吧';
         else if (percent === 0) feedback = pName + ' 还没开始学，你在聊天里用几张试试';
@@ -141,7 +136,6 @@
             +     '<button id="wcp-close" style="background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:18px;"><i class="fas fa-times"></i></button>'
             +   '</div>'
 
-            // 大进度
             +   '<div style="background:linear-gradient(135deg,rgba(var(--accent-color-rgb),0.12),rgba(var(--accent-color-rgb),0.03));border-radius:16px;padding:18px;margin-bottom:14px;text-align:center;border:1px solid rgba(var(--accent-color-rgb),0.2);flex-shrink:0;">'
             +     '<div style="font-size:11px;color:var(--text-secondary);letter-spacing:2px;margin-bottom:6px;">已学会</div>'
             +     '<div style="font-size:36px;font-weight:900;color:var(--accent-color);font-family:Georgia,serif;line-height:1;">' + learnedCount + ' <span style="font-size:16px;opacity:0.7;">/ ' + total + '</span></div>'
@@ -151,13 +145,10 @@
             +     '<div style="font-size:11px;color:var(--text-secondary);margin-top:6px;">' + percent + '%</div>'
             +   '</div>'
 
-            // 反馈
             +   '<div style="font-size:12px;color:var(--text-secondary);text-align:center;line-height:1.6;margin-bottom:16px;padding:10px 12px;background:rgba(var(--accent-color-rgb),0.05);border-radius:10px;flex-shrink:0;">' + esc(feedback) + '</div>'
 
-            // 内容区
             +   '<div style="flex:1;overflow-y:auto;padding-right:2px;">'
 
-            // 最近学的
             +     (recent.length > 0
                     ? '<div style="font-size:11px;font-weight:700;color:var(--text-secondary);letter-spacing:1px;margin-bottom:8px;">最近学会的</div>'
                         + recent.map(function (h) {
@@ -170,11 +161,11 @@
                         }).join('')
                     : '<div style="text-align:center;padding:24px 0;color:var(--text-secondary);font-size:12px;opacity:0.6;">还没学会任何字卡</div>')
 
-            // 建议教他的
             +     (suggestPool.length > 0
                     ? '<div style="font-size:11px;font-weight:700;color:var(--text-secondary);letter-spacing:1px;margin:14px 0 8px;">还没学会的（点击教他）</div>'
                         + suggestPool.map(function (t) {
-                            return '<div class="wcp-teach" data-text="' + esc(t).replace(/"/g, '&quot;') + '" style="padding:10px 12px;background:var(--primary-bg);border:1px dashed var(--border-color);border-radius:10px;margin-bottom:6px;cursor:pointer;display:flex;align-items:center;gap:8px;">'
+                            const attrText = esc(t).replace(/"/g, '&quot;');
+                            return '<div class="wcp-teach" data-text="' + attrText + '" style="padding:10px 12px;background:var(--primary-bg);border:1px dashed var(--border-color);border-radius:10px;margin-bottom:6px;cursor:pointer;display:flex;align-items:center;gap:8px;">'
                                 + '<span style="flex:1;font-size:12.5px;color:var(--text-primary);line-height:1.5;word-break:break-word;">' + esc(t) + '</span>'
                                 + '<i class="fas fa-plus" style="font-size:10px;color:var(--accent-color);"></i>'
                                 + '</div>';
@@ -197,7 +188,6 @@
         modal.querySelector('#wcp-close-btn').onclick = close;
         modal.addEventListener('click', function (e) { if (e.target === modal) close(); });
 
-        // 点击教他
         modal.querySelectorAll('.wcp-teach').forEach(function (el) {
             el.onclick = function () {
                 const t = el.dataset.text;
@@ -208,7 +198,6 @@
             };
         });
 
-        // 随机教一张
         modal.querySelector('#wcp-random').onclick = function () {
             if (unlearnedPool.length === 0) {
                 if (typeof showNotification === 'function') showNotification('他全都学会了 ✦', 'info', 1800);
@@ -244,7 +233,6 @@
     // ========== 初始化 ==========
     async function init() {
         await load();
-        // 首次记录当前消息数
         try {
             if (typeof messages !== 'undefined' && Array.isArray(messages)) {
                 if (data.lastMsgCount === 0) data.lastMsgCount = messages.length;
@@ -252,7 +240,6 @@
         } catch (e) {}
         bindEntry();
         setTimeout(bindEntry, 1500);
-        // 每 10 秒扫一次消息
         setInterval(scanMessages, 10000);
     }
 
