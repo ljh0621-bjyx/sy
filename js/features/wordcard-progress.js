@@ -1,18 +1,18 @@
 /* ============================================================
- * wordcard-progress.js - 他的字卡学习进度
- * 记录他"学会"了哪些字卡，聊天用过会自动标记
+ * wordcard-progress.js - 他的字卡学习进度（自主版）
+ * 他会自己每天学几张，不需要你参与
  * ============================================================ */
 (function () {
     'use strict';
 
     const KEY = 'hisWordcardProgress_v1';
 
-    // 数据
     let data = {
-        learned: [],       // 已学的字卡内容（字符串）
-        totalAtLastScan: 0,
+        learned: [],
         lastMsgCount: 0,
-        history: []        // { text, ts }
+        history: [],
+        lastAutoLearnDate: null,
+        lastAutoLearnTs: 0
     };
 
     let _loaded = false;
@@ -36,16 +36,17 @@
     function getPartnerName() {
         return (typeof settings !== 'undefined' && settings.partnerName) ? settings.partnerName : '对方';
     }
-    function getMyName() {
-        return (typeof settings !== 'undefined' && settings.myName) ? settings.myName : '我';
-    }
-
     function getAllReplies() {
         try {
             return (typeof customReplies !== 'undefined' && Array.isArray(customReplies))
                 ? customReplies.filter(function (t) { return t && String(t).trim(); })
                 : [];
         } catch (e) { return []; }
+    }
+
+    function todayStr() {
+        const d = new Date();
+        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
     }
 
     // ========== 标记一张已学 ==========
@@ -56,7 +57,7 @@
         if (data.learned.indexOf(trimmed) !== -1) return false;
         data.learned.push(trimmed);
         data.history.unshift({ text: trimmed, ts: Date.now() });
-        data.history = data.history.slice(0, 50);
+        data.history = data.history.slice(0, 100);
         persist();
         if (!silent && typeof showNotification === 'function') {
             showNotification('📚 ' + getPartnerName() + ' 学会了新字卡', 'success', 1800);
@@ -64,7 +65,53 @@
         return true;
     }
 
-    // ========== 扫消息，看有没有用过字卡 ==========
+    // ========== 他自主学习 ==========
+    // 从还没学的字卡里随机抽一张，学
+    function autoLearnOne(silent) {
+        const allReplies = getAllReplies();
+        if (!allReplies.length) return false;
+        const unlearned = allReplies.filter(function (t) { return data.learned.indexOf(t) === -1; });
+        if (!unlearned.length) return false;
+        const pick = unlearned[Math.floor(Math.random() * unlearned.length)];
+        return markLearned(pick, silent);
+    }
+
+    // 每天学 1~3 张
+    async function autoLearnDaily() {
+        const today = todayStr();
+        if (data.lastAutoLearnDate === today) return;
+
+        const count = 1 + Math.floor(Math.random() * 3); // 1~3
+        const allReplies = getAllReplies();
+        if (!allReplies.length) return;
+        let learnedToday = 0;
+        for (let i = 0; i < count; i++) {
+            if (autoLearnOne(true)) learnedToday++;
+        }
+        data.lastAutoLearnDate = today;
+        data.lastAutoLearnTs = Date.now();
+        persist();
+
+        if (learnedToday > 0 && typeof showNotification === 'function') {
+            const pn = getPartnerName();
+            setTimeout(function () {
+                showNotification('📚 ' + pn + ' 今天又学了 ' + learnedToday + ' 张字卡', 'info', 2500);
+            }, 3000 + Math.random() * 4000);
+        }
+    }
+
+    // 平时每 2 小时 20% 概率学 1 张（不影响每天保底）
+    function autoLearnHourly() {
+        const now = Date.now();
+        if (now - data.lastAutoLearnTs < 1.5 * 3600000) return; // 至少隔 1.5 小时
+        if (Math.random() > 0.20) return;
+        if (autoLearnOne(true)) {
+            data.lastAutoLearnTs = now;
+            persist();
+        }
+    }
+
+    // ========== 扫消息（你用过 = 他强化一遍） ==========
     function scanMessages() {
         try {
             if (typeof messages === 'undefined' || !Array.isArray(messages)) return;
@@ -106,19 +153,25 @@
         }).length;
         const percent = total > 0 ? Math.round(learnedCount / total * 100) : 0;
 
-        const recent = data.history.slice(0, 5);
+        const recent = data.history.slice(0, 6);
 
         const unlearnedPool = allReplies.filter(function (t) { return data.learned.indexOf(t) === -1; });
         const suggestPool = unlearnedPool.slice().sort(function () { return Math.random() - 0.5; }).slice(0, 5);
 
         let feedback = '';
         if (total === 0) feedback = '字卡库还是空的，先去「自定义回复」里加几张吧';
-        else if (percent === 0) feedback = pName + ' 还没开始学，你在聊天里用几张试试';
-        else if (percent < 30) feedback = '他在慢慢记，用过的就会记住';
+        else if (percent === 0) feedback = pName + ' 刚开始学，明天就会看到进度';
+        else if (percent < 30) feedback = '他在慢慢记，每天都会学几张';
         else if (percent < 60) feedback = '他学得还行，一半多了';
         else if (percent < 90) feedback = '他已经掌握大部分字卡了';
         else if (percent < 100) feedback = '快学完了，就差最后几张';
         else feedback = '他全部学会了 ✦ 你说什么他都能接';
+
+        // 今天是否已学
+        const today = todayStr();
+        const learnedTodayText = data.lastAutoLearnDate === today
+            ? '今天已经学过了 ✓'
+            : '今天还会自己学';
 
         const modal = document.createElement('div');
         modal.id = 'wcp-panel';
@@ -142,7 +195,7 @@
             +     '<div style="height:6px;background:rgba(0,0,0,0.08);border-radius:3px;overflow:hidden;margin-top:12px;max-width:220px;margin-left:auto;margin-right:auto;">'
             +       '<div style="width:' + percent + '%;height:100%;background:var(--accent-color);border-radius:3px;transition:width 0.6s ease;"></div>'
             +     '</div>'
-            +     '<div style="font-size:11px;color:var(--text-secondary);margin-top:6px;">' + percent + '%</div>'
+            +     '<div style="font-size:11px;color:var(--text-secondary);margin-top:6px;">' + percent + '% · ' + learnedTodayText + '</div>'
             +   '</div>'
 
             +   '<div style="font-size:12px;color:var(--text-secondary);text-align:center;line-height:1.6;margin-bottom:16px;padding:10px 12px;background:rgba(var(--accent-color-rgb),0.05);border-radius:10px;flex-shrink:0;">' + esc(feedback) + '</div>'
@@ -153,16 +206,16 @@
                     ? '<div style="font-size:11px;font-weight:700;color:var(--text-secondary);letter-spacing:1px;margin-bottom:8px;">最近学会的</div>'
                         + recent.map(function (h) {
                             const d = new Date(h.ts);
-                            const label = (d.getMonth() + 1) + '/' + d.getDate();
+                            const label = (d.getMonth() + 1) + '/' + d.getDate() + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
                             return '<div style="padding:10px 12px;background:var(--primary-bg);border-radius:10px;margin-bottom:6px;border-left:3px solid var(--accent-color);">'
                                 + '<div style="font-size:12.5px;color:var(--text-primary);line-height:1.5;word-break:break-word;">' + esc(h.text) + '</div>'
                                 + '<div style="font-size:10px;color:var(--text-secondary);margin-top:3px;">' + label + '</div>'
                                 + '</div>';
                         }).join('')
-                    : '<div style="text-align:center;padding:24px 0;color:var(--text-secondary);font-size:12px;opacity:0.6;">还没学会任何字卡</div>')
+                    : '<div style="text-align:center;padding:24px 0;color:var(--text-secondary);font-size:12px;opacity:0.6;">还没学会任何字卡<br><span style="font-size:10px;opacity:0.7;">他每天会自己学 1~3 张</span></div>')
 
             +     (suggestPool.length > 0
-                    ? '<div style="font-size:11px;font-weight:700;color:var(--text-secondary);letter-spacing:1px;margin:14px 0 8px;">还没学会的（点击教他）</div>'
+                    ? '<div style="font-size:11px;font-weight:700;color:var(--text-secondary);letter-spacing:1px;margin:14px 0 8px;">他还没学的（你也可以教他）</div>'
                         + suggestPool.map(function (t) {
                             const attrText = esc(t).replace(/"/g, '&quot;');
                             return '<div class="wcp-teach" data-text="' + attrText + '" style="padding:10px 12px;background:var(--primary-bg);border:1px dashed var(--border-color);border-radius:10px;margin-bottom:6px;cursor:pointer;display:flex;align-items:center;gap:8px;">'
@@ -175,7 +228,7 @@
             +   '</div>'
 
             +   '<div style="display:flex;gap:8px;margin-top:12px;flex-shrink:0;">'
-            +     '<button id="wcp-random" style="flex:1;padding:10px;border:1.5px solid var(--border-color);border-radius:12px;background:none;color:var(--text-secondary);font-size:12.5px;cursor:pointer;font-family:var(--font-family);">🎲 教他一张</button>'
+            +     '<button id="wcp-random" style="flex:1;padding:10px;border:1.5px solid var(--border-color);border-radius:12px;background:none;color:var(--text-secondary);font-size:12.5px;cursor:pointer;font-family:var(--font-family);">🎲 逼他多学一张</button>'
             +     '<button id="wcp-close-btn" style="flex:2;padding:10px;border:none;border-radius:12px;background:var(--accent-color);color:#fff;font-size:12.5px;font-weight:600;cursor:pointer;font-family:var(--font-family);">好的</button>'
             +   '</div>'
 
@@ -230,6 +283,20 @@
         container.appendChild(item);
     }
 
+    // 顶栏按钮（防止高级功能入口挂不上）
+    function bindTopBtn() {
+        const bar = document.querySelector('.header-actions');
+        if (!bar) { setTimeout(bindTopBtn, 800); return; }
+        if (document.getElementById('wcp-top-btn')) return;
+        const btn = document.createElement('button');
+        btn.id = 'wcp-top-btn';
+        btn.className = 'action-btn';
+        btn.title = '学习进度';
+        btn.innerHTML = '<i class="fas fa-book-open-reader"></i>';
+        btn.onclick = function () { window.openWordcardProgressPanel(); };
+        bar.appendChild(btn);
+    }
+
     // ========== 初始化 ==========
     async function init() {
         await load();
@@ -239,8 +306,23 @@
             }
         } catch (e) {}
         bindEntry();
+        bindTopBtn();
         setTimeout(bindEntry, 1500);
+        setTimeout(bindTopBtn, 2000);
+
+        // 每天首次打开：学 1~3 张（延迟 8 秒执行，避免和初始化撞）
+        setTimeout(autoLearnDaily, 8000);
+
+        // 每 15 分钟：检查要不要额外学一张
+        setInterval(autoLearnHourly, 15 * 60 * 1000);
+
+        // 每 10 秒扫消息
         setInterval(scanMessages, 10000);
+
+        // 每次页面变成可见时也检查一下每日学习
+        document.addEventListener('visibilitychange', function () {
+            if (document.visibilityState === 'visible') autoLearnDaily();
+        });
     }
 
     window.initWordcardProgress = init;
@@ -251,5 +333,5 @@
         setTimeout(init, 1500);
     }
 
-    console.log('[wordcard-progress] 他的字卡学习进度已加载 ✓');
+    console.log('[wordcard-progress] 他的字卡学习进度（自主版）已加载 ✓');
 })();
