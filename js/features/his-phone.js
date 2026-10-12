@@ -1,6 +1,7 @@
 /* ============================================================
  * his-phone.js - 他的手机
- * 带锁屏 + 每日自动更新
+ * 带锁屏 + 每日更新
+ * 锁屏逻辑：他快速输入密码（你能看到），你自己复现；输错直接锁
  * ============================================================ */
 (function () {
     'use strict';
@@ -57,16 +58,16 @@
     ];
 
     const CALL_POOL_NORMAL = [
-        { name: '你',   type: 'in',     dur: '5:08',  time: '' },
-        { name: '你',   type: 'out',    dur: '23:17', time: '' },
-        { name: '你',   type: 'missed', dur: '—',     time: '' },
-        { name: '你',   type: 'out',    dur: '12:31', time: '' },
-        { name: '你',   type: 'in',     dur: '1:42',  time: '' },
-        { name: '外卖', type: 'in',     dur: '0:12',  time: '' },
-        { name: '快递', type: 'in',     dur: '0:18',  time: '' },
-        { name: '老张', type: 'out',    dur: '3:42',  time: '' },
-        { name: '你',   type: 'out',    dur: '8:09',  time: '' },
-        { name: '你',   type: 'in',     dur: '45:22', time: '' }
+        { name: '你',   type: 'in',     dur: '5:08' },
+        { name: '你',   type: 'out',    dur: '23:17' },
+        { name: '你',   type: 'missed', dur: '—' },
+        { name: '你',   type: 'out',    dur: '12:31' },
+        { name: '你',   type: 'in',     dur: '1:42' },
+        { name: '外卖', type: 'in',     dur: '0:12' },
+        { name: '快递', type: 'in',     dur: '0:18' },
+        { name: '老张', type: 'out',    dur: '3:42' },
+        { name: '你',   type: 'out',    dur: '8:09' },
+        { name: '你',   type: 'in',     dur: '45:22' }
     ];
 
     const SEARCH_POOL = [
@@ -126,16 +127,13 @@
         searches: [],
         cart: [],
         draft: '',
-        lockAttempts: { date: null, count: 0 },
         lockedUntil: null
     };
 
     async function load() {
         try {
             const saved = await localforage.getItem(getStorageKey(KEY));
-            if (saved && typeof saved === 'object') {
-                Object.assign(data, saved);
-            }
+            if (saved && typeof saved === 'object') Object.assign(data, saved);
         } catch (e) {}
     }
     async function save() {
@@ -225,10 +223,7 @@
         const callCount = daysPassed * 1 + Math.floor(Math.random() * daysPassed);
         for (let i = 0; i < Math.max(1, callCount); i++) {
             const c = pickN(CALL_POOL_NORMAL, 1)[0];
-            data.calls.unshift({
-                name: c.name, type: c.type, dur: c.dur,
-                ts: now - i * 86400000 / 2
-            });
+            data.calls.unshift({ name: c.name, type: c.type, dur: c.dur, ts: now - i * 86400000 / 2 });
         }
         data.calls = data.calls.slice(0, 30);
 
@@ -246,9 +241,7 @@
         data.cart = data.cart.slice(0, 8);
 
         const needDraft = !data.draft || Math.floor(daysPassed / 5) > 0;
-        if (needDraft) {
-            data.draft = pickN(DRAFT_POOL, 1)[0];
-        }
+        if (needDraft) data.draft = pickN(DRAFT_POOL, 1)[0];
 
         data.lastUpdateDate = today;
         await save();
@@ -257,22 +250,6 @@
 
     function esc(s) {
         return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    }
-
-    function getLockAttemptsToday() {
-        const today = todayStr();
-        try {
-            const raw = data.lockAttempts || {};
-            if (raw.date !== today) return { date: today, count: 0 };
-            return raw;
-        } catch (e) {
-            return { date: today, count: 0 };
-        }
-    }
-
-    function saveLockAttempts(obj) {
-        data.lockAttempts = obj;
-        save();
     }
 
     function isPhoneLockedNow() {
@@ -365,112 +342,162 @@
         // 生成 4 位密码（每次都不一样）
         const secret = String(Math.floor(Math.random() * 10000)).padStart(4, '0');
 
-        // 阶段 1：模拟他输入密码（你能看到）
+        // ===== 阶段 1：他快速输入密码 =====
         const now = new Date();
         const hh = String(now.getHours()).padStart(2, '0');
         const mm = String(now.getMinutes()).padStart(2, '0');
         const weekdays = ['星期日','星期一','星期二','星期三','星期四','星期五','星期六'];
         const dateStr = (now.getMonth() + 1) + '月' + now.getDate() + '日 ' + weekdays[now.getDay()];
 
-        screen.innerHTML =
-            '<div style="min-height:440px;display:flex;flex-direction:column;padding:20px 8px 0;">'
-            +   '<div style="text-align:center;margin-top:26px;">'
-            +     '<div style="font-size:58px;font-weight:200;color:#fff;letter-spacing:-2px;line-height:1;font-family:-apple-system,sans-serif;">' + hh + ':' + mm + '</div>'
-            +     '<div style="font-size:13px;color:rgba(255,255,255,0.6);margin-top:10px;letter-spacing:1px;">' + dateStr + '</div>'
-            +   '</div>'
+        // 通用的"4 个圆点 + 键盘" UI
+        function buildLockUI(placeholderLabel) {
+            return '<div style="text-align:center;margin-top:20px;">'
+                +   '<div style="font-size:58px;font-weight:200;color:#fff;letter-spacing:-2px;line-height:1;font-family:-apple-system,sans-serif;">' + hh + ':' + mm + '</div>'
+                +   '<div style="font-size:13px;color:rgba(255,255,255,0.6);margin-top:10px;letter-spacing:1px;">' + dateStr + '</div>'
+                + '</div>'
+                + '<div style="text-align:center;font-size:11.5px;color:rgba(255,255,255,0.5);margin-top:22px;letter-spacing:0.5px;">' + placeholderLabel + '</div>'
 
-            +   '<div style="margin:auto 14px;">'
-            +     '<div style="text-align:center;font-size:12px;color:rgba(255,255,255,0.55);margin-bottom:14px;letter-spacing:0.5px;">他正在输入密码…</div>'
-            +     '<div id="hp-watch-dots" style="display:flex;justify-content:center;gap:12px;">'
-            +       [0,1,2,3].map(function (i) {
-                    return '<div class="hp-watch-dot" data-i="' + i + '" style="width:38px;height:46px;border-radius:10px;background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;color:#fff;font-size:20px;font-weight:600;transition:all 0.15s ease;"></div>';
-                }).join('')
-            +     '</div>'
-            +   '</div>'
+                // 4 个圆点
+                + '<div id="hp-pwd-dots" style="display:flex;justify-content:center;gap:16px;margin-top:18px;">'
+                +   [0,1,2,3].map(function (i) {
+                        return '<div class="hp-pwd-circle" data-i="' + i + '" style="width:14px;height:14px;border-radius:50%;background:transparent;border:1.5px solid rgba(255,255,255,0.35);transition:all 0.15s ease;"></div>';
+                    }).join('')
+                + '</div>'
 
-            +   '<div style="text-align:center;font-size:10.5px;color:rgba(255,255,255,0.3);margin-top:auto;padding-bottom:24px;letter-spacing:0.5px;">'
-            +     '看清了他的密码'
-            +   '</div>'
+                // 键盘
+                + '<div id="hp-keypad" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:220px;margin:30px auto 0;">'
+                +   ['1','2','3','4','5','6','7','8','9','','0','⌫'].map(function (k) {
+                        if (k === '') return '<div></div>';
+                        return '<div class="hp-key" data-k="' + k + '" style="height:44px;border-radius:12px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;color:#fff;font-size:17px;font-weight:500;cursor:pointer;transition:all 0.1s ease;user-select:none;">' + k + '</div>';
+                    }).join('')
+                + '</div>'
+                + '<div id="hp-hint-msg" style="text-align:center;font-size:11px;color:rgba(255,255,255,0.35);margin-top:18px;height:14px;letter-spacing:0.5px;">' + (placeholderLabel === '他正在输入…' ? '看仔细了' : '凭记忆输入') + '</div>';
+        }
+
+        screen.innerHTML = '<div style="min-height:440px;display:flex;flex-direction:column;padding:10px 8px 0;">'
+            + buildLockUI('他正在输入…')
             + '</div>';
 
-        const dots = screen.querySelectorAll('.hp-watch-dot');
+        const dots = screen.querySelectorAll('.hp-pwd-circle');
+        const keys = screen.querySelectorAll('.hp-key');
+
+        function setDotsFilled(n) {
+            dots.forEach(function (d, i) {
+                if (i < n) {
+                    d.style.background = '#fff';
+                    d.style.borderColor = '#fff';
+                    d.style.transform = 'scale(1.15)';
+                    setTimeout(function () { d.style.transform = 'scale(1)'; }, 120);
+                } else {
+                    d.style.background = 'transparent';
+                    d.style.borderColor = 'rgba(255,255,255,0.35)';
+                }
+            });
+        }
+
+        function flashKey(k) {
+            const el = Array.from(keys).find(function (x) { return x.dataset.k === k; });
+            if (!el) return;
+            el.style.background = 'rgba(255,255,255,0.35)';
+            el.style.transform = 'scale(0.92)';
+            setTimeout(function () {
+                el.style.background = 'rgba(255,255,255,0.08)';
+                el.style.transform = 'scale(1)';
+            }, 100);
+        }
+
+        // 他一个数字一个数字地按
         let i = 0;
-        function showDigit() {
+        function partnerPress() {
             if (!document.body.contains(screen)) return;
             if (i >= 4) {
+                // 4 个都按完了，停留 1 秒然后清空
                 setTimeout(function () {
                     if (!document.body.contains(screen)) return;
-                    showInputScreen(screen, modal, secret);
+                    setDotsFilled(0);
+                    // 进入你自己的输入阶段
+                    showInputScreen(screen, modal, secret, hh, mm, dateStr);
                 }, 1000);
                 return;
             }
-            if (dots[i]) {
-                dots[i].textContent = secret[i];
-                dots[i].style.borderColor = 'rgba(120,200,160,0.7)';
-                dots[i].style.background = 'rgba(120,200,160,0.1)';
-            }
+            const k = secret[i];
+            flashKey(k);
+            setDotsFilled(i + 1);
             i++;
-            setTimeout(showDigit, 250);
+            // 150ms 一下（快）
+            setTimeout(partnerPress, 150);
         }
-        setTimeout(showDigit, 400);
+        setTimeout(partnerPress, 500);
     }
 
-    // 阶段 2：你来输入
-    function showInputScreen(screen, modal, secret) {
+    // ===== 阶段 2：你来输入 =====
+    function showInputScreen(screen, modal, secret, hh, mm, dateStr) {
+        const now = new Date();
+        const weekdays = ['星期日','星期一','星期二','星期三','星期四','星期五','星期六'];
+        const dateStr2 = (now.getMonth() + 1) + '月' + now.getDate() + '日 ' + weekdays[now.getDay()];
+
         screen.innerHTML =
-            '<div style="min-height:440px;display:flex;flex-direction:column;padding:20px 8px 0;">'
+            '<div style="min-height:440px;display:flex;flex-direction:column;padding:10px 8px 0;">'
 
-            +   '<div style="text-align:center;margin-top:26px;">'
-            +     '<div style="font-size:14px;color:rgba(255,255,255,0.7);letter-spacing:0.5px;">他刚刚输入了密码</div>'
-            +     '<div style="font-size:11.5px;color:rgba(255,255,255,0.4);margin-top:6px;">凭记忆重新输入一遍</div>'
+            +   '<div style="text-align:center;margin-top:20px;">'
+            +     '<div style="font-size:58px;font-weight:200;color:#fff;letter-spacing:-2px;line-height:1;font-family:-apple-system,sans-serif;">' + hh + ':' + mm + '</div>'
+            +     '<div style="font-size:13px;color:rgba(255,255,255,0.6);margin-top:10px;letter-spacing:1px;">' + dateStr2 + '</div>'
             +   '</div>'
 
-            +   '<div style="margin:36px 14px 0;">'
-            +     '<div style="display:flex;justify-content:center;gap:12px;margin-bottom:18px;" id="hp-pwd-display">'
-            +       [0,1,2,3].map(function (i) {
-                    return '<div class="hp-pwd-dot" data-i="' + i + '" style="width:38px;height:46px;border-radius:10px;background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;color:#fff;font-size:20px;font-weight:600;transition:all 0.15s ease;"></div>';
+            +   '<div style="text-align:center;font-size:11.5px;color:rgba(255,255,255,0.5);margin-top:22px;letter-spacing:0.5px;">该你了</div>'
+
+            +   '<div id="hp-pwd-dots" style="display:flex;justify-content:center;gap:16px;margin-top:18px;">'
+            +     [0,1,2,3].map(function (i) {
+                    return '<div class="hp-pwd-circle" data-i="' + i + '" style="width:14px;height:14px;border-radius:50%;background:transparent;border:1.5px solid rgba(255,255,255,0.35);transition:all 0.15s ease;"></div>';
                 }).join('')
-            +     '</div>'
-            +     '<div id="hp-pwd-msg" style="text-align:center;font-size:11.5px;color:#FF6B6B;height:16px;margin-bottom:8px;"></div>'
             +   '</div>'
 
-            +   '<div style="margin:auto 8px 20px;">'
-            +     '<div id="hp-keypad" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:220px;margin:0 auto;">'
-            +       ['1','2','3','4','5','6','7','8','9','','0','⌫'].map(function (k) {
+            +   '<div id="hp-keypad" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:220px;margin:30px auto 0;">'
+            +     ['1','2','3','4','5','6','7','8','9','','0','⌫'].map(function (k) {
                     if (k === '') return '<div></div>';
-                    return '<div class="hp-key" data-k="' + k + '" style="height:44px;border-radius:12px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;color:#fff;font-size:17px;font-weight:500;cursor:pointer;transition:all 0.12s ease;user-select:none;">' + k + '</div>';
+                    return '<div class="hp-key" data-k="' + k + '" style="height:44px;border-radius:12px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;color:#fff;font-size:17px;font-weight:500;cursor:pointer;transition:all 0.1s ease;user-select:none;">' + k + '</div>';
                 }).join('')
-            +     '</div>'
-            +     '<div style="text-align:center;font-size:10.5px;color:rgba(255,255,255,0.3);margin-top:14px;letter-spacing:0.5px;">'
-            +       '连续猜错 3 次会被发现'
-            +     '</div>'
+            +   '</div>'
+
+            +   '<div id="hp-hint-msg" style="text-align:center;font-size:11px;color:rgba(255,255,255,0.35);margin-top:18px;height:14px;letter-spacing:0.5px;">'
+            +     '输错就直接被发现'
             +   '</div>'
 
             + '</div>';
 
         let input = '';
-        const dots = screen.querySelectorAll('.hp-pwd-dot');
-        const msgEl = screen.querySelector('#hp-pwd-msg');
+        const dots = screen.querySelectorAll('.hp-pwd-circle');
+        const keys = screen.querySelectorAll('.hp-key');
+        const msgEl = screen.querySelector('#hp-hint-msg');
 
         function refreshDots() {
-            dots.forEach(function (el, i) {
+            dots.forEach(function (d, i) {
                 if (i < input.length) {
-                    el.textContent = '●';
-                    el.style.borderColor = 'rgba(var(--accent-color-rgb),0.6)';
-                    el.style.background = 'rgba(var(--accent-color-rgb),0.08)';
+                    d.style.background = '#fff';
+                    d.style.borderColor = '#fff';
                 } else {
-                    el.textContent = '';
-                    el.style.borderColor = 'rgba(255,255,255,0.15)';
-                    el.style.background = 'rgba(255,255,255,0.05)';
+                    d.style.background = 'transparent';
+                    d.style.borderColor = 'rgba(255,255,255,0.35)';
                 }
             });
+        }
+
+        function flashKey(k) {
+            const el = Array.from(keys).find(function (x) { return x.dataset.k === k; });
+            if (!el) return;
+            el.style.background = 'rgba(255,255,255,0.35)';
+            el.style.transform = 'scale(0.92)';
+            setTimeout(function () {
+                el.style.background = 'rgba(255,255,255,0.08)';
+                el.style.transform = 'scale(1)';
+            }, 100);
         }
 
         function tryUnlock() {
             if (input.length !== 4) return;
             if (input === secret) {
                 msgEl.style.color = '#7BC8A4';
-                msgEl.textContent = '✓ 密码正确';
+                msgEl.textContent = '✓ 解锁成功';
                 setTimeout(function () {
                     screen.style.transition = 'opacity 0.35s ease, transform 0.35s ease';
                     screen.style.opacity = '0';
@@ -481,42 +508,31 @@
                         screen.style.transform = '';
                         renderHome(screen, modal);
                     }, 350);
-                }, 300);
+                }, 400);
             } else {
-                const today = todayStr();
-                const a = getLockAttemptsToday();
-                a.count = (a.count || 0) + 1;
-                saveLockAttempts(a);
-
+                // 直接锁
                 msgEl.style.color = '#FF6B6B';
-                msgEl.textContent = '密码不对（' + a.count + '/3）';
-                input = '';
-                refreshDots();
+                msgEl.textContent = '……被发现了';
+                data.lockedUntil = Date.now() + 60 * 60 * 1000;
+                save();
 
-                const pwdEl = screen.querySelector('#hp-pwd-display');
-                pwdEl.style.transition = 'transform 0.1s';
-                pwdEl.style.transform = 'translateX(-6px)';
-                setTimeout(function () { pwdEl.style.transform = 'translateX(6px)'; }, 100);
-                setTimeout(function () { pwdEl.style.transform = 'translateX(0)'; }, 200);
-
-                if (a.count >= 3) {
-                    data.lockedUntil = Date.now() + 60 * 60 * 1000;
-                    data.lockAttempts = { date: today, count: 0 };
-                    save();
+                // 屏幕闪红一下
+                screen.style.transition = 'background 0.15s';
+                screen.style.background = 'rgba(180,40,40,0.4)';
+                setTimeout(function () {
+                    screen.style.background = '';
+                    screen.style.transition = 'opacity 0.5s ease';
+                    screen.style.opacity = '0';
                     setTimeout(function () {
-                        screen.style.transition = 'opacity 0.4s ease';
-                        screen.style.opacity = '0';
-                        setTimeout(function () {
-                            screen.style.opacity = '';
-                            screen.style.transition = '';
-                            renderLockScreen(screen, modal);
-                        }, 400);
-                    }, 600);
-                }
+                        screen.style.opacity = '';
+                        screen.style.transition = '';
+                        renderLockScreen(screen, modal);
+                    }, 500);
+                }, 200);
             }
         }
 
-        screen.querySelectorAll('.hp-key').forEach(function (el) {
+        keys.forEach(function (el) {
             el.addEventListener('mousedown', function () {
                 el.style.transform = 'scale(0.94)';
                 el.style.background = 'rgba(255,255,255,0.15)';
@@ -531,6 +547,7 @@
             });
             el.addEventListener('click', function () {
                 const k = el.dataset.k;
+                flashKey(k);
                 if (k === '⌫') {
                     input = input.slice(0, -1);
                 } else if (/^[0-9]$/.test(k)) {
@@ -538,29 +555,10 @@
                 }
                 refreshDots();
                 if (input.length === 4) {
-                    setTimeout(tryUnlock, 200);
+                    setTimeout(tryUnlock, 150);
                 }
             });
         });
-
-        const keyHandler = function (e) {
-            if (!document.body.contains(screen)) { document.removeEventListener('keydown', keyHandler); return; }
-            if (/^[0-9]$/.test(e.key)) {
-                if (input.length < 4) input += e.key;
-            } else if (e.key === 'Backspace') {
-                input = input.slice(0, -1);
-            } else if (e.key === 'Enter' && input.length === 4) {
-                tryUnlock();
-                return;
-            } else {
-                return;
-            }
-            refreshDots();
-            if (input.length === 4) {
-                setTimeout(tryUnlock, 200);
-            }
-        };
-        document.addEventListener('keydown', keyHandler);
     }
 
     // ========== 主屏幕 ==========
