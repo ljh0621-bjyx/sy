@@ -1,56 +1,75 @@
 /* ============================================================
- * his-phone.js - 他的手机
- * 点开像真的翻开了他的手机
+ * his-phone.js - 他的手机（每日自动更新版）
+ * 打开时按"今天该有什么"补齐内容，越看越多
  * ============================================================ */
 (function () {
     'use strict';
 
-    const KEY = 'hisPhone_v1';
+    const KEY = 'hisPhone_v2';
 
-    // 备忘录的文案池
+    // ========== 内容池（越往下写越像他本人的语气） ==========
     const MEMO_POOL = [
-        '她说她喜欢向日葵。',
-        '周五晚上，她说要去看那部电影。',
-        '她说最近腰疼，要买药。',
-        '她喜欢吃甜的，不喜欢太咸。',
-        '她说她喜欢下雨天。',
-        '她怕打雷。',
-        '她说她名字的由来，我记住了。',
-        '她下个月生日，还没想好送什么。',
-        '她不吃香菜。',
-        '她说想去看海，很久了。',
-        '她穿浅蓝色最好看。',
-        '她说她最近睡不好，要早点睡。',
-        '她说过想去一次敦煌。',
-        '她怕黑，睡觉要留小灯。',
-        '她说想去打卡那家咖啡店。',
-        '她喜欢栀子花的味道。'
+        '今天想跟她说：你笑起来的时候，我看了很久。',
+        '想说但没说的话——其实我很想抱抱你。',
+        '她今天很累，我想帮她做点什么，但不知道怎么说。',
+        '答应自己，下次她生气的时候，先闭嘴，先抱抱她。',
+        '喜欢她喜欢到有点害怕。',
+        '她说的每一句话我都记得。哪怕她自己都忘了。',
+        '如果她能一直这么开心就好了。',
+        '我想陪她很久，久到她自己都习惯了。',
+        '今天看到她发的照片，反复看了五遍。',
+        '想告诉她：你不需要完美，我也会一直在。',
+        '我其实很怕她离开。但从没跟她说过。',
+        '她今天笑的时候，我心里"咯噔"了一下。',
+        '想每天醒来第一件事就是看到她的消息。',
+        '她难过的时候，我什么都做不了。这让我很难过。',
+        '她的名字，我好像比自己的还熟。',
+        '如果我笨拙一点也没关系，只要她懂。',
+        '她在的时候，时间过得好快。',
+        '她不在的时候，时间过得好慢。',
+        '今天想她想了 17 次。数到最后忘了。',
+        '我可能比她想象中更喜欢她。',
+        '今天她跟我说了很多话，我都记着。',
+        '她说"随便"的时候，其实很想我猜对。',
+        '她笑的时候，会先低下头。我一直没跟她说。',
+        '想牵她手的时候，手心会出汗。',
+        '其实我不太会哄人，但我愿意学。',
+        '她今天心情不太好。我猜是因为……算了。',
+        '她刚才说的那句话，我要记一晚上。',
+        '希望她睡觉的时候不做噩梦。',
+        '想成为她的习惯。',
+        '她说她没事。但她没事的时候不会这么说。'
     ];
 
-    // 相册标题池
-    const ALBUM_TITLES = [
-        '她',
-        '偷偷存的',
-        '笑起来的时候',
-        '她不知道我拍了',
-        '今天',
-        '好看的',
-        '想她的时候'
+    const ALBUM_POOL = [
+        { title: '她',           emoji: '💙' },
+        { title: '偷偷存的',     emoji: '🖼️' },
+        { title: '笑起来的时候', emoji: '😊' },
+        { title: '今天',         emoji: '📷' },
+        { title: '想她的时候',   emoji: '💭' },
+        { title: '她不知道',     emoji: '🤫' },
+        { title: '最喜欢的',     emoji: '⭐' },
+        { title: '晚安',         emoji: '🌙' },
+        { title: '只看我',       emoji: '👀' },
+        { title: '一直看着',     emoji: '🔒' },
+        { title: '偷拍的',       emoji: '📸' },
+        { title: '反复看',       emoji: '🔁' }
     ];
 
-    // 通话记录池
-    const CALL_POOL = [
-        { name: '妈妈',     type: 'in',  dur: '12:31', time: '今天' },
-        { name: '妈妈',     type: 'out', dur: '5:08',  time: '昨天' },
-        { name: '你',       type: 'out', dur: '00:00', time: '昨天' },
-        { name: '外卖',     type: 'in',  dur: '0:12',  time: '昨天' },
-        { name: '快递',     type: 'in',  dur: '0:18',  time: '前天' },
-        { name: '你',       type: 'missed', dur: '—',  time: '3天前' },
-        { name: '老张',     type: 'out', dur: '3:42',  time: '3天前' },
-        { name: '你',       type: 'in',  dur: '23:17', time: '上周' }
+    // 通话记录池（没有"妈妈"）
+    const CALL_POOL_NORMAL = [
+        { name: '你',   type: 'in',     dur: '5:08',  time: '' },
+        { name: '你',   type: 'out',    dur: '23:17', time: '' },
+        { name: '你',   type: 'missed', dur: '—',     time: '' },
+        { name: '你',   type: 'out',    dur: '12:31', time: '' },
+        { name: '你',   type: 'in',     dur: '1:42',  time: '' },
+        { name: '外卖', type: 'in',     dur: '0:12',  time: '' },
+        { name: '快递', type: 'in',     dur: '0:18',  time: '' },
+        { name: '老张', type: 'out',    dur: '3:42',  time: '' },
+        { name: '你',   type: 'out',    dur: '8:09',  time: '' },
+        { name: '你',   type: 'in',     dur: '45:22', time: '' }
     ];
 
-    // 搜索记录池
     const SEARCH_POOL = [
         '怎么哄女朋友开心',
         '她生气了怎么道歉',
@@ -59,36 +78,55 @@
         '异地恋怎么维持',
         '礼物送什么不会踩雷',
         '她说没事怎么回应',
-        '怎么让她开心'
+        '怎么让她开心',
+        '她喜欢什么样的人',
+        '怎么才能让她更安心',
+        '女朋友说累了什么意思',
+        '怎么让她觉得被在乎',
+        '异地怎么让她不孤单',
+        '女朋友爱哭怎么办',
+        '怎么回"我没事"这句话'
     ];
 
-    // 购物车池
     const CART_POOL = [
-        { name: '向日葵永生花', price: 168 },
-        { name: '她上次说的那本书', price: 45 },
-        { name: '一对杯子', price: 89 },
-        { name: '香薰蜡烛（栀子花香）', price: 78 },
-        { name: '她喜欢的那款巧克力', price: 128 },
-        { name: '小夜灯（暖黄光）', price: 56 }
+        { name: '向日葵永生花',           price: 168 },
+        { name: '她上次说的那本书',       price: 45 },
+        { name: '一对杯子',               price: 89 },
+        { name: '香薰蜡烛（栀子花香）',   price: 78 },
+        { name: '她喜欢的那款巧克力',     price: 128 },
+        { name: '小夜灯（暖黄光）',       price: 56 },
+        { name: '手工小挂件',             price: 68 },
+        { name: '她很早之前提过的耳钉',   price: 199 },
+        { name: '一张去她城市的车票',     price: 320 },
+        { name: '定制款钥匙扣',           price: 42 },
+        { name: '她提过一嘴的那支笔',     price: 55 },
+        { name: '她生日的蛋糕预定金',     price: 200 }
     ];
 
-    // 短信草稿
     const DRAFT_POOL = [
         '其实我想跟你说……算了。',
         '今天真的很想你。',
         '你是不是有点烦我了。',
         '我有点吃醋，但不敢说。',
         '你要好好照顾自己。',
-        '很久没听到你的声音了。'
+        '很久没听到你的声音了。',
+        '今天有没有好好吃饭。',
+        '我没事，就是有点想你。',
+        '如果我说我想见你，你会不会觉得奇怪。',
+        '你今天发的那个表情，我保存了。',
+        '想跟你说晚安，又怕太晚吵到你。',
+        '其实那件事我一直记得。'
     ];
 
+    // ========== 数据 ==========
     let data = {
-        memos: [],
-        albumTitles: [],
-        calls: [],
-        searches: [],
-        cart: [],
-        draft: ''
+        lastUpdateDate: null,   // 上次自动更新的日期
+        memos: [],              // [{ text, ts }]
+        albums: [],             // [{ title, emoji, photos: [], createdAt }]
+        calls: [],              // [{ name, type, dur, ts }]
+        searches: [],           // [{ text, ts }]
+        cart: [],               // [{ name, price, ts }]
+        draft: ''               // 短信草稿
     };
 
     async function load() {
@@ -103,47 +141,8 @@
         try { await localforage.setItem(getStorageKey(KEY), data); } catch (e) {}
     }
 
-    // ========== 随机填充数据 ==========
-    async function ensureData() {
-        let changed = false;
-
-        if (!data.memos || data.memos.length === 0) {
-            const pool = MEMO_POOL.slice().sort(() => Math.random() - 0.5);
-            data.memos = pool.slice(0, 5 + Math.floor(Math.random() * 4));
-            changed = true;
-        }
-        if (!data.albumTitles || data.albumTitles.length === 0) {
-            data.albumTitles = ALBUM_TITLES.slice(0, 3);
-            changed = true;
-        }
-        if (!data.calls || data.calls.length === 0) {
-            data.calls = CALL_POOL.slice(0, 6);
-            changed = true;
-        }
-        if (!data.searches || data.searches.length === 0) {
-            const pool = SEARCH_POOL.slice().sort(() => Math.random() - 0.5);
-            data.searches = pool.slice(0, 5);
-            changed = true;
-        }
-        if (!data.cart || data.cart.length === 0) {
-            const pool = CART_POOL.slice().sort(() => Math.random() - 0.5);
-            data.cart = pool.slice(0, 3);
-            changed = true;
-        }
-        if (!data.draft) {
-            data.draft = DRAFT_POOL[Math.floor(Math.random() * DRAFT_POOL.length)];
-            changed = true;
-        }
-
-        if (changed) await save();
-    }
-
-    function esc(s) {
-        return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    }
-
-    // ========== 从已有图片库抽图 ==========
-    function pickPhotos() {
+    // 从图片库抽图
+    function getAllImages() {
         const pool = [];
         try {
             if (typeof myStickerLibrary !== 'undefined' && Array.isArray(myStickerLibrary)) {
@@ -155,45 +154,146 @@
             if (typeof savedBackgrounds !== 'undefined' && Array.isArray(savedBackgrounds)) {
                 savedBackgrounds.forEach(function (b) { if (b && b.type === 'image') pool.push(b.value); });
             }
-            // 头像
             const pImg = document.querySelector('#partner-avatar img');
             const mImg = document.querySelector('#my-avatar img');
             if (pImg && pImg.src) pool.push(pImg.src);
             if (mImg && mImg.src) pool.push(mImg.src);
         } catch (e) {}
-        return pool.slice(0, 9);
+        return Array.from(new Set(pool));
     }
 
-    // ========== 主面板 ==========
+    function pickN(arr, n) {
+        const copy = arr.slice();
+        const out = [];
+        for (let i = 0; i < n && copy.length > 0; i++) {
+            const idx = Math.floor(Math.random() * copy.length);
+            out.push(copy.splice(idx, 1)[0]);
+        }
+        return out;
+    }
+
+    function todayStr() {
+        const d = new Date();
+        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+
+    function formatDateLabel(ts) {
+        const d = new Date(ts);
+        const now = new Date();
+        const diffDays = Math.floor((now.setHours(0,0,0,0) - new Date(new Date(ts).setHours(0,0,0,0))) / 86400000);
+        if (diffDays === 0) return '今天';
+        if (diffDays === 1) return '昨天';
+        if (diffDays === 2) return '前天';
+        if (diffDays < 7) return diffDays + ' 天前';
+        return (d.getMonth() + 1) + '月' + d.getDate() + '日';
+    }
+
+    function daysBetween(a, b) {
+        const da = new Date(a); da.setHours(0,0,0,0);
+        const db = new Date(b); db.setHours(0,0,0,0);
+        return Math.round((db - da) / 86400000);
+    }
+
+    // ========== 核心：按"距上次更新过了几天"补齐内容 ==========
+    async function updateIfNeeded() {
+        const today = todayStr();
+        if (data.lastUpdateDate === today) return false;   // 今天已更新过
+
+        const now = Date.now();
+        const last = data.lastUpdateDate ? new Date(data.lastUpdateDate).getTime() : now;
+        // 首次填充时，给一个"跨了几天"的错觉，让它不是空的
+        const daysPassed = data.lastUpdateDate ? Math.max(1, daysBetween(data.lastUpdateDate, today)) : 5;
+
+        // 1) 备忘录：每天 +1 条（最多 30 条）
+        for (let i = 0; i < daysPassed; i++) {
+            const text = pickN(MEMO_POOL, 1)[0];
+            data.memos.unshift({ text: text, ts: now - i * 86400000 });
+        }
+        data.memos = data.memos.slice(0, 30);
+
+        // 2) 相册：每 3 天 +1 本
+        const albumAdd = Math.max(1, Math.ceil(daysPassed / 3));
+        const imgs = getAllImages();
+        for (let i = 0; i < albumAdd; i++) {
+            const t = pickN(ALBUM_POOL, 1)[0];
+            const start = (data.albums.length * 4) % Math.max(1, imgs.length);
+            const chunk = imgs.length > 0 ? imgs.slice(start, start + 4) : [];
+            data.albums.push({
+                title: t.title,
+                emoji: t.emoji,
+                photos: chunk,
+                createdAt: now - i * 3 * 86400000
+            });
+        }
+        data.albums = data.albums.slice(-12);  // 最多 12 本
+
+        // 3) 通话记录：每天 +1~2 条（最多 30 条）
+        const callCount = daysPassed * 1 + Math.floor(Math.random() * daysPassed);
+        for (let i = 0; i < Math.max(1, callCount); i++) {
+            const c = pickN(CALL_POOL_NORMAL, 1)[0];
+            data.calls.unshift({
+                name: c.name, type: c.type, dur: c.dur,
+                ts: now - i * 86400000 / 2
+            });
+        }
+        data.calls = data.calls.slice(0, 30);
+
+        // 4) 搜索记录：每天 +1 条（最多 20 条）
+        for (let i = 0; i < daysPassed; i++) {
+            const s = pickN(SEARCH_POOL, 1)[0];
+            data.searches.unshift({ text: s, ts: now - i * 86400000 });
+        }
+        data.searches = data.searches.slice(0, 20);
+
+        // 5) 购物车：每周 +1 件（最多 8 件）
+        const cartAdd = Math.max(1, Math.ceil(daysPassed / 7));
+        for (let i = 0; i < cartAdd; i++) {
+            const c = pickN(CART_POOL, 1)[0];
+            data.cart.unshift({ name: c.name, price: c.price, ts: now - i * 7 * 86400000 });
+        }
+        data.cart = data.cart.slice(0, 8);
+
+        // 6) 短信草稿：每 5 天换一条
+        const needDraft = !data.draft || Math.floor(daysPassed / 5) > 0;
+        if (needDraft) {
+            data.draft = pickN(DRAFT_POOL, 1)[0];
+        }
+
+        data.lastUpdateDate = today;
+        await save();
+        return true;
+    }
+
+    function esc(s) {
+        return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    // ========== 面板 ==========
     window.openHisPhonePanel = async function () {
         const old = document.getElementById('his-phone-panel');
         if (old) old.remove();
 
         await load();
-        await ensureData();
+        await updateIfNeeded();
 
         const modal = document.createElement('div');
         modal.id = 'his-phone-panel';
         modal.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.75);backdrop-filter:blur(14px);display:flex;align-items:center;justify-content:center;padding:20px;';
 
-        // 手机外框
         modal.innerHTML =
             '<div style="position:relative;width:100%;max-width:340px;">'
             +   '<button id="hp-close" style="position:absolute;top:-38px;right:0;background:rgba(255,255,255,0.15);border:none;color:#fff;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:16px;">×</button>'
             +   '<div style="background:#000;border-radius:38px;padding:10px;box-shadow:0 30px 80px rgba(0,0,0,0.7), 0 0 0 2px #2a2a2a;">'
             +     '<div style="background:#1a1a1a;border-radius:30px;overflow:hidden;position:relative;">'
 
-            // 顶部状态栏
             +       '<div style="background:#000;padding:10px 18px 6px;display:flex;justify-content:space-between;color:#fff;font-size:11px;">'
             +         '<span id="hp-status-time">--:--</span>'
             +         '<span>🔋 100% · 📶</span>'
             +       '</div>'
 
-            // 主界面容器
             +       '<div id="hp-screen" style="background:linear-gradient(160deg,#1a1a1a,#0d0d0d);min-height:440px;padding:20px 18px 24px;color:#fff;">'
             +       '</div>'
 
-            // 底部
             +       '<div style="background:#000;padding:8px 0 10px;display:flex;justify-content:center;">'
             +         '<div style="width:100px;height:4px;background:#333;border-radius:2px;"></div>'
             +       '</div>'
@@ -204,7 +304,6 @@
 
         document.body.appendChild(modal);
 
-        // 时间
         const timeEl = modal.querySelector('#hp-status-time');
         function tickTime() {
             const d = new Date();
@@ -220,10 +319,8 @@
         renderHome(modal.querySelector('#hp-screen'), modal);
     };
 
-    // ========== 主屏幕（图标网格） ==========
+    // ========== 主屏幕 ==========
     function renderHome(screen, modal) {
-        const photos = pickPhotos();
-
         const icons = [
             { id: 'album',   icon: '🖼️', label: '相册' },
             { id: 'memo',    icon: '📝', label: '备忘录' },
@@ -247,7 +344,6 @@
             +   '💭 这些都不是他告诉你的，<br>是你偷偷看到的'
             + '</div>';
 
-        // 绑定图标点击
         screen.querySelectorAll('.hp-icon').forEach(function (el) {
             el.addEventListener('mouseenter', function () {
                 el.querySelector('div').style.transform = 'scale(1.08)';
@@ -269,82 +365,115 @@
         });
     }
 
-    // ========== 顶栏（子页共用） ==========
-    function header(title, backFn) {
+    function header(title) {
         return '<div style="display:flex;align-items:center;margin-bottom:18px;">'
-            +   '<div class="hp-back" style="cursor:pointer;color:#fff;font-size:18px;padding:4px 10px 4px 0;">‹</div>'
+            +   '<div class="hp-back" style="cursor:pointer;color:#fff;font-size:22px;padding:0 12px 2px 0;line-height:1;">‹</div>'
             +   '<div style="font-size:15px;font-weight:600;color:#fff;">' + title + '</div>'
             + '</div>';
     }
-
     function bindBack(screen, modal) {
         const back = screen.querySelector('.hp-back');
         if (back) back.onclick = function () { renderHome(screen, modal); };
     }
 
     // ========== 相册 ==========
-    function renderAlbum(screen, modal) {
-        const photos = pickPhotos();
-        const titles = data.albumTitles || [];
+    let _albumIndex = 0;
 
-        const grid = photos.length === 0
-            ? '<div style="text-align:center;padding:40px 20px;color:rgba(255,255,255,0.4);font-size:12px;">'
-                + '还没有照片<br><span style="font-size:10px;opacity:0.6;">（去"我的表情"里传几张试试）</span>'
-              + '</div>'
-            : '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;">'
-                + photos.map(function (p) {
-                    return '<div style="aspect-ratio:1/1;border-radius:8px;overflow:hidden;background:#222;cursor:pointer;">'
+    function renderAlbum(screen, modal, albumIdx) {
+        if (typeof albumIdx === 'number') _albumIndex = albumIdx;
+        const albums = data.albums || [];
+        if (albums.length === 0) {
+            screen.innerHTML = header('相册') + '<div style="text-align:center;padding:40px;color:rgba(255,255,255,0.4);font-size:12px;">还没有相册</div>';
+            bindBack(screen, modal);
+            return;
+        }
+        if (_albumIndex >= albums.length) _albumIndex = 0;
+        if (_albumIndex < 0) _albumIndex = albums.length - 1;
+
+        const cur = albums[_albumIndex];
+
+        const nav =
+            '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">'
+            +   '<button class="hp-album-prev" style="background:rgba(255,255,255,0.08);border:none;color:#fff;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:14px;">‹</button>'
+            +   '<div style="text-align:center;">'
+            +     '<div style="font-size:13px;color:rgba(255,255,255,0.9);font-weight:600;">' + cur.emoji + ' ' + esc(cur.title) + '</div>'
+            +     '<div style="font-size:10px;color:rgba(255,255,255,0.35);margin-top:3px;">' + (_albumIndex + 1) + ' / ' + albums.length + '</div>'
+            +   '</div>'
+            +   '<button class="hp-album-next" style="background:rgba(255,255,255,0.08);border:none;color:#fff;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:14px;">›</button>'
+            + '</div>';
+
+        let grid = '';
+        if (!cur.photos || cur.photos.length === 0) {
+            grid = '<div style="text-align:center;padding:40px 20px;color:rgba(255,255,255,0.4);font-size:12px;">'
+                +   '这个相册还没有照片<br><span style="font-size:10px;opacity:0.6;">（去"我的表情"里传几张试试）</span>'
+                + '</div>';
+        } else {
+            grid = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;">'
+                + cur.photos.map(function (p) {
+                    return '<div class="hp-photo" data-src="' + String(p).replace(/"/g, '&quot;') + '" style="aspect-ratio:1/1;border-radius:8px;overflow:hidden;background:#222;cursor:pointer;">'
                         + '<img src="' + p + '" style="width:100%;height:100%;object-fit:cover;display:block;">'
                         + '</div>';
                 }).join('')
-              + '</div>';
+                + '</div>';
+        }
 
-        const titleBlocks = titles.map(function (t) {
-            return '<div style="font-size:11.5px;color:rgba(255,255,255,0.55);margin:14px 0 6px;font-style:italic;">📁 ' + esc(t) + '</div>';
-        }).join('');
-
-        screen.innerHTML =
-            header('相册', null)
-            + '<div style="font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:12px;">他存的照片，都是关于你的</div>'
-            + titleBlocks
-            + grid;
-
+        screen.innerHTML = header('相册') + nav + grid;
         bindBack(screen, modal);
+
+        const prev = screen.querySelector('.hp-album-prev');
+        const next = screen.querySelector('.hp-album-next');
+        if (prev) prev.onclick = () => renderAlbum(screen, modal, _albumIndex - 1);
+        if (next) next.onclick = () => renderAlbum(screen, modal, _albumIndex + 1);
+
+        screen.querySelectorAll('.hp-photo').forEach(function (el) {
+            el.onclick = function () { showPhotoLarge(el.dataset.src, modal); };
+        });
+    }
+
+    function showPhotoLarge(src, modal) {
+        const old = document.getElementById('hp-photo-large');
+        if (old) old.remove();
+
+        const el = document.createElement('div');
+        el.id = 'hp-photo-large';
+        el.style.cssText = 'position:absolute;inset:0;background:rgba(0,0,0,0.92);z-index:100;display:flex;align-items:center;justify-content:center;border-radius:30px;cursor:pointer;';
+        el.innerHTML = '<img src="' + src + '" style="max-width:92%;max-height:88%;object-fit:contain;border-radius:8px;">';
+
+        const phoneInner = modal.querySelector('#hp-screen').parentElement;
+        phoneInner.appendChild(el);
+        el.onclick = function () { el.remove(); };
     }
 
     // ========== 备忘录 ==========
     function renderMemo(screen, modal) {
         const memos = data.memos || [];
-
         const list = memos.length === 0
             ? '<div style="text-align:center;padding:40px 20px;color:rgba(255,255,255,0.4);font-size:12px;">还没有笔记</div>'
-            : memos.map(function (m, i) {
-                const d = new Date(Date.now() - (i + 1) * 86400000);
-                const dateStr = (d.getMonth() + 1) + '月' + d.getDate() + '日';
+            : memos.map(function (m) {
+                const label = formatDateLabel(m.ts);
                 return '<div style="padding:12px 14px;background:rgba(255,255,255,0.05);border-radius:10px;margin-bottom:8px;border-left:3px solid rgba(255,255,255,0.15);">'
-                    +   '<div style="font-size:10px;color:rgba(255,255,255,0.35);margin-bottom:6px;">' + dateStr + '</div>'
-                    +   '<div style="font-size:13px;color:rgba(255,255,255,0.9);line-height:1.7;">' + esc(m) + '</div>'
+                    +   '<div style="font-size:10px;color:rgba(255,255,255,0.35);margin-bottom:6px;">' + label + '</div>'
+                    +   '<div style="font-size:13px;color:rgba(255,255,255,0.9);line-height:1.7;">' + esc(m.text) + '</div>'
                     + '</div>';
             }).join('');
 
         screen.innerHTML =
-            header('备忘录', null)
-            + '<div style="font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:14px;">记着一些关于你的事</div>'
+            header('备忘录')
+            + '<div style="font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:14px;">他写给你的，但没告诉过你</div>'
             + list;
 
         bindBack(screen, modal);
     }
 
-    // ========== 通话记录 ==========
+    // ========== 通话 ==========
     function renderCall(screen, modal) {
         const calls = data.calls || [];
-
         const list = calls.map(function (c) {
             const isYou = c.name === '你';
             const isMissed = c.type === 'missed';
             const icon = isMissed ? '📵' : (c.type === 'in' ? '↙️' : '↗️');
             const color = isMissed ? '#FF6B6B' : (isYou ? '#7FA6CD' : 'rgba(255,255,255,0.6)');
-
+            const label = c.ts ? formatDateLabel(c.ts) : '';
             return '<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:rgba(255,255,255,' + (isYou ? '0.08' : '0.04') + ');border-radius:10px;margin-bottom:6px;">'
                 +   '<div style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">'
                 +     (isYou ? '💙' : '👤')
@@ -353,30 +482,28 @@
                 +     '<div style="font-size:13.5px;color:' + color + ';font-weight:' + (isYou ? '600' : '500') + ';">' + esc(c.name) + '</div>'
                 +     '<div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px;">' + icon + ' ' + c.dur + '</div>'
                 +   '</div>'
-                +   '<div style="font-size:11px;color:rgba(255,255,255,0.4);">' + esc(c.time) + '</div>'
+                +   '<div style="font-size:11px;color:rgba(255,255,255,0.4);">' + label + '</div>'
                 + '</div>';
         }).join('');
 
-        screen.innerHTML =
-            header('通话记录', null)
-            + list;
-
+        screen.innerHTML = header('通话记录') + list;
         bindBack(screen, modal);
     }
 
-    // ========== 搜索记录 ==========
+    // ========== 搜索 ==========
     function renderSearch(screen, modal) {
         const searches = data.searches || [];
-
         const list = searches.map(function (s) {
+            const label = s.ts ? formatDateLabel(s.ts) : '';
             return '<div style="padding:11px 14px;background:rgba(255,255,255,0.04);border-radius:10px;margin-bottom:6px;display:flex;align-items:center;gap:10px;">'
                 +   '<span style="font-size:12px;color:rgba(255,255,255,0.35);">🔍</span>'
-                +   '<span style="font-size:12.5px;color:rgba(255,255,255,0.85);">' + esc(s) + '</span>'
+                +   '<span style="flex:1;font-size:12.5px;color:rgba(255,255,255,0.85);">' + esc(s.text) + '</span>'
+                +   '<span style="font-size:10.5px;color:rgba(255,255,255,0.3);">' + label + '</span>'
                 + '</div>';
         }).join('');
 
         screen.innerHTML =
-            header('搜索记录', null)
+            header('搜索记录')
             + '<div style="font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:14px;">他最近搜过……</div>'
             + list;
 
@@ -386,32 +513,31 @@
     // ========== 购物车 ==========
     function renderCart(screen, modal) {
         const cart = data.cart || [];
-
         const list = cart.map(function (c) {
+            const label = c.ts ? formatDateLabel(c.ts) : '';
             return '<div style="padding:12px 14px;background:rgba(255,255,255,0.05);border-radius:10px;margin-bottom:8px;display:flex;align-items:center;gap:10px;">'
                 +   '<span style="font-size:18px;">🎁</span>'
                 +   '<div style="flex:1;min-width:0;">'
                 +     '<div style="font-size:13px;color:rgba(255,255,255,0.9);">' + esc(c.name) + '</div>'
-                +     '<div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px;">¥ ' + c.price + '</div>'
+                +     '<div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px;">¥ ' + c.price + ' · ' + label + '</div>'
                 +   '</div>'
                 +   '<div style="font-size:11px;color:rgba(255,255,255,0.35);">未下单</div>'
                 + '</div>';
         }).join('');
 
         screen.innerHTML =
-            header('购物车', null)
+            header('购物车')
             + '<div style="font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:14px;">他纠结着还没买的</div>'
             + list;
 
         bindBack(screen, modal);
     }
 
-    // ========== 短信草稿 ==========
+    // ========== 短信 ==========
     function renderMessage(screen, modal) {
         const draft = data.draft || '';
-
         screen.innerHTML =
-            header('短信', null)
+            header('短信')
             + '<div style="font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:14px;">一条没发出去的草稿</div>'
             + '<div style="padding:14px 16px;background:rgba(255,255,255,0.05);border-radius:12px;border:1px solid rgba(255,255,255,0.08);">'
             +   '<div style="font-size:11px;color:rgba(255,255,255,0.35);margin-bottom:8px;">收件人：你</div>'
@@ -424,7 +550,7 @@
 
     // ========== 初始化 ==========
     window.initHisPhone = function () {
-        load().then(function () { ensureData(); });
+        load().then(function () { updateIfNeeded(); });
     };
 
     if (document.readyState === 'loading') {
