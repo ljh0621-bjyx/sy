@@ -513,7 +513,8 @@
                 // 直接锁
                 msgEl.style.color = '#FF6B6B';
                 msgEl.textContent = '……被发现了';
-                data.lockedUntil = Date.now() + 60 * 60 * 1000;
+                // 测试阶段：先不锁
+// data.lockedUntil = Date.now() + 60 * 60 * 1000;
                 save();
 
                 // 屏幕闪红一下
