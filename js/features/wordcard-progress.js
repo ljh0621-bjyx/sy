@@ -1,14 +1,15 @@
 /* ============================================================
- * wordcard-progress.js - 字卡学习进度【终极版 v3】
+ * wordcard-progress.js - 字卡学习进度【终极版 v4】
  * ============================================================
- * v3 新增：
- *   ✅ 学习曲线图（最近 7 天每日学会数柱状图）
- *   ✅ 分类点击展开（看具体学会了哪些条目）
- *   ✅ 时间维度（今日/近7天统计数据）
+ * v4 新增：
+ *   ✅ 点击曲线柱子 → 查看当天学了什么
+ *   ✅ 展开分类 → 显示"已学 / 未学"两组
+ *   ✅ 学习速率趋势（近3天 vs 前4天）
  * 保留：
- *   ✅ 原自动学习逻辑（每天1~3张 + 每小时20%）
- *   ✅ 14 个真实数据源
- *   ✅ 智能缓存
+ *   ✅ 学习曲线图（7天柱状）
+ *   ✅ 分类点击展开
+ *   ✅ 原自动学习逻辑
+ *   ✅ 14 个真实数据源 + 智能缓存
  * ============================================================ */
 (function () {
     'use strict';
@@ -84,10 +85,6 @@
 
     function fingerprint(str) {
         return String(str || '').slice(0, 60);
-    }
-
-    function isImageUrl(s) {
-        return typeof s === 'string' && (s.indexOf('data:image') === 0 || s.indexOf('http') === 0);
     }
 
     // ========== 标记一张已学 ==========
@@ -194,8 +191,7 @@
         mix:       { name: '混搭连发',   icon: '🌈', color: '#00bcd4', detailType: 'info'  }
     };
 
-    // ========== 工厂：创建一个分类对象 ==========
-    function makeCat(key, learned, total, learnedItems) {
+    function makeCat(key, learned, total, learnedItems, allItems) {
         const meta = CATEGORY_META[key];
         return {
             key: key,
@@ -206,11 +202,12 @@
             learned: learned,
             total: total,
             pct: calcPct(learned, total),
-            learnedItems: learnedItems || []
+            learnedItems: learnedItems || [],
+            allItems: allItems || []     // ★ 新增：完整条目列表（用于"未学"）
         };
     }
 
-    // ========== 核心：统计所有分类 ==========
+    // ========== 核心统计 ==========
     function computeStats() {
         const now = Date.now();
         if (_statsCache.result && (now - _statsCache.ts) < CACHE_TTL) {
@@ -227,16 +224,16 @@
         });
         const totalPartnerMsgCount = Math.max(1, partnerMsgs.length);
 
-        // ---------- 1. 字卡 ----------
+        // 1. 字卡
         try {
             const allReplies = getAllReplies();
             if (allReplies.length > 0) {
                 const learnedItems = allReplies.filter(function (t) { return learnedSet.has(t); });
-                categories.push(makeCat('wordcard', learnedItems.length, allReplies.length, learnedItems));
+                categories.push(makeCat('wordcard', learnedItems.length, allReplies.length, learnedItems, allReplies));
             }
         } catch (e) {}
 
-        // ---------- 2. 对方表情包 ----------
+        // 2. 对方表情包
         try {
             if (typeof stickerLibrary !== 'undefined' && Array.isArray(stickerLibrary) && stickerLibrary.length > 0) {
                 const total = stickerLibrary.length;
@@ -251,11 +248,11 @@
                     if (fpIndex.has(fp)) usedSet.add(fpIndex.get(fp));
                 });
                 const learnedItems = Array.from(usedSet);
-                categories.push(makeCat('sticker', learnedItems.length, total, learnedItems));
+                categories.push(makeCat('sticker', learnedItems.length, total, learnedItems, stickerLibrary));
             }
         } catch (e) {}
 
-        // ---------- 3. 我的表情 ----------
+        // 3. 我的表情
         try {
             if (typeof myStickerLibrary !== 'undefined' && Array.isArray(myStickerLibrary) && myStickerLibrary.length > 0) {
                 const total = myStickerLibrary.length;
@@ -270,11 +267,11 @@
                     if (fpIndex.has(fp)) usedSet.add(fpIndex.get(fp));
                 });
                 const learnedItems = Array.from(usedSet);
-                categories.push(makeCat('mySticker', learnedItems.length, total, learnedItems));
+                categories.push(makeCat('mySticker', learnedItems.length, total, learnedItems, myStickerLibrary));
             }
         } catch (e) {}
 
-        // ---------- 4. Emoji ----------
+        // 4. Emoji
         try {
             if (typeof customEmojis !== 'undefined' && Array.isArray(customEmojis) && customEmojis.length > 0) {
                 const total = customEmojis.length;
@@ -287,11 +284,11 @@
                     });
                 });
                 const learnedItems = Array.from(usedSet);
-                categories.push(makeCat('emoji', learnedItems.length, total, learnedItems));
+                categories.push(makeCat('emoji', learnedItems.length, total, learnedItems, customEmojis));
             }
         } catch (e) {}
 
-        // ---------- 5. 朋友圈 ----------
+        // 5. 朋友圈
         try {
             let postCount = 0;
             try {
@@ -306,11 +303,11 @@
                 postCount = Math.max(postCount, window.momentsData.posts.length);
             }
             if (postCount > 0) {
-                categories.push(makeCat('moments', postCount, postCount + 10, []));
+                categories.push(makeCat('moments', postCount, postCount + 10, [], []));
             }
         } catch (e) {}
 
-        // ---------- 6. 信件 ----------
+        // 6. 信件
         try {
             let outboxCount = 0;
             try {
@@ -325,11 +322,11 @@
                 outboxCount = Math.max(outboxCount, envelopeData.outbox.length);
             }
             if (outboxCount > 0) {
-                categories.push(makeCat('envelope', outboxCount, outboxCount + 5, []));
+                categories.push(makeCat('envelope', outboxCount, outboxCount + 5, [], []));
             }
         } catch (e) {}
 
-        // ---------- 7~10. 拍一拍 / 状态 / 格言 / 开场 ----------
+        // 7~10. 拍一拍 / 状态 / 格言 / 开场
         const textLibs = [
             { key: 'poke',   list: (typeof customPokes    !== 'undefined' && Array.isArray(customPokes))    ? customPokes    : [] },
             { key: 'status', list: (typeof customStatuses !== 'undefined' && Array.isArray(customStatuses)) ? customStatuses : [] },
@@ -349,11 +346,11 @@
                     });
                 });
                 const learnedItems = Array.from(usedSet);
-                categories.push(makeCat(lib.key, learnedItems.length, total, learnedItems));
+                categories.push(makeCat(lib.key, learnedItems.length, total, learnedItems, lib.list));
             } catch (e) {}
         });
 
-        // ---------- 11. 心晴手账 ----------
+        // 11. 心晴手账
         try {
             let moodCount = 0;
             try {
@@ -375,22 +372,22 @@
                 moodCount = Math.max(moodCount, localCount);
             }
             if (moodCount > 0) {
-                categories.push(makeCat('mood', moodCount, 30, []));
+                categories.push(makeCat('mood', moodCount, 30, [], []));
             }
         } catch (e) {}
 
-        // ---------- 12. 拼音字卡 ----------
+        // 12. 拼音字卡
         try {
             const allReplies = getAllReplies();
             const total = Math.max(1, allReplies.length);
             const pinyinLearned = data.history.length;
             if (pinyinLearned > 0) {
                 const learnedItems = data.history.slice(0, 30).map(function (h) { return h.text; });
-                categories.push(makeCat('pinyin', pinyinLearned, total, learnedItems));
+                categories.push(makeCat('pinyin', pinyinLearned, total, learnedItems, allReplies));
             }
         } catch (e) {}
 
-        // ---------- 13. 情绪字卡 ----------
+        // 13. 情绪字卡
         try {
             const EMOTION_WORDS = [
                 '开心','难过','想你','委屈','心疼','哭','笑','害怕','紧张',
@@ -404,11 +401,11 @@
                 if (EMOTION_WORDS.some(function (w) { return t.indexOf(w) !== -1; })) emotionCount++;
             });
             if (emotionCount > 0) {
-                categories.push(makeCat('emotion', emotionCount, totalPartnerMsgCount, []));
+                categories.push(makeCat('emotion', emotionCount, totalPartnerMsgCount, [], []));
             }
         } catch (e) {}
 
-        // ---------- 14. 混搭连发 ----------
+        // 14. 混搭连发
         try {
             let mixCount = 0;
             partnerMsgs.forEach(function (m) {
@@ -419,11 +416,11 @@
                 if (hasEmoji && cleanText.length > 0) mixCount++;
             });
             if (mixCount > 0) {
-                categories.push(makeCat('mix', mixCount, totalPartnerMsgCount, []));
+                categories.push(makeCat('mix', mixCount, totalPartnerMsgCount, [], []));
             }
         } catch (e) {}
 
-        // 综合熟练度
+        // 综合
         let totalLearned = 0;
         let totalAll = 0;
         categories.forEach(function (c) {
@@ -438,8 +435,8 @@
         return result;
     }
 
-    // ========== ★ 时间维度：最近 N 天每日学会数 ==========
-    function getDailyLearnCounts(days) {
+    // ========== 每日学习记录（含当天具体学了什么） ==========
+    function getDailyLearnData(days) {
         days = days || 7;
         const result = [];
         const today = new Date();
@@ -449,33 +446,83 @@
             const d = new Date(today);
             d.setDate(d.getDate() - i);
             const key = dateKeyOf(d);
-            const count = data.history.filter(function (h) {
+            const items = data.history.filter(function (h) {
                 return dateKeyOf(h.ts) === key;
-            }).length;
+            });
             result.push({
                 key: key,
                 label: (d.getMonth() + 1) + '/' + d.getDate(),
                 weekday: ['日','一','二','三','四','五','六'][d.getDay()],
-                count: count,
+                count: items.length,
+                items: items,
                 isToday: i === 0
             });
         }
         return result;
     }
 
-    // ========== ★ 学习曲线图 HTML ==========
-    function buildLearnCurveHTML(dailyCounts) {
-        const maxCount = Math.max(1, Math.max.apply(null, dailyCounts.map(function (d) { return d.count; })));
-        const totalWeek = dailyCounts.reduce(function (a, b) { return a + b.count; }, 0);
-        const todayCount = dailyCounts[dailyCounts.length - 1].count;
+    // ========== ★ 学习速率趋势 ==========
+    function getLearnTrend() {
+        const daily = getDailyLearnData(7);
+        // 近 3 天（今天+昨天+前天）
+        const recent3 = daily.slice(-3).reduce(function (a, b) { return a + b.count; }, 0);
+        // 前 4 天
+        const earlier4 = daily.slice(0, 4).reduce(function (a, b) { return a + b.count; }, 0);
 
-        // 每根柱子的高度（最大 60px）
-        const barsHTML = dailyCounts.map(function (d) {
+        // 日均
+        const avgRecent = recent3 / 3;
+        const avgEarlier = earlier4 / 4;
+
+        let text = '';
+        let trendColor = '#8b6fd4';
+        let trendIcon = '📊';
+
+        if (recent3 === 0 && earlier4 === 0) {
+            text = '还没有学习记录';
+            trendColor = 'var(--text-secondary)';
+            trendIcon = '💤';
+        } else if (avgRecent > avgEarlier * 1.2) {
+            text = '最近加速了，比之前更勤快';
+            trendColor = '#2ecc71';
+            trendIcon = '📈';
+        } else if (avgRecent < avgEarlier * 0.8 && avgRecent > 0) {
+            text = '最近稍微慢了一点';
+            trendColor = '#e6a23c';
+            trendIcon = '📉';
+        } else if (avgRecent === 0) {
+            text = '最近 3 天没学了';
+            trendColor = '#e67e22';
+            trendIcon = '😴';
+        } else {
+            text = '学习节奏很稳定';
+            trendColor = '#8b6fd4';
+            trendIcon = '✨';
+        }
+
+        return {
+            recent3: recent3,
+            earlier4: earlier4,
+            avgRecent: Math.round(avgRecent * 10) / 10,
+            avgEarlier: Math.round(avgEarlier * 10) / 10,
+            text: text,
+            color: trendColor,
+            icon: trendIcon
+        };
+    }
+
+    // ========== ★ 学习曲线 HTML（柱子可点） ==========
+    function buildLearnCurveHTML(dailyData) {
+        const maxCount = Math.max(1, Math.max.apply(null, dailyData.map(function (d) { return d.count; })));
+        const totalWeek = dailyData.reduce(function (a, b) { return a + b.count; }, 0);
+        const todayCount = dailyData[dailyData.length - 1].count;
+        const trend = getLearnTrend();
+
+        const barsHTML = dailyData.map(function (d, idx) {
             const h = d.count > 0 ? Math.max(4, Math.round(d.count / maxCount * 60)) : 2;
             const barColor = d.isToday
                 ? 'linear-gradient(180deg,#9d7fe0,#8b6fd4)'
                 : 'linear-gradient(180deg,rgba(157,127,224,0.55),rgba(139,111,212,0.75))';
-            return '<div style="display:flex;flex-direction:column;align-items:center;flex:1;min-width:0;">'
+            return '<div class="wcp-bar-col" data-day-idx="' + idx + '" style="display:flex;flex-direction:column;align-items:center;flex:1;min-width:0;cursor:' + (d.count > 0 ? 'pointer' : 'default') + ';padding:2px 0;border-radius:6px;transition:background 0.2s;">'
                 +   '<div style="font-size:9px;color:' + (d.count > 0 ? '#8b6fd4' : 'transparent') + ';font-weight:700;margin-bottom:2px;height:12px;line-height:12px;">'
                 +     (d.count > 0 ? d.count : '·')
                 +   '</div>'
@@ -488,23 +535,94 @@
                 + '</div>';
         }).join('');
 
-        return '<div style="background:var(--primary-bg);border-radius:14px;padding:14px 12px 10px;margin-bottom:16px;border:1px solid var(--border-color);flex-shrink:0;">'
-            +   '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding:0 4px;">'
+        return '<div style="background:var(--primary-bg);border-radius:14px;padding:14px 12px 10px;margin-bottom:14px;border:1px solid var(--border-color);flex-shrink:0;">'
+
+            // 标题 + 统计
+            +   '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding:0 4px;">'
             +     '<span style="font-size:12px;font-weight:700;color:var(--text-primary);">📈 最近 7 天学习曲线</span>'
             +     '<span style="font-size:11px;color:var(--text-secondary);">'
             +       '今日 <b style="color:#8b6fd4;">+' + todayCount + '</b> · 共 <b style="color:#8b6fd4;">' + totalWeek + '</b>'
             +     '</span>'
             +   '</div>'
+
+            // 趋势横幅
+            +   '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;margin-bottom:10px;background:rgba(139,111,212,0.06);border-radius:10px;border:1px dashed rgba(139,111,212,0.2);">'
+            +     '<span style="font-size:14px;">' + trend.icon + '</span>'
+            +     '<div style="flex:1;min-width:0;">'
+            +       '<div style="font-size:11.5px;font-weight:600;color:' + trend.color + ';">' + trend.text + '</div>'
+            +       '<div style="font-size:10px;color:var(--text-secondary);margin-top:2px;">'
+            +         '近 3 天日均 <b>' + trend.avgRecent + '</b> 张 · 前 4 天日均 <b>' + trend.avgEarlier + '</b> 张'
+            +       '</div>'
+            +     '</div>'
+            +   '</div>'
+
+            // 柱子
             +   '<div style="display:flex;align-items:flex-end;gap:4px;padding:0 4px;">'
             +     barsHTML
             +   '</div>'
+
+            // 点击提示
+            +   '<div style="text-align:center;font-size:10px;color:var(--text-secondary);opacity:0.6;margin-top:6px;">'
+            +     '点击柱子查看当天学习内容'
+            +   '</div>'
+
             + '</div>';
     }
 
-    // ========== ★ 分类详情渲染（展开后显示） ==========
+    // ========== ★ 点击柱子 → 弹出当天学了什么 ==========
+    function showDayLearnPopup(dayData) {
+        const old = document.getElementById('wcp-day-popup');
+        if (old) old.remove();
+
+        const itemsHTML = dayData.items.length === 0
+            ? '<div style="text-align:center;padding:20px;color:var(--text-secondary);font-size:12px;opacity:0.7;">这天没有学习记录</div>'
+            : dayData.items.slice(0, 30).map(function (h, i) {
+                const time = new Date(h.ts);
+                const timeStr = String(time.getHours()).padStart(2, '0') + ':' + String(time.getMinutes()).padStart(2, '0');
+                return '<div style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;background:var(--primary-bg);border-radius:8px;margin-bottom:5px;">'
+                    +   '<span style="font-size:10px;color:var(--text-secondary);flex-shrink:0;font-family:monospace;padding-top:2px;">' + timeStr + '</span>'
+                    +   '<span style="flex:1;font-size:12px;color:var(--text-primary);line-height:1.5;word-break:break-word;">' + esc(String(h.text).slice(0, 200)) + '</span>'
+                    + '</div>';
+            }).join('');
+
+        const moreText = dayData.items.length > 30
+            ? '<div style="text-align:center;font-size:10px;color:var(--text-secondary);padding:6px;">还有 ' + (dayData.items.length - 30) + ' 条未显示</div>'
+            : '';
+
+        const popup = document.createElement('div');
+        popup.id = 'wcp-day-popup';
+        popup.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.6);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;animation:wcpFade 0.2s ease;';
+
+        popup.innerHTML =
+            '<div style="background:var(--secondary-bg);border-radius:20px;padding:20px;width:88%;max-width:360px;max-height:75vh;display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(0,0,0,0.5);">'
+            +   '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-shrink:0;">'
+            +     '<div>'
+            +       '<div style="font-size:15px;font-weight:700;color:var(--text-primary);">'
+            +         '📅 ' + dayData.label + ' 星期' + dayData.weekday
+            +         (dayData.isToday ? '<span style="font-size:10px;color:#8b6fd4;margin-left:6px;font-weight:600;">今天</span>' : '')
+            +       '</div>'
+            +       '<div style="font-size:11px;color:var(--text-secondary);margin-top:2px;">'
+            +         '共学会 <b style="color:#8b6fd4;">' + dayData.count + '</b> 张'
+            +       '</div>'
+            +     '</div>'
+            +     '<button id="wcp-day-close" style="background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:18px;"><i class="fas fa-times"></i></button>'
+            +   '</div>'
+            +   '<div style="flex:1;overflow-y:auto;padding-right:4px;">'
+            +     itemsHTML + moreText
+            +   '</div>'
+            + '</div>';
+
+        document.body.appendChild(popup);
+
+        const close = function () { popup.remove(); };
+        popup.querySelector('#wcp-day-close').onclick = close;
+        popup.addEventListener('click', function (e) { if (e.target === popup) close(); });
+    }
+
+    // ========== ★ 分类详情（已学 / 未学两组） ==========
     function buildCategoryDetailHTML(cat) {
-        if (cat.detailType === 'info' || cat.learnedItems.length === 0) {
-            // 不可展开或者无条目 → 显示说明
+        // 计数型 / 无条目型 → 只显示说明
+        if (cat.detailType === 'info' || cat.allItems.length === 0) {
             let infoText = '';
             if (cat.key === 'moments')       infoText = '你一共发过 ' + cat.learned + ' 条动态';
             else if (cat.key === 'envelope') infoText = '你一共寄出过 ' + cat.learned + ' 封信';
@@ -513,39 +631,81 @@
             else if (cat.key === 'mix')      infoText = '对方发过 ' + cat.learned + ' 条 emoji + 文字混搭消息';
             else infoText = '暂无可展开的条目';
 
-            return '<div style="padding:10px 12px;background:var(--primary-bg);border-radius:10px;font-size:11.5px;color:var(--text-secondary);line-height:1.7;margin-bottom:8px;">'
+            return '<div style="padding:10px 12px;background:var(--primary-bg);border-radius:10px;font-size:11.5px;color:var(--text-secondary);line-height:1.7;">'
                 +   'ℹ️ ' + infoText
                 + '</div>';
         }
 
-        if (cat.detailType === 'image') {
-            // 图片网格
-            const grid = cat.learnedItems.slice(0, 40).map(function (url) {
-                return '<div style="aspect-ratio:1/1;border-radius:8px;overflow:hidden;background:var(--primary-bg);">'
-                    +   '<img src="' + url + '" style="width:100%;height:100%;object-fit:cover;display:block;" loading="lazy">'
-                    + '</div>';
-            }).join('');
-            const more = cat.learnedItems.length > 40
-                ? '<div style="grid-column:1/-1;text-align:center;font-size:11px;color:var(--text-secondary);padding:6px;">还有 ' + (cat.learnedItems.length - 40) + ' 张未显示</div>'
-                : '';
-            return '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px;">'
-                + grid + more
-                + '</div>';
-        }
+        // 计算未学条目
+        const learnedSet = new Set(cat.learnedItems);
+        const unlearnedItems = cat.allItems.filter(function (item) {
+            return !learnedSet.has(item);
+        });
 
-        // 文本列表
-        const list = cat.learnedItems.slice(0, 50).map(function (t) {
-            return '<div style="padding:7px 10px;background:var(--primary-bg);border-radius:8px;font-size:12px;color:var(--text-primary);line-height:1.5;word-break:break-word;margin-bottom:5px;">'
-                +   esc(String(t).slice(0, 200))
-                + '</div>';
-        }).join('');
-        const moreText = cat.learnedItems.length > 50
-            ? '<div style="text-align:center;font-size:11px;color:var(--text-secondary);padding:6px;">还有 ' + (cat.learnedItems.length - 50) + ' 条未显示</div>'
-            : '';
-        return '<div style="margin-bottom:8px;">' + list + moreText + '</div>';
+        // 已学分组
+        const learnedHTML = cat.learnedItems.length === 0
+            ? '<div style="text-align:center;padding:12px;color:var(--text-secondary);font-size:11px;opacity:0.6;">还没有已学内容</div>'
+            : cat.detailType === 'image'
+                ? buildImageGridHTML(cat.learnedItems, 30, '#8b6fd4')
+                : buildTextListHTML(cat.learnedItems, 30, '已学');
+
+        // 未学分组
+        const unlearnedHTML = unlearnedItems.length === 0
+            ? '<div style="text-align:center;padding:12px;color:#2ecc71;font-size:11px;font-weight:600;">🎉 全部学会了！</div>'
+            : cat.detailType === 'image'
+                ? buildImageGridHTML(unlearnedItems, 30, '#c8c8c8')
+                : buildTextListHTML(unlearnedItems, 30, '未学');
+
+        return '<div style="margin-bottom:4px;">'
+
+            // 已学分组
+            +   '<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">'
+            +     '<span style="width:8px;height:8px;border-radius:50%;background:#8b6fd4;"></span>'
+            +     '<span style="font-size:11px;font-weight:700;color:#8b6fd4;">已学 (' + cat.learnedItems.length + ')</span>'
+            +   '</div>'
+            +   learnedHTML
+
+            // 未学分组
+            +   '<div style="display:flex;align-items:center;gap:6px;margin:14px 0 8px;">'
+            +     '<span style="width:8px;height:8px;border-radius:50%;background:#c8c8c8;"></span>'
+            +     '<span style="font-size:11px;font-weight:700;color:var(--text-secondary);">未学 (' + unlearnedItems.length + ')</span>'
+            +   '</div>'
+            +   unlearnedHTML
+
+            + '</div>';
     }
 
-    // ========== ★ 分类卡片 HTML（带点击展开） ==========
+    function buildTextListHTML(items, limit, _tag) {
+        const shown = items.slice(0, limit);
+        const more = items.length > limit
+            ? '<div style="text-align:center;font-size:10px;color:var(--text-secondary);padding:6px;">还有 ' + (items.length - limit) + ' 条未显示</div>'
+            : '';
+        return '<div>'
+            + shown.map(function (t) {
+                return '<div style="padding:6px 10px;background:var(--secondary-bg);border-radius:8px;font-size:12px;color:var(--text-primary);line-height:1.5;word-break:break-word;margin-bottom:4px;">'
+                    +   esc(String(t).slice(0, 200))
+                    + '</div>';
+            }).join('')
+            + more
+            + '</div>';
+    }
+
+    function buildImageGridHTML(items, limit, _accentColor) {
+        const shown = items.slice(0, limit);
+        const more = items.length > limit
+            ? '<div style="grid-column:1/-1;text-align:center;font-size:10px;color:var(--text-secondary);padding:6px;">还有 ' + (items.length - limit) + ' 张未显示</div>'
+            : '';
+        return '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px;">'
+            + shown.map(function (url) {
+                return '<div style="aspect-ratio:1/1;border-radius:7px;overflow:hidden;background:var(--secondary-bg);">'
+                    +   '<img src="' + url + '" style="width:100%;height:100%;object-fit:cover;display:block;" loading="lazy">'
+                    + '</div>';
+            }).join('')
+            + more
+            + '</div>';
+    }
+
+    // ========== 分类卡片 HTML ==========
     function buildCategoryHTML(categories) {
         if (categories.length === 0) {
             return '<div style="text-align:center;padding:36px 12px;color:var(--text-secondary);font-size:13px;opacity:0.75;line-height:1.8;">'
@@ -558,11 +718,10 @@
         return categories.map(function (cat) {
             const pct = cat.pct;
             const difficulty = Math.max(10, 100 - pct);
-            const canExpand = cat.learnedItems.length > 0;
+            const canExpand = cat.allItems.length > 0;
 
             return '<div class="wcp-cat" data-cat-key="' + cat.key + '" style="margin-bottom:6px;background:var(--primary-bg);border-radius:12px;border:1px solid var(--border-color);overflow:hidden;">'
 
-                // 可点击的标题行
                 +   '<div class="wcp-cat-header" style="padding:12px 14px 10px;cursor:pointer;user-select:none;display:flex;align-items:center;justify-content:space-between;">'
                 +     '<span style="font-size:14px;font-weight:700;color:var(--text-primary);">'
                 +       cat.icon + ' ' + esc(cat.name)
@@ -581,7 +740,6 @@
                 +     '</div>'
                 +   '</div>'
 
-                // 进度条
                 +   '<div style="padding:0 14px 12px;">'
                 +     '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">'
                 +       '<span style="font-size:10px;color:#8b6fd4;width:26px;flex-shrink:0;font-weight:600;">熟练</span>'
@@ -597,7 +755,6 @@
                 +     '</div>'
                 +   '</div>'
 
-                // 展开详情（默认隐藏）
                 +   '<div class="wcp-cat-detail" style="display:none;padding:0 14px 12px;border-top:1px dashed var(--border-color);margin-top:2px;padding-top:10px;">'
                 +     buildCategoryDetailHTML(cat)
                 +   '</div>'
@@ -606,7 +763,6 @@
         }).join('');
     }
 
-    // ========== 综合状态 ==========
     function getOverallStatus(pct) {
         if (pct >= 90) return { text: '非常熟练', color: '#2ecc71' };
         if (pct >= 60) return { text: '挺熟练的', color: '#8b6fd4' };
@@ -624,9 +780,9 @@
         const pName = getPartnerName();
         const { categories, overallLearned, overallTotal, overallPct } = computeStats();
         const statusInfo = getOverallStatus(overallPct);
-        const dailyCounts = getDailyLearnCounts(7);
+        const dailyData = getDailyLearnData(7);
         const categoryHTML = buildCategoryHTML(categories);
-        const curveHTML = buildLearnCurveHTML(dailyCounts);
+        const curveHTML = buildLearnCurveHTML(dailyData);
 
         const modal = document.createElement('div');
         modal.id = 'wcp-panel';
@@ -636,6 +792,7 @@
             '<style>'
             + '@keyframes wcpFade{from{opacity:0}to{opacity:1}}'
             + '@keyframes wcpPop{from{opacity:0;transform:scale(0.94)}to{opacity:1;transform:scale(1)}}'
+            + '.wcp-bar-col:hover{background:rgba(139,111,212,0.08);}'
             + '</style>'
 
             + '<div style="background:var(--secondary-bg);border-radius:24px;padding:20px 18px 16px;width:94%;max-width:420px;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(0,0,0,0.35);animation:wcpPop 0.35s cubic-bezier(0.34,1.56,0.64,1);">'
@@ -682,7 +839,7 @@
             // 学习曲线
             +   curveHTML
 
-            // 分类列表（可点击展开）
+            // 分类列表
             +   '<div style="flex:1;overflow-y:auto;padding-right:4px;">'
             +     categoryHTML
             +   '</div>'
@@ -696,7 +853,7 @@
 
         document.body.appendChild(modal);
 
-        // ---- 绑定事件 ----
+        // ---- 事件绑定 ----
         const close = function () { modal.remove(); };
         modal.querySelector('#wcp-close-btn').onclick = close;
         modal.addEventListener('click', function (e) { if (e.target === modal) close(); });
@@ -719,7 +876,18 @@
             }
         };
 
-        // ★ 分类点击展开/收起
+        // ★ 曲线柱子点击
+        modal.querySelectorAll('.wcp-bar-col').forEach(function (col) {
+            col.onclick = function () {
+                const idx = parseInt(col.dataset.dayIdx, 10);
+                const dayData = dailyData[idx];
+                if (!dayData) return;
+                if (dayData.items.length === 0 && !dayData.isToday) return;
+                showDayLearnPopup(dayData);
+            };
+        });
+
+        // ★ 分类点击展开
         modal.querySelectorAll('.wcp-cat-header').forEach(function (header) {
             header.onclick = function () {
                 const catEl = header.closest('.wcp-cat');
@@ -765,5 +933,5 @@
         setTimeout(init, 1500);
     }
 
-    console.log('[wordcard-progress] 字卡学习进度【终极版 v3】已加载 ✓');
+    console.log('[wordcard-progress] 字卡学习进度【终极版 v4】已加载 ✓');
 })();
