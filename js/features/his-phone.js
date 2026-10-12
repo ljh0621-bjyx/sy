@@ -71,21 +71,13 @@
     ];
 
     const SEARCH_POOL = [
-        '怎么哄女朋友开心',
-        '她生气了怎么道歉',
-        '女朋友说没关系是不是真的没关系',
-        '怎么才算是对的人',
-        '异地恋怎么维持',
-        '礼物送什么不会踩雷',
-        '她说没事怎么回应',
-        '怎么让她开心',
-        '她喜欢什么样的人',
-        '怎么才能让她更安心',
-        '女朋友说累了什么意思',
-        '怎么让她觉得被在乎',
-        '异地怎么让她不孤单',
-        '女朋友爱哭怎么办',
-        '怎么回"我没事"这句话'
+        '怎么哄女朋友开心', '她生气了怎么道歉',
+        '女朋友说没关系是不是真的没关系', '怎么才算是对的人',
+        '异地恋怎么维持', '礼物送什么不会踩雷',
+        '她说没事怎么回应', '怎么让她开心', '她喜欢什么样的人',
+        '怎么才能让她更安心', '女朋友说累了什么意思',
+        '怎么让她觉得被在乎', '异地怎么让她不孤单',
+        '女朋友爱哭怎么办', '怎么回"我没事"这句话'
     ];
 
     const CART_POOL = [
@@ -104,14 +96,10 @@
     ];
 
     const DRAFT_POOL = [
-        '其实我想跟你说……算了。',
-        '今天真的很想你。',
-        '你是不是有点烦我了。',
-        '我有点吃醋，但不敢说。',
-        '你要好好照顾自己。',
-        '很久没听到你的声音了。',
-        '今天有没有好好吃饭。',
-        '我没事，就是有点想你。',
+        '其实我想跟你说……算了。', '今天真的很想你。',
+        '你是不是有点烦我了。', '我有点吃醋，但不敢说。',
+        '你要好好照顾自己。', '很久没听到你的声音了。',
+        '今天有没有好好吃饭。', '我没事，就是有点想你。',
         '如果我说我想见你，你会不会觉得奇怪。',
         '你今天发的那个表情，我保存了。',
         '想跟你说晚安，又怕太晚吵到你。',
@@ -121,23 +109,30 @@
     // ========== 数据 ==========
     let data = {
         lastUpdateDate: null,
-        memos: [],
-        albums: [],
-        calls: [],
-        searches: [],
-        cart: [],
-        draft: '',
-        lockedUntil: null
+        memos: [], albums: [], calls: [], searches: [], cart: [],
+        draft: '', lockedUntil: null
     };
 
+    let _loaded = false;
+    let _loadingPromise = null;
+
     async function load() {
-        try {
-            const saved = await localforage.getItem(getStorageKey(KEY));
-            if (saved && typeof saved === 'object') Object.assign(data, saved);
-        } catch (e) {}
+        if (_loaded) return;
+        if (_loadingPromise) return _loadingPromise;
+        _loadingPromise = (async function () {
+            try {
+                const saved = await localforage.getItem(getStorageKey(KEY));
+                if (saved && typeof saved === 'object') Object.assign(data, saved);
+            } catch (e) { console.warn('[his-phone] load fail', e); }
+            _loaded = true;
+            _loadingPromise = null;
+        })();
+        return _loadingPromise;
     }
-    async function save() {
-        try { await localforage.setItem(getStorageKey(KEY), data); } catch (e) {}
+
+    async function persist() {
+        try { await localforage.setItem(getStorageKey(KEY), data); }
+        catch (e) { console.warn('[his-phone] save fail', e); }
     }
 
     function getAllImages() {
@@ -211,12 +206,7 @@
             const t = pickN(ALBUM_POOL, 1)[0];
             const start = (data.albums.length * 4) % Math.max(1, imgs.length);
             const chunk = imgs.length > 0 ? imgs.slice(start, start + 4) : [];
-            data.albums.push({
-                title: t.title,
-                emoji: t.emoji,
-                photos: chunk,
-                createdAt: now - i * 3 * 86400000
-            });
+            data.albums.push({ title: t.title, emoji: t.emoji, photos: chunk, createdAt: now - i * 3 * 86400000 });
         }
         data.albums = data.albums.slice(-12);
 
@@ -244,7 +234,7 @@
         if (needDraft) data.draft = pickN(DRAFT_POOL, 1)[0];
 
         data.lastUpdateDate = today;
-        await save();
+        await persist();
         return true;
     }
 
@@ -256,17 +246,18 @@
         if (!data.lockedUntil) return false;
         if (Date.now() >= data.lockedUntil) {
             data.lockedUntil = null;
-            save();
+            persist();
             return false;
         }
         return true;
     }
 
-    // ========== 面板 ==========
+    // ========== 打开面板 ==========
     window.openHisPhonePanel = async function () {
         const old = document.getElementById('his-phone-panel');
         if (old) old.remove();
 
+        // ✅ 关键：打开时确保数据已加载
         await load();
         await updateIfNeeded();
 
@@ -279,19 +270,14 @@
             +   '<button id="hp-close" style="position:absolute;top:-38px;right:0;background:rgba(255,255,255,0.15);border:none;color:#fff;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:16px;">×</button>'
             +   '<div style="background:#000;border-radius:38px;padding:10px;box-shadow:0 30px 80px rgba(0,0,0,0.7), 0 0 0 2px #2a2a2a;">'
             +     '<div style="background:#1a1a1a;border-radius:30px;overflow:hidden;position:relative;">'
-
             +       '<div style="background:#000;padding:10px 18px 6px;display:flex;justify-content:space-between;color:#fff;font-size:11px;">'
             +         '<span id="hp-status-time">--:--</span>'
             +         '<span>🔋 100% · 📶</span>'
             +       '</div>'
-
-            +       '<div id="hp-screen" style="background:linear-gradient(160deg,#1a1a1a,#0d0d0d);min-height:440px;padding:20px 18px 24px;color:#fff;">'
-            +       '</div>'
-
+            +       '<div id="hp-screen" style="background:linear-gradient(160deg,#1a1a1a,#0d0d0d);min-height:440px;padding:20px 18px 24px;color:#fff;"></div>'
             +       '<div style="background:#000;padding:8px 0 10px;display:flex;justify-content:center;">'
             +         '<div style="width:100px;height:4px;background:#333;border-radius:2px;"></div>'
             +       '</div>'
-
             +     '</div>'
             +   '</div>'
             + '</div>';
@@ -304,9 +290,12 @@
             timeEl.textContent = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
         }
         tickTime();
-        setInterval(tickTime, 30000);
+        const timeTimer = setInterval(tickTime, 30000);
 
-        const close = () => modal.remove();
+        const close = () => {
+            clearInterval(timeTimer);
+            modal.remove();
+        };
         modal.querySelector('#hp-close').onclick = close;
         modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
 
@@ -315,7 +304,6 @@
 
     // ========== 锁屏 ==========
     function renderLockScreen(screen, modal) {
-        // 被锁状态
         if (isPhoneLockedNow()) {
             const remainMs = data.lockedUntil - Date.now();
             const remainMin = Math.ceil(remainMs / 60000);
@@ -323,48 +311,36 @@
                 '<div style="min-height:440px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:30px 20px;text-align:center;">'
                 +   '<div style="font-size:56px;margin-bottom:20px;filter:grayscale(0.5);">🔒</div>'
                 +   '<div style="font-size:15px;font-weight:700;color:#fff;margin-bottom:10px;">他发现了</div>'
-                +   '<div style="font-size:12.5px;color:rgba(255,255,255,0.6);line-height:1.8;margin-bottom:20px;">'
-                +     '他好像察觉到有人在看他的手机。<br>暂时打不开了。'
-                +   '</div>'
-                +   '<div style="font-size:13px;color:rgba(255,255,255,0.75);background:rgba(255,255,255,0.06);padding:10px 18px;border-radius:12px;">'
-                +     '还需 ' + remainMin + ' 分钟'
-                +   '</div>'
+                +   '<div style="font-size:12.5px;color:rgba(255,255,255,0.6);line-height:1.8;margin-bottom:20px;">他好像察觉到有人在看他的手机。<br>暂时打不开了。</div>'
+                +   '<div style="font-size:13px;color:rgba(255,255,255,0.75);background:rgba(255,255,255,0.06);padding:10px 18px;border-radius:12px;">还需 ' + remainMin + ' 分钟</div>'
                 + '</div>';
             return;
         }
 
-        // 30% 直接进
         if (Math.random() < 0.30) {
             renderHome(screen, modal);
             return;
         }
 
-        // 生成 4 位密码（每次都不一样）
         const secret = String(Math.floor(Math.random() * 10000)).padStart(4, '0');
 
-        // ===== 阶段 1：他快速输入密码 =====
         const now = new Date();
         const hh = String(now.getHours()).padStart(2, '0');
         const mm = String(now.getMinutes()).padStart(2, '0');
         const weekdays = ['星期日','星期一','星期二','星期三','星期四','星期五','星期六'];
         const dateStr = (now.getMonth() + 1) + '月' + now.getDate() + '日 ' + weekdays[now.getDay()];
 
-        // 通用的"4 个圆点 + 键盘" UI —— 已改为浅色拨号盘样式
         function buildLockUI(placeholderLabel) {
             return '<div style="text-align:center;margin-top:20px;">'
                 +   '<div style="font-size:58px;font-weight:200;color:#fff;letter-spacing:-2px;line-height:1;font-family:-apple-system,sans-serif;">' + hh + ':' + mm + '</div>'
                 +   '<div style="font-size:13px;color:rgba(255,255,255,0.6);margin-top:10px;letter-spacing:1px;">' + dateStr + '</div>'
                 + '</div>'
                 + '<div style="text-align:center;font-size:11.5px;color:rgba(255,255,255,0.5);margin-top:22px;letter-spacing:0.5px;">' + placeholderLabel + '</div>'
-
-                // 4 个圆点
                 + '<div id="hp-pwd-dots" style="display:flex;justify-content:center;gap:16px;margin-top:18px;">'
                 +   [0,1,2,3].map(function (i) {
                         return '<div class="hp-pwd-circle" data-i="' + i + '" style="width:14px;height:14px;border-radius:50%;background:transparent;border:1.5px solid rgba(255,255,255,0.35);transition:all 0.15s ease;"></div>';
                     }).join('')
                 + '</div>'
-
-                // 拨号盘（浅色大圆按钮）
                 + '<div id="hp-keypad" style="display:flex;flex-direction:column;align-items:center;margin-top:14px;">'
                 +   '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;width:100%;max-width:280px;">'
                 +     [
@@ -385,8 +361,6 @@
                         + '</div>';
                     }).join('')
                 +   '</div>'
-
-                // 底部双卡 + 退格
                 +   '<div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-top:12px;width:100%;max-width:280px;">'
                 +     '<div class="hp-sim-btn" data-sim="1" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;background:#007aff;border:none;border-radius:40px;padding:11px 8px;color:#fff;font-size:12px;font-weight:500;cursor:pointer;user-select:none;min-height:48px;transition:all 0.1s ease;">'
                 +       '<span style="display:inline-flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.25);border-radius:50%;width:16px;height:16px;font-size:9px;font-weight:700;">1</span>'
@@ -401,7 +375,6 @@
                 +     '<div class="hp-key" data-k="⌫" style="width:44px;height:44px;border-radius:50%;background:#333;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all 0.1s ease;user-select:none;color:#fff;font-size:20px;">⌫</div>'
                 +   '</div>'
                 + '</div>'
-
                 + '<div id="hp-hint-msg" style="text-align:center;font-size:11px;color:rgba(255,255,255,0.35);margin-top:18px;height:14px;letter-spacing:0.5px;">' + (placeholderLabel === '他正在输入…' ? '看仔细了' : '凭记忆输入') + '</div>';
         }
 
@@ -429,7 +402,6 @@
         function flashKey(k) {
             const el = Array.from(keys).find(function (x) { return x.dataset.k === k; });
             if (!el) return;
-            // 浅色背景下的按压反馈
             var isBack = (k === '⌫');
             el.style.background = isBack ? 'rgba(0,0,0,0.2)' : '#d0d0d0';
             el.style.transform = 'scale(0.92)';
@@ -439,16 +411,13 @@
             }, 100);
         }
 
-        // 他一个数字一个数字地按
         let i = 0;
         function partnerPress() {
             if (!document.body.contains(screen)) return;
             if (i >= 4) {
-                // 4 个都按完了，停留 1 秒然后清空
                 setTimeout(function () {
                     if (!document.body.contains(screen)) return;
                     setDotsFilled(0);
-                    // 进入你自己的输入阶段
                     showInputScreen(screen, modal, secret, hh, mm, dateStr);
                 }, 1000);
                 return;
@@ -470,21 +439,16 @@
 
         screen.innerHTML =
             '<div style="min-height:440px;display:flex;flex-direction:column;padding:10px 8px 0;">'
-
             +   '<div style="text-align:center;margin-top:20px;">'
             +     '<div style="font-size:58px;font-weight:200;color:#fff;letter-spacing:-2px;line-height:1;font-family:-apple-system,sans-serif;">' + hh + ':' + mm + '</div>'
             +     '<div style="font-size:13px;color:rgba(255,255,255,0.6);margin-top:10px;letter-spacing:1px;">' + dateStr2 + '</div>'
             +   '</div>'
-
             +   '<div style="text-align:center;font-size:11.5px;color:rgba(255,255,255,0.5);margin-top:22px;letter-spacing:0.5px;">该你了</div>'
-
             +   '<div id="hp-pwd-dots" style="display:flex;justify-content:center;gap:16px;margin-top:18px;">'
             +     [0,1,2,3].map(function (i) {
                     return '<div class="hp-pwd-circle" data-i="' + i + '" style="width:14px;height:14px;border-radius:50%;background:transparent;border:1.5px solid rgba(255,255,255,0.35);transition:all 0.15s ease;"></div>';
                 }).join('')
             +   '</div>'
-
-            // 浅色拨号盘
             +   '<div id="hp-keypad" style="display:flex;flex-direction:column;align-items:center;margin-top:14px;">'
             +     '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;width:100%;max-width:280px;">'
             +       [
@@ -505,7 +469,6 @@
                     + '</div>';
                 }).join('')
             +     '</div>'
-
             +     '<div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-top:12px;width:100%;max-width:280px;">'
             +       '<div class="hp-sim-btn" data-sim="1" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;background:#007aff;border:none;border-radius:40px;padding:11px 8px;color:#fff;font-size:12px;font-weight:500;cursor:pointer;user-select:none;min-height:48px;transition:all 0.1s ease;">'
             +         '<span style="display:inline-flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.25);border-radius:50%;width:16px;height:16px;font-size:9px;font-weight:700;">1</span>'
@@ -520,11 +483,7 @@
             +       '<div class="hp-key" data-k="⌫" style="width:44px;height:44px;border-radius:50%;background:#333;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all 0.1s ease;user-select:none;color:#fff;font-size:20px;">⌫</div>'
             +     '</div>'
             +   '</div>'
-
-            +   '<div id="hp-hint-msg" style="text-align:center;font-size:11px;color:rgba(255,255,255,0.35);margin-top:18px;height:14px;letter-spacing:0.5px;">'
-            +     '输错就直接被发现'
-            +   '</div>'
-
+            +   '<div id="hp-hint-msg" style="text-align:center;font-size:11px;color:rgba(255,255,255,0.35);margin-top:18px;height:14px;letter-spacing:0.5px;">输错就直接被发现</div>'
             + '</div>';
 
         let input = '';
@@ -574,13 +533,11 @@
                     }, 350);
                 }, 400);
             } else {
-                // 直接锁
                 msgEl.style.color = '#FF6B6B';
                 msgEl.textContent = '……被发现了';
                 data.lockedUntil = Date.now() + 60 * 60 * 1000;
-                save();
+                persist();
 
-                // 屏幕闪红一下
                 screen.style.transition = 'background 0.15s';
                 screen.style.background = 'rgba(180,40,40,0.4)';
                 setTimeout(function () {
@@ -624,13 +581,10 @@
                     if (input.length < 4) input += k;
                 }
                 refreshDots();
-                if (input.length === 4) {
-                    setTimeout(tryUnlock, 150);
-                }
+                if (input.length === 4) setTimeout(tryUnlock, 150);
             });
         });
 
-        // 双卡按钮（纯装饰）
         simBtns.forEach(function (btn) {
             btn.addEventListener('click', function () {
                 var sim = btn.dataset.sim;
@@ -877,7 +831,7 @@
 
     // ========== 初始化 ==========
     window.initHisPhone = function () {
-        load().then(function () { updateIfNeeded(); });
+        return load().then(function () { return updateIfNeeded(); });
     };
 
     if (document.readyState === 'loading') {
