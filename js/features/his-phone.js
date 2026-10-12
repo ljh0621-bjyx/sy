@@ -704,7 +704,6 @@
     //  内容池
     // ================================================================
 
-    // —— 备忘录（他写给你的、关于你的） ——
     const MEMO_ABOUT_YOU = [
         '今天想跟她说：你笑起来的时候，我看了很久。',
         '想说但没说的话——其实我很想抱抱你。',
@@ -738,7 +737,6 @@
         '她说她没事。但她没事的时候不会这么说。'
     ];
 
-    // —— 备忘录（他关于自己的、普通的小事） ——
     const MEMO_ABOUT_SELF = [
         '今天事情有点多，但还行。',
         '昨晚没睡好，今天状态一般。',
@@ -757,7 +755,6 @@
         '刚刚看到一只猫，蹲在路边看我。'
     ];
 
-    // —— 相册标题池 ——
     const ALBUM_TITLES = [
         { title: '她',           emoji: '💙' },
         { title: '偷偷存的',     emoji: '🖼️' },
@@ -775,7 +772,6 @@
         { title: '舍不得删',     emoji: '🗂️' }
     ];
 
-    // —— 通话对象池（随机路人） ——
     const CALL_NAMES_POOL = [
         { name: '同事A',     type: 'work' },
         { name: '同事B',     type: 'work' },
@@ -791,14 +787,11 @@
         { name: '你',        type: 'you' }
     ];
 
-    // —— 通话时长池 ——
     const CALL_DURATIONS_SHORT = ['0:08', '0:12', '0:18', '0:24', '0:36'];
     const CALL_DURATIONS_MID   = ['1:42', '2:15', '3:08', '4:22', '5:40'];
     const CALL_DURATIONS_LONG  = ['12:31', '23:17', '35:08', '45:22', '1:02:08'];
 
-    // —— 搜索池（活人化：不只搜你，还会搜生活） ——
     const SEARCH_POOL = [
-        // 关于你
         '怎么哄女朋友开心', '她生气了怎么道歉',
         '女朋友说没关系是不是真的没关系',
         '她说没事怎么回应', '怎么让她开心',
@@ -806,21 +799,17 @@
         '异地怎么让她不孤单', '女朋友爱哭怎么办',
         '怎么回"我没事"这句话', '女朋友生日送什么',
         '怎么给女朋友惊喜',
-        // 生活
         '附近有什么好吃的', '最近有什么新电影',
         '周末去哪玩比较好', '天气怎么样',
         '怎么快速入睡', '健身初学者怎么练',
         '适合上班听的歌', '怎么做番茄炒蛋',
         '什么牌子的空调好', '洗衣液什么牌子好',
-        // 工作/学习
         'Excel 常用函数', 'PPT 怎么做才好看',
         '会议纪要模板', '怎么提高专注力',
-        // 杂
         '手机内存不够怎么办', '怎么保养皮鞋',
         '猫粮什么牌子好', '租房要注意什么'
     ];
 
-    // —— 购物车池 ——
     const CART_POOL = [
         { name: '向日葵永生花',           price: 168 },
         { name: '她上次说的那本书',       price: 45 },
@@ -834,7 +823,6 @@
         { name: '定制款钥匙扣',           price: 42 },
         { name: '她提过一嘴的那支笔',     price: 55 },
         { name: '她生日的蛋糕预定金',     price: 200 },
-        // 生活用品（活人感）
         { name: '洗衣液补充装',           price: 32 },
         { name: '牙膏（薄荷味）',         price: 22 },
         { name: '新拖鞋（灰色）',         price: 45 },
@@ -843,7 +831,6 @@
         { name: '一次性洗脸巾',           price: 39 }
     ];
 
-    // —— 短信草稿池（他会写但没发出去的） ——
     const DRAFT_POOL = [
         '其实我想跟你说……算了。', '今天真的很想你。',
         '你是不是有点烦我了。', '我有点吃醋，但不敢说。',
@@ -855,7 +842,6 @@
         '其实那件事我一直记得。'
     ];
 
-    // —— 微信联系人池（随机路人） ——
     const WECHAT_NAMES_POOL = [
         { name: '同事A',     emoji: '💼', tag: 'work' },
         { name: '同事B',     emoji: '💼', tag: 'work' },
@@ -872,7 +858,6 @@
         { name: '亲戚群',    emoji: '🧧', tag: 'group' }
     ];
 
-    // —— 微信对话池（按标签 + 时段） ——
     const WECHAT_LINES = {
         work: {
             morning:   ['早，今天几点到公司', '今天的会议材料记得带', '昨天的报告怎么样了', '客户那边催了'],
@@ -904,7 +889,6 @@
         }
     };
 
-    // —— 关于你的话（微信里说的） ——
     const WECHAT_ABOUT_YOU = {
         happy: [
             '今天她跟我聊了好久', '她刚跟我说了一件特别有意思的事',
@@ -1033,10 +1017,6 @@
         return Array.from(new Set(pool));
     }
 
-    // ================================================================
-    //  判断"你俩最近聊得怎么样"
-    // ================================================================
-
     function getYourMood() {
         try {
             if (typeof messages === 'undefined' || !Array.isArray(messages) || messages.length === 0) return 'normal';
@@ -1061,7 +1041,7 @@
     }
 
     // ================================================================
-    //  每日更新（像真人一样一天天累积）
+    //  每日更新
     // ================================================================
 
     async function updateIfNeeded() {
@@ -1071,9 +1051,7 @@
         const now = Date.now();
         const daysPassed = data.lastUpdateDate ? Math.max(1, daysBetween(data.lastUpdateDate, today)) : 5;
 
-        // -------- 备忘录 --------
         for (let i = 0; i < daysPassed; i++) {
-            // 一半关于你、一半关于他自己
             const isAboutYou = Math.random() < 0.6;
             const pool = isAboutYou ? MEMO_ABOUT_YOU : MEMO_ABOUT_SELF;
             const text = pickN(pool, 1)[0];
@@ -1081,7 +1059,6 @@
         }
         data.memos = data.memos.slice(0, 40);
 
-        // -------- 相册 --------
         const imgs = getAllImages();
         const albumAdd = Math.max(1, Math.ceil(daysPassed / 3));
         for (let i = 0; i < albumAdd; i++) {
@@ -1096,7 +1073,6 @@
         }
         data.albums = data.albums.slice(-20);
 
-        // -------- 通话 --------
         const callAdd = Math.max(1, daysPassed + Math.floor(Math.random() * daysPassed));
         for (let i = 0; i < callAdd; i++) {
             const c = pickN(CALL_NAMES_POOL, 1)[0];
@@ -1106,7 +1082,6 @@
             else if (r < 0.85) dur = pickN(CALL_DURATIONS_MID, 1)[0];
             else dur = pickN(CALL_DURATIONS_LONG, 1)[0];
 
-            // 你来的电话，概率稍微高点、时长稍微长点
             let type;
             if (c.name === '你') {
                 type = Math.random() < 0.5 ? 'in' : 'out';
@@ -1124,14 +1099,12 @@
         }
         data.calls = data.calls.slice(0, 50);
 
-        // -------- 搜索 --------
         for (let i = 0; i < daysPassed; i++) {
             const s = pickN(SEARCH_POOL, 1)[0];
             data.searches.unshift({ text: s, ts: now - i * 86400000 - Math.random() * 43200000 });
         }
         data.searches = data.searches.slice(0, 30);
 
-        // -------- 购物车 --------
         const cartAdd = Math.max(1, Math.ceil(daysPassed / 5));
         for (let i = 0; i < cartAdd; i++) {
             const c = pickN(CART_POOL, 1)[0];
@@ -1139,11 +1112,9 @@
         }
         data.cart = data.cart.slice(0, 12);
 
-        // -------- 短信草稿 --------
         const needDraft = !data.draft || Math.floor(daysPassed / 5) > 0;
         if (needDraft) data.draft = pickN(DRAFT_POOL, 1)[0];
 
-        // -------- 微信（也要刷新一下） --------
         await _buildWechatIfNeeded(true);
 
         data.lastUpdateDate = today;
@@ -1152,7 +1123,7 @@
     }
 
     // ================================================================
-    //  微信：活人版
+    //  微信
     // ================================================================
 
     async function _buildWechatIfNeeded(force) {
@@ -1164,7 +1135,6 @@
         const needRebuild = force || !wx.lastBuildTs || (now - wx.lastBuildTs) > 3 * 3600000;
 
         if (needRebuild || !wx.contacts || wx.contacts.length === 0) {
-            // 随机抽 4~6 个联系人
             const pool = WECHAT_NAMES_POOL.slice();
             const shuffled = pool.sort(function () { return Math.random() - 0.5; });
             const count = randInt(4, 6);
@@ -1173,7 +1143,6 @@
                 return { name: c.name, emoji: c.emoji, tag: c.tag, chats: [] };
             });
 
-            // 永远带一个"她"
             picked.unshift({ name: '她', emoji: '💗', tag: 'you', chats: [] });
 
             picked.forEach(function (contact) {
@@ -1184,24 +1153,21 @@
             return;
         }
 
-        // 不重建：35% 概率"加新内容"
         if (Math.random() < 0.35) {
             const existing = new Set(wx.contacts.map(function (c) { return c.name; }));
             const candidates = WECHAT_NAMES_POOL.filter(function (c) { return !existing.has(c.name); });
 
             if (candidates.length > 0 && wx.contacts.length < 9) {
-                // 加个新联系人
                 const newOne = candidates[Math.floor(Math.random() * candidates.length)];
                 wx.contacts.push({
                     name: newOne.name, emoji: newOne.emoji, tag: newOne.tag,
                     chats: _genChatForContact(newOne, period, yourMood, now)
                 });
             } else {
-                // 给老联系人加一条新消息
                 const idx = 1 + Math.floor(Math.random() * Math.max(1, wx.contacts.length - 1));
                 if (wx.contacts[idx]) {
                     const contact = wx.contacts[idx];
-                    const newMsg = _pickChatLine(contact, period, now, 0, 0);
+                    const newMsg = _pickChatLine(contact, period, now, 0, 0, yourMood);
                     if (newMsg) contact.chats.push(newMsg);
                 }
             }
@@ -1220,7 +1186,6 @@
     }
 
     function _pickChatLine(contact, period, now, index, total, yourMood) {
-        // 她 —— 直接聊你俩的事
         if (contact.tag === 'you') {
             const yourLines = {
                 morning:   ['醒了没', '早啊', '今天要开心'],
@@ -1235,7 +1200,6 @@
             return { from: Math.random() < 0.5 ? 'me' : 'them', text: text, ts: ts };
         }
 
-        // 其他联系人：30% 概率提到你
         const aboutChance = 0.30;
         if (index === total - 1 && Math.random() < aboutChance) {
             const moodKey = yourMood === 'happy' ? 'happy' : (yourMood === 'cold' ? 'cold' : 'normal');
@@ -1247,7 +1211,6 @@
             }
         }
 
-        // 普通对话
         const linesByTag = WECHAT_LINES[contact.tag] || WECHAT_LINES.friend;
         const arr = linesByTag[period] || linesByTag.night;
         if (!arr || arr.length === 0) return null;
@@ -1258,7 +1221,7 @@
     }
 
     // ================================================================
-    //  锁屏 & 密码
+    //  锁屏
     // ================================================================
 
     function isPhoneLockedNow() {
@@ -1270,10 +1233,6 @@
         }
         return true;
     }
-
-    // ================================================================
-    //  打开面板
-    // ================================================================
 
     window.openHisPhonePanel = async function () {
         const old = document.getElementById('his-phone-panel');
@@ -1322,10 +1281,6 @@
 
         renderLockScreen(modal.querySelector('#hp-screen'), modal);
     };
-
-    // ================================================================
-    //  锁屏 UI
-    // ================================================================
 
     function renderLockScreen(screen, modal) {
         if (isPhoneLockedNow()) {
@@ -1589,7 +1544,7 @@
     }
 
     // ================================================================
-    //  主屏幕
+    //  主屏
     // ================================================================
 
     function renderHome(screen, modal) {
@@ -1702,8 +1657,8 @@
 
         const prev = screen.querySelector('.hp-album-prev');
         const next = screen.querySelector('.hp-album-next');
-        if (prev) prev.onclick = () => renderAlbum(screen, modal, _albumIndex + 1); // 注意：因为按时间倒序，prev 是更早的
-        if (next) next.onclick = () => renderAlbum(screen, modal, _albumIndex - 1);
+        if (prev) prev.onclick = function () { renderAlbum(screen, modal, _albumIndex + 1); };
+        if (next) next.onclick = function () { renderAlbum(screen, modal, _albumIndex - 1); };
 
         screen.querySelectorAll('.hp-photo').forEach(function (el) {
             el.onclick = function () { showPhotoLarge(el.dataset.src, modal); };
@@ -1800,7 +1755,7 @@
     }
 
     // ================================================================
-    //  备忘录
+    //  备忘录 / 通话 / 搜索 / 购物车 / 短信
     // ================================================================
 
     function renderMemo(screen, modal) {
@@ -1822,10 +1777,6 @@
 
         bindBack(screen, modal);
     }
-
-    // ================================================================
-    //  通话
-    // ================================================================
 
     function renderCall(screen, modal) {
         const calls = (data.calls || []).slice().sort(function (a, b) { return b.ts - a.ts; });
@@ -1851,10 +1802,6 @@
         bindBack(screen, modal);
     }
 
-    // ================================================================
-    //  搜索
-    // ================================================================
-
     function renderSearch(screen, modal) {
         const searches = (data.searches || []).slice().sort(function (a, b) { return b.ts - a.ts; });
         const list = searches.map(function (s) {
@@ -1873,10 +1820,6 @@
 
         bindBack(screen, modal);
     }
-
-    // ================================================================
-    //  购物车
-    // ================================================================
 
     function renderCart(screen, modal) {
         const cart = (data.cart || []).slice().sort(function (a, b) { return b.ts - a.ts; });
@@ -1899,10 +1842,6 @@
 
         bindBack(screen, modal);
     }
-
-    // ================================================================
-    //  短信
-    // ================================================================
 
     function renderMessage(screen, modal) {
         const draft = data.draft || '';
