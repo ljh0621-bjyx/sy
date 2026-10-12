@@ -1,13 +1,13 @@
 /* ============================================================
- * his-phone.js - 他的手机（每日自动更新版）
- * 打开时按"今天该有什么"补齐内容，越看越多
+ * his-phone.js - 他的手机
+ * 带锁屏密码 + 每日自动更新
  * ============================================================ */
 (function () {
     'use strict';
 
     const KEY = 'hisPhone_v2';
 
-    // ========== 内容池（越往下写越像他本人的语气） ==========
+    // ========== 内容池 ==========
     const MEMO_POOL = [
         '今天想跟她说：你笑起来的时候，我看了很久。',
         '想说但没说的话——其实我很想抱抱你。',
@@ -56,7 +56,6 @@
         { title: '反复看',       emoji: '🔁' }
     ];
 
-    // 通话记录池（没有"妈妈"）
     const CALL_POOL_NORMAL = [
         { name: '你',   type: 'in',     dur: '5:08',  time: '' },
         { name: '你',   type: 'out',    dur: '23:17', time: '' },
@@ -120,13 +119,15 @@
 
     // ========== 数据 ==========
     let data = {
-        lastUpdateDate: null,   // 上次自动更新的日期
-        memos: [],              // [{ text, ts }]
-        albums: [],             // [{ title, emoji, photos: [], createdAt }]
-        calls: [],              // [{ name, type, dur, ts }]
-        searches: [],           // [{ text, ts }]
-        cart: [],               // [{ name, price, ts }]
-        draft: ''               // 短信草稿
+        lastUpdateDate: null,
+        memos: [],
+        albums: [],
+        calls: [],
+        searches: [],
+        cart: [],
+        draft: '',
+        lockAttempts: { date: null, count: 0 },
+        lockedUntil: null
     };
 
     async function load() {
@@ -141,7 +142,6 @@
         try { await localforage.setItem(getStorageKey(KEY), data); } catch (e) {}
     }
 
-    // 从图片库抽图
     function getAllImages() {
         const pool = [];
         try {
@@ -194,24 +194,19 @@
         return Math.round((db - da) / 86400000);
     }
 
-    // ========== 核心：按"距上次更新过了几天"补齐内容 ==========
     async function updateIfNeeded() {
         const today = todayStr();
-        if (data.lastUpdateDate === today) return false;   // 今天已更新过
+        if (data.lastUpdateDate === today) return false;
 
         const now = Date.now();
-        const last = data.lastUpdateDate ? new Date(data.lastUpdateDate).getTime() : now;
-        // 首次填充时，给一个"跨了几天"的错觉，让它不是空的
         const daysPassed = data.lastUpdateDate ? Math.max(1, daysBetween(data.lastUpdateDate, today)) : 5;
 
-        // 1) 备忘录：每天 +1 条（最多 30 条）
         for (let i = 0; i < daysPassed; i++) {
             const text = pickN(MEMO_POOL, 1)[0];
             data.memos.unshift({ text: text, ts: now - i * 86400000 });
         }
         data.memos = data.memos.slice(0, 30);
 
-        // 2) 相册：每 3 天 +1 本
         const albumAdd = Math.max(1, Math.ceil(daysPassed / 3));
         const imgs = getAllImages();
         for (let i = 0; i < albumAdd; i++) {
@@ -225,9 +220,8 @@
                 createdAt: now - i * 3 * 86400000
             });
         }
-        data.albums = data.albums.slice(-12);  // 最多 12 本
+        data.albums = data.albums.slice(-12);
 
-        // 3) 通话记录：每天 +1~2 条（最多 30 条）
         const callCount = daysPassed * 1 + Math.floor(Math.random() * daysPassed);
         for (let i = 0; i < Math.max(1, callCount); i++) {
             const c = pickN(CALL_POOL_NORMAL, 1)[0];
@@ -238,14 +232,12 @@
         }
         data.calls = data.calls.slice(0, 30);
 
-        // 4) 搜索记录：每天 +1 条（最多 20 条）
         for (let i = 0; i < daysPassed; i++) {
             const s = pickN(SEARCH_POOL, 1)[0];
             data.searches.unshift({ text: s, ts: now - i * 86400000 });
         }
         data.searches = data.searches.slice(0, 20);
 
-        // 5) 购物车：每周 +1 件（最多 8 件）
         const cartAdd = Math.max(1, Math.ceil(daysPassed / 7));
         for (let i = 0; i < cartAdd; i++) {
             const c = pickN(CART_POOL, 1)[0];
@@ -253,7 +245,6 @@
         }
         data.cart = data.cart.slice(0, 8);
 
-        // 6) 短信草稿：每 5 天换一条
         const needDraft = !data.draft || Math.floor(daysPassed / 5) > 0;
         if (needDraft) {
             data.draft = pickN(DRAFT_POOL, 1)[0];
@@ -316,8 +307,260 @@
         modal.querySelector('#hp-close').onclick = close;
         modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
 
-        renderHome(modal.querySelector('#hp-screen'), modal);
+        renderLockScreen(modal.querySelector('#hp-screen'), modal);
     };
+
+    // ========== 锁屏（带密码） ==========
+    function getTodayPassword() {
+        const d = new Date();
+        const y = d.getFullYear();
+        const m = d.getMonth() + 1;
+        const day = d.getDate();
+
+        const seed = y * 10000 + m * 100 + day;
+        const rule = seed % 4;
+
+        if (rule === 0) {
+            return {
+                code: String(m).padStart(2, '0') + String(day).padStart(2, '0'),
+                hint: '今天的日期去掉年份'
+            };
+        }
+        if (rule === 1) {
+            return {
+                code: String(day).padStart(2, '0') + String(m).padStart(2, '0'),
+                hint: '今天的日期，月和日倒过来'
+            };
+        }
+        if (rule === 2) {
+            const sum = m + day;
+            const sumStr = (sum < 10 ? '0' : '') + sum;
+            return {
+                code: (sumStr + String(day).padStart(2, '0')).slice(-4),
+                hint: '月和日加起来，再接上今天的号数'
+            };
+        }
+        const diff = Math.max(1, day - m);
+        return {
+            code: String(diff).padStart(2, '0') + String(day).padStart(2, '0'),
+            hint: '日减去月，再接上今天的号数'
+        };
+    }
+
+    function getLockAttemptsToday() {
+        const today = todayStr();
+        try {
+            const raw = data.lockAttempts || {};
+            if (raw.date !== today) return { date: today, count: 0 };
+            return raw;
+        } catch (e) {
+            return { date: today, count: 0 };
+        }
+    }
+
+    function saveLockAttempts(obj) {
+        data.lockAttempts = obj;
+        save();
+    }
+
+    function isPhoneLockedNow() {
+        if (!data.lockedUntil) return false;
+        if (Date.now() >= data.lockedUntil) {
+            data.lockedUntil = null;
+            save();
+            return false;
+        }
+        return true;
+    }
+
+    function renderLockScreen(screen, modal) {
+        if (isPhoneLockedNow()) {
+            const remainMs = data.lockedUntil - Date.now();
+            const remainMin = Math.ceil(remainMs / 60000);
+            screen.innerHTML =
+                '<div style="min-height:440px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:30px 20px;text-align:center;">'
+                +   '<div style="font-size:56px;margin-bottom:20px;filter:grayscale(0.5);">🔒</div>'
+                +   '<div style="font-size:15px;font-weight:700;color:#fff;margin-bottom:10px;">他发现了</div>'
+                +   '<div style="font-size:12.5px;color:rgba(255,255,255,0.6);line-height:1.8;margin-bottom:20px;">'
+                +     '他好像察觉到有人在看他的手机。<br>暂时打不开了。'
+                +   '</div>'
+                +   '<div style="font-size:13px;color:rgba(255,255,255,0.75);background:rgba(255,255,255,0.06);padding:10px 18px;border-radius:12px;">'
+                +     '还需 ' + remainMin + ' 分钟'
+                +   '</div>'
+                + '</div>';
+            return;
+        }
+
+        const now = new Date();
+        const hh = String(now.getHours()).padStart(2, '0');
+        const mm = String(now.getMinutes()).padStart(2, '0');
+        const weekdays = ['星期日','星期一','星期二','星期三','星期四','星期五','星期六'];
+        const dateStr = (now.getMonth() + 1) + '月' + now.getDate() + '日 ' + weekdays[now.getDay()];
+
+        const pwdInfo = getTodayPassword();
+
+        screen.innerHTML =
+            '<div style="min-height:440px;display:flex;flex-direction:column;padding:20px 8px 0;">'
+
+            +   '<div style="text-align:center;margin-top:26px;">'
+            +     '<div id="hp-lock-time" style="font-size:58px;font-weight:200;color:#fff;letter-spacing:-2px;line-height:1;font-family:-apple-system,sans-serif;">' + hh + ':' + mm + '</div>'
+            +     '<div style="font-size:13px;color:rgba(255,255,255,0.6);margin-top:10px;letter-spacing:1px;">' + dateStr + '</div>'
+            +   '</div>'
+
+            +   '<div style="margin:36px 14px 0;">'
+            +     '<div style="text-align:center;font-size:11.5px;color:rgba(255,255,255,0.55);margin-bottom:6px;letter-spacing:0.5px;">🔒 他的手机有密码</div>'
+            +     '<div style="text-align:center;font-size:11.5px;color:#FFB84D;margin-bottom:16px;line-height:1.6;padding:0 10px;">'
+            +       '💡 提示：' + esc(pwdInfo.hint)
+            +     '</div>'
+
+            +     '<div style="display:flex;justify-content:center;gap:12px;margin-bottom:18px;" id="hp-pwd-display">'
+            +       [0,1,2,3].map(function (i) {
+                    return '<div class="hp-pwd-dot" data-i="' + i + '" style="width:38px;height:46px;border-radius:10px;background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;color:#fff;font-size:20px;font-weight:600;transition:all 0.15s ease;"></div>';
+                }).join('')
+            +     '</div>'
+
+            +     '<div id="hp-pwd-msg" style="text-align:center;font-size:11.5px;color:#FF6B6B;height:16px;margin-bottom:8px;"></div>'
+            +   '</div>'
+
+            +   '<div style="margin:auto 8px 20px;">'
+            +     '<div id="hp-keypad" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:220px;margin:0 auto;">'
+            +       ['1','2','3','4','5','6','7','8','9','','0','⌫'].map(function (k) {
+                    if (k === '') return '<div></div>';
+                    return '<div class="hp-key" data-k="' + k + '" style="height:44px;border-radius:12px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;color:#fff;font-size:17px;font-weight:500;cursor:pointer;transition:all 0.12s ease;user-select:none;">' + k + '</div>';
+                }).join('')
+            +     '</div>'
+            +     '<div style="text-align:center;font-size:10.5px;color:rgba(255,255,255,0.3);margin-top:14px;letter-spacing:0.5px;">'
+            +       '连续猜错 3 次会被发现'
+            +     '</div>'
+            +   '</div>'
+
+            + '</div>';
+
+        const timeEl = screen.querySelector('#hp-lock-time');
+        const timeTimer = setInterval(function () {
+            if (!document.body.contains(screen)) { clearInterval(timeTimer); return; }
+            const d = new Date();
+            const hh2 = String(d.getHours()).padStart(2, '0');
+            const mm2 = String(d.getMinutes()).padStart(2, '0');
+            if (timeEl) timeEl.textContent = hh2 + ':' + mm2;
+        }, 15000);
+
+        let input = '';
+        const dots = screen.querySelectorAll('.hp-pwd-dot');
+        const msgEl = screen.querySelector('#hp-pwd-msg');
+
+        function refreshDots() {
+            dots.forEach(function (el, i) {
+                if (i < input.length) {
+                    el.textContent = '●';
+                    el.style.borderColor = 'rgba(var(--accent-color-rgb),0.6)';
+                    el.style.background = 'rgba(var(--accent-color-rgb),0.08)';
+                } else {
+                    el.textContent = '';
+                    el.style.borderColor = 'rgba(255,255,255,0.15)';
+                    el.style.background = 'rgba(255,255,255,0.05)';
+                }
+            });
+        }
+
+        function tryUnlock() {
+            if (input.length !== 4) return;
+            if (input === pwdInfo.code) {
+                msgEl.style.color = '#7BC8A4';
+                msgEl.textContent = '✓ 密码正确';
+                clearInterval(timeTimer);
+                setTimeout(function () {
+                    screen.style.transition = 'opacity 0.35s ease, transform 0.35s ease';
+                    screen.style.opacity = '0';
+                    screen.style.transform = 'translateY(-30px)';
+                    setTimeout(function () {
+                        screen.style.transition = '';
+                        screen.style.opacity = '';
+                        screen.style.transform = '';
+                        renderHome(screen, modal);
+                    }, 350);
+                }, 400);
+            } else {
+                const today = todayStr();
+                const a = getLockAttemptsToday();
+                a.count = (a.count || 0) + 1;
+                saveLockAttempts(a);
+
+                msgEl.style.color = '#FF6B6B';
+                msgEl.textContent = '密码不对（' + a.count + '/3）';
+                input = '';
+                refreshDots();
+
+                const pwdEl = screen.querySelector('#hp-pwd-display');
+                pwdEl.style.transition = 'transform 0.1s';
+                pwdEl.style.transform = 'translateX(-6px)';
+                setTimeout(function () { pwdEl.style.transform = 'translateX(6px)'; }, 100);
+                setTimeout(function () { pwdEl.style.transform = 'translateX(0)'; }, 200);
+
+                if (a.count >= 3) {
+                    data.lockedUntil = Date.now() + 60 * 60 * 1000;
+                    data.lockAttempts = { date: today, count: 0 };
+                    save();
+                    setTimeout(function () {
+                        clearInterval(timeTimer);
+                        screen.style.transition = 'opacity 0.4s ease';
+                        screen.style.opacity = '0';
+                        setTimeout(function () {
+                            screen.style.opacity = '';
+                            screen.style.transition = '';
+                            renderLockScreen(screen, modal);
+                        }, 400);
+                    }, 600);
+                }
+            }
+        }
+
+        screen.querySelectorAll('.hp-key').forEach(function (el) {
+            el.addEventListener('mousedown', function () {
+                el.style.transform = 'scale(0.94)';
+                el.style.background = 'rgba(255,255,255,0.15)';
+            });
+            el.addEventListener('mouseup', function () {
+                el.style.transform = 'scale(1)';
+                el.style.background = 'rgba(255,255,255,0.08)';
+            });
+            el.addEventListener('mouseleave', function () {
+                el.style.transform = 'scale(1)';
+                el.style.background = 'rgba(255,255,255,0.08)';
+            });
+            el.addEventListener('click', function () {
+                const k = el.dataset.k;
+                if (k === '⌫') {
+                    input = input.slice(0, -1);
+                } else if (/^[0-9]$/.test(k)) {
+                    if (input.length < 4) input += k;
+                }
+                refreshDots();
+                if (input.length === 4) {
+                    setTimeout(tryUnlock, 200);
+                }
+            });
+        });
+
+        const keyHandler = function (e) {
+            if (!document.body.contains(screen)) { document.removeEventListener('keydown', keyHandler); return; }
+            if (/^[0-9]$/.test(e.key)) {
+                if (input.length < 4) input += e.key;
+            } else if (e.key === 'Backspace') {
+                input = input.slice(0, -1);
+            } else if (e.key === 'Enter' && input.length === 4) {
+                tryUnlock();
+                return;
+            } else {
+                return;
+            }
+            refreshDots();
+            if (input.length === 4) {
+                setTimeout(tryUnlock, 200);
+            }
+        };
+        document.addEventListener('keydown', keyHandler);
+    }
 
     // ========== 主屏幕 ==========
     function renderHome(screen, modal) {
