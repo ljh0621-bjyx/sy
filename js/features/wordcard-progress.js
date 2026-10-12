@@ -1,21 +1,21 @@
 /* ============================================================
- * wordcard-progress.js - 字卡学习进度【终极版】
+ * wordcard-progress.js - 字卡学习进度【终极版 v3】
  * ============================================================
- * 特性：
- * 1. 完整复刻图里的双进度条（紫=熟练度 / 黄橙=操控难度）
- * 2. 接入 14 个真实数据源（字卡/表情/Emoji/朋友圈/信件/...）
- * 3. 精准统计，分母合理，避免"发一条就 100%"
- * 4. 保留原有自动学习逻辑（每天 1~3 张 + 每小时 20%）
- * 5. 智能缓存，长会话不卡
+ * v3 新增：
+ *   ✅ 学习曲线图（最近 7 天每日学会数柱状图）
+ *   ✅ 分类点击展开（看具体学会了哪些条目）
+ *   ✅ 时间维度（今日/近7天统计数据）
+ * 保留：
+ *   ✅ 原自动学习逻辑（每天1~3张 + 每小时20%）
+ *   ✅ 14 个真实数据源
+ *   ✅ 智能缓存
  * ============================================================ */
 (function () {
     'use strict';
 
     const KEY = 'hisWordcardProgress_v1';
-    const CACHE_KEY = 'wcp_stats_cache_v1';
-    const CACHE_TTL = 30 * 1000; // 统计缓存 30 秒
+    const CACHE_TTL = 30 * 1000;
 
-    // ========== 数据结构 ==========
     let data = {
         learned: [],
         lastMsgCount: 0,
@@ -66,6 +66,13 @@
             String(d.getDate()).padStart(2, '0');
     }
 
+    function dateKeyOf(ts) {
+        const d = new Date(ts);
+        return d.getFullYear() + '-' +
+            String(d.getMonth() + 1).padStart(2, '0') + '-' +
+            String(d.getDate()).padStart(2, '0');
+    }
+
     function safeJSONParse(str, fallback) {
         try { return JSON.parse(str) || fallback; } catch (e) { return fallback; }
     }
@@ -79,6 +86,10 @@
         return String(str || '').slice(0, 60);
     }
 
+    function isImageUrl(s) {
+        return typeof s === 'string' && (s.indexOf('data:image') === 0 || s.indexOf('http') === 0);
+    }
+
     // ========== 标记一张已学 ==========
     function markLearned(text, silent) {
         if (!text) return false;
@@ -88,7 +99,7 @@
         data.learned.push(trimmed);
         data.history.unshift({ text: trimmed, ts: Date.now() });
         data.history = data.history.slice(0, 100);
-        _statsCache.ts = 0; // 让统计缓存失效
+        _statsCache.ts = 0;
         persist();
         if (!silent && typeof showNotification === 'function') {
             showNotification('📚 ' + getPartnerName() + ' 学会了新字卡', 'success', 1800);
@@ -165,28 +176,43 @@
         } catch (e) {}
     }
 
-    // ========== 各分类定义（颜色+图标） ==========
+    // ========== 分类元数据 ==========
     const CATEGORY_META = {
-        wordcard:      { name: '字卡',       icon: '📇', color: '#8b6fd4' },
-        sticker:       { name: '表情包',     icon: '🎨', color: '#e67e22' },
-        mySticker:     { name: '我的表情',   icon: '🖼️', color: '#3498db' },
-        emoji:         { name: 'Emoji',      icon: '😊', color: '#f1c40f' },
-        moments:       { name: '朋友圈',     icon: '💬', color: '#2ecc71' },
-        envelope:      { name: '信件',       icon: '✉️', color: '#9b59b6' },
-        poke:          { name: '拍一拍',     icon: '📝', color: '#e74c3c' },
-        status:        { name: '对方状态',   icon: '🌙', color: '#34495e' },
-        motto:         { name: '顶部格言',   icon: '💭', color: '#16a085' },
-        intro:         { name: '开场动画',   icon: '🎬', color: '#f39c12' },
-        mood:          { name: '心晴手账',   icon: '📖', color: '#e91e63' },
-        pinyin:        { name: '拼音字卡',   icon: '🔤', color: '#795548' },
-        emotion:       { name: '情绪字卡',   icon: '✨', color: '#ff6b6b' },
-        mix:           { name: '混搭连发',   icon: '🌈', color: '#00bcd4' }
+        wordcard:  { name: '字卡',       icon: '📇', color: '#8b6fd4', detailType: 'text'  },
+        sticker:   { name: '表情包',     icon: '🎨', color: '#e67e22', detailType: 'image' },
+        mySticker: { name: '我的表情',   icon: '🖼️', color: '#3498db', detailType: 'image' },
+        emoji:     { name: 'Emoji',      icon: '😊', color: '#f1c40f', detailType: 'text'  },
+        moments:   { name: '朋友圈',     icon: '💬', color: '#2ecc71', detailType: 'info'  },
+        envelope:  { name: '信件',       icon: '✉️', color: '#9b59b6', detailType: 'info'  },
+        poke:      { name: '拍一拍',     icon: '📝', color: '#e74c3c', detailType: 'text'  },
+        status:    { name: '对方状态',   icon: '🌙', color: '#34495e', detailType: 'text'  },
+        motto:     { name: '顶部格言',   icon: '💭', color: '#16a085', detailType: 'text'  },
+        intro:     { name: '开场动画',   icon: '🎬', color: '#f39c12', detailType: 'text'  },
+        mood:      { name: '心晴手账',   icon: '📖', color: '#e91e63', detailType: 'info'  },
+        pinyin:    { name: '拼音字卡',   icon: '🔤', color: '#795548', detailType: 'text'  },
+        emotion:   { name: '情绪字卡',   icon: '✨', color: '#ff6b6b', detailType: 'info'  },
+        mix:       { name: '混搭连发',   icon: '🌈', color: '#00bcd4', detailType: 'info'  }
     };
+
+    // ========== 工厂：创建一个分类对象 ==========
+    function makeCat(key, learned, total, learnedItems) {
+        const meta = CATEGORY_META[key];
+        return {
+            key: key,
+            name: meta.name,
+            icon: meta.icon,
+            color: meta.color,
+            detailType: meta.detailType,
+            learned: learned,
+            total: total,
+            pct: calcPct(learned, total),
+            learnedItems: learnedItems || []
+        };
+    }
 
     // ========== 核心：统计所有分类 ==========
     function computeStats() {
         const now = Date.now();
-        // 缓存命中
         if (_statsCache.result && (now - _statsCache.ts) < CACHE_TTL) {
             return _statsCache.result;
         }
@@ -194,7 +220,6 @@
         const categories = [];
         const learnedSet = new Set(data.learned);
 
-        // 准备消息数据集
         const allMsgs = (typeof messages !== 'undefined' && Array.isArray(messages)) ? messages : [];
         const partnerMsgs = allMsgs.filter(function (m) {
             return m && m.sender && m.sender !== 'user' &&
@@ -206,17 +231,16 @@
         try {
             const allReplies = getAllReplies();
             if (allReplies.length > 0) {
-                const learnedCount = allReplies.filter(function (t) { return learnedSet.has(t); }).length;
-                categories.push(makeCat('wordcard', learnedCount, allReplies.length));
+                const learnedItems = allReplies.filter(function (t) { return learnedSet.has(t); });
+                categories.push(makeCat('wordcard', learnedItems.length, allReplies.length, learnedItems));
             }
         } catch (e) {}
 
-        // ---------- 2. 对方表情包（按实际发出算） ----------
+        // ---------- 2. 对方表情包 ----------
         try {
             if (typeof stickerLibrary !== 'undefined' && Array.isArray(stickerLibrary) && stickerLibrary.length > 0) {
                 const total = stickerLibrary.length;
                 const usedSet = new Set();
-                // 建指纹索引
                 const fpIndex = new Map();
                 stickerLibrary.forEach(function (s) {
                     if (s) fpIndex.set(fingerprint(s), s);
@@ -226,7 +250,8 @@
                     const fp = fingerprint(m.image);
                     if (fpIndex.has(fp)) usedSet.add(fpIndex.get(fp));
                 });
-                categories.push(makeCat('sticker', usedSet.size, total));
+                const learnedItems = Array.from(usedSet);
+                categories.push(makeCat('sticker', learnedItems.length, total, learnedItems));
             }
         } catch (e) {}
 
@@ -244,7 +269,8 @@
                     const fp = fingerprint(m.image);
                     if (fpIndex.has(fp)) usedSet.add(fpIndex.get(fp));
                 });
-                categories.push(makeCat('mySticker', usedSet.size, total));
+                const learnedItems = Array.from(usedSet);
+                categories.push(makeCat('mySticker', learnedItems.length, total, learnedItems));
             }
         } catch (e) {}
 
@@ -260,11 +286,12 @@
                         if (e && t.indexOf(e) !== -1) usedSet.add(e);
                     });
                 });
-                categories.push(makeCat('emoji', usedSet.size, total));
+                const learnedItems = Array.from(usedSet);
+                categories.push(makeCat('emoji', learnedItems.length, total, learnedItems));
             }
         } catch (e) {}
 
-        // ---------- 5. 朋友圈（分母 + 10） ----------
+        // ---------- 5. 朋友圈 ----------
         try {
             let postCount = 0;
             try {
@@ -279,11 +306,11 @@
                 postCount = Math.max(postCount, window.momentsData.posts.length);
             }
             if (postCount > 0) {
-                categories.push(makeCat('moments', postCount, postCount + 10));
+                categories.push(makeCat('moments', postCount, postCount + 10, []));
             }
         } catch (e) {}
 
-        // ---------- 6. 信件（分母 + 5） ----------
+        // ---------- 6. 信件 ----------
         try {
             let outboxCount = 0;
             try {
@@ -298,7 +325,7 @@
                 outboxCount = Math.max(outboxCount, envelopeData.outbox.length);
             }
             if (outboxCount > 0) {
-                categories.push(makeCat('envelope', outboxCount, outboxCount + 5));
+                categories.push(makeCat('envelope', outboxCount, outboxCount + 5, []));
             }
         } catch (e) {}
 
@@ -321,11 +348,12 @@
                         if (item && t.indexOf(item) !== -1) usedSet.add(item);
                     });
                 });
-                categories.push(makeCat(lib.key, usedSet.size, total));
+                const learnedItems = Array.from(usedSet);
+                categories.push(makeCat(lib.key, learnedItems.length, total, learnedItems));
             } catch (e) {}
         });
 
-        // ---------- 11. 心晴手账（分母 30 天） ----------
+        // ---------- 11. 心晴手账 ----------
         try {
             let moodCount = 0;
             try {
@@ -347,7 +375,7 @@
                 moodCount = Math.max(moodCount, localCount);
             }
             if (moodCount > 0) {
-                categories.push(makeCat('mood', moodCount, 30));
+                categories.push(makeCat('mood', moodCount, 30, []));
             }
         } catch (e) {}
 
@@ -357,7 +385,8 @@
             const total = Math.max(1, allReplies.length);
             const pinyinLearned = data.history.length;
             if (pinyinLearned > 0) {
-                categories.push(makeCat('pinyin', pinyinLearned, total));
+                const learnedItems = data.history.slice(0, 30).map(function (h) { return h.text; });
+                categories.push(makeCat('pinyin', pinyinLearned, total, learnedItems));
             }
         } catch (e) {}
 
@@ -375,7 +404,7 @@
                 if (EMOTION_WORDS.some(function (w) { return t.indexOf(w) !== -1; })) emotionCount++;
             });
             if (emotionCount > 0) {
-                categories.push(makeCat('emotion', emotionCount, totalPartnerMsgCount));
+                categories.push(makeCat('emotion', emotionCount, totalPartnerMsgCount, []));
             }
         } catch (e) {}
 
@@ -390,7 +419,7 @@
                 if (hasEmoji && cleanText.length > 0) mixCount++;
             });
             if (mixCount > 0) {
-                categories.push(makeCat('mix', mixCount, totalPartnerMsgCount));
+                categories.push(makeCat('mix', mixCount, totalPartnerMsgCount, []));
             }
         } catch (e) {}
 
@@ -404,27 +433,119 @@
         const overallPct = totalAll > 0 ? Math.round(totalLearned / totalAll * 100) : 0;
 
         const result = { categories, overallLearned: totalLearned, overallTotal: totalAll, overallPct };
-
-        // 写缓存
         _statsCache.ts = now;
         _statsCache.result = result;
         return result;
     }
 
-    function makeCat(key, learned, total) {
-        const meta = CATEGORY_META[key];
-        return {
-            key: key,
-            name: meta.name,
-            icon: meta.icon,
-            color: meta.color,
-            learned: learned,
-            total: total,
-            pct: calcPct(learned, total)
-        };
+    // ========== ★ 时间维度：最近 N 天每日学会数 ==========
+    function getDailyLearnCounts(days) {
+        days = days || 7;
+        const result = [];
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        for (let i = days - 1; i >= 0; i--) {
+            const d = new Date(today);
+            d.setDate(d.getDate() - i);
+            const key = dateKeyOf(d);
+            const count = data.history.filter(function (h) {
+                return dateKeyOf(h.ts) === key;
+            }).length;
+            result.push({
+                key: key,
+                label: (d.getMonth() + 1) + '/' + d.getDate(),
+                weekday: ['日','一','二','三','四','五','六'][d.getDay()],
+                count: count,
+                isToday: i === 0
+            });
+        }
+        return result;
     }
 
-    // ========== 渲染分类进度条 ==========
+    // ========== ★ 学习曲线图 HTML ==========
+    function buildLearnCurveHTML(dailyCounts) {
+        const maxCount = Math.max(1, Math.max.apply(null, dailyCounts.map(function (d) { return d.count; })));
+        const totalWeek = dailyCounts.reduce(function (a, b) { return a + b.count; }, 0);
+        const todayCount = dailyCounts[dailyCounts.length - 1].count;
+
+        // 每根柱子的高度（最大 60px）
+        const barsHTML = dailyCounts.map(function (d) {
+            const h = d.count > 0 ? Math.max(4, Math.round(d.count / maxCount * 60)) : 2;
+            const barColor = d.isToday
+                ? 'linear-gradient(180deg,#9d7fe0,#8b6fd4)'
+                : 'linear-gradient(180deg,rgba(157,127,224,0.55),rgba(139,111,212,0.75))';
+            return '<div style="display:flex;flex-direction:column;align-items:center;flex:1;min-width:0;">'
+                +   '<div style="font-size:9px;color:' + (d.count > 0 ? '#8b6fd4' : 'transparent') + ';font-weight:700;margin-bottom:2px;height:12px;line-height:12px;">'
+                +     (d.count > 0 ? d.count : '·')
+                +   '</div>'
+                +   '<div style="width:60%;max-width:22px;height:64px;background:rgba(139,111,212,0.06);border-radius:4px;display:flex;align-items:flex-end;overflow:hidden;">'
+                +     '<div style="width:100%;height:' + h + 'px;background:' + barColor + ';border-radius:4px;transition:height 0.5s ease;"></div>'
+                +   '</div>'
+                +   '<div style="font-size:9px;color:' + (d.isToday ? '#8b6fd4' : 'var(--text-secondary)') + ';margin-top:4px;font-weight:' + (d.isToday ? '700' : '400') + ';">'
+                +     d.label
+                +   '</div>'
+                + '</div>';
+        }).join('');
+
+        return '<div style="background:var(--primary-bg);border-radius:14px;padding:14px 12px 10px;margin-bottom:16px;border:1px solid var(--border-color);flex-shrink:0;">'
+            +   '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding:0 4px;">'
+            +     '<span style="font-size:12px;font-weight:700;color:var(--text-primary);">📈 最近 7 天学习曲线</span>'
+            +     '<span style="font-size:11px;color:var(--text-secondary);">'
+            +       '今日 <b style="color:#8b6fd4;">+' + todayCount + '</b> · 共 <b style="color:#8b6fd4;">' + totalWeek + '</b>'
+            +     '</span>'
+            +   '</div>'
+            +   '<div style="display:flex;align-items:flex-end;gap:4px;padding:0 4px;">'
+            +     barsHTML
+            +   '</div>'
+            + '</div>';
+    }
+
+    // ========== ★ 分类详情渲染（展开后显示） ==========
+    function buildCategoryDetailHTML(cat) {
+        if (cat.detailType === 'info' || cat.learnedItems.length === 0) {
+            // 不可展开或者无条目 → 显示说明
+            let infoText = '';
+            if (cat.key === 'moments')       infoText = '你一共发过 ' + cat.learned + ' 条动态';
+            else if (cat.key === 'envelope') infoText = '你一共寄出过 ' + cat.learned + ' 封信';
+            else if (cat.key === 'mood')     infoText = '你一共记录了 ' + cat.learned + ' 天心情';
+            else if (cat.key === 'emotion')  infoText = '对方发过 ' + cat.learned + ' 条含情绪词的消息';
+            else if (cat.key === 'mix')      infoText = '对方发过 ' + cat.learned + ' 条 emoji + 文字混搭消息';
+            else infoText = '暂无可展开的条目';
+
+            return '<div style="padding:10px 12px;background:var(--primary-bg);border-radius:10px;font-size:11.5px;color:var(--text-secondary);line-height:1.7;margin-bottom:8px;">'
+                +   'ℹ️ ' + infoText
+                + '</div>';
+        }
+
+        if (cat.detailType === 'image') {
+            // 图片网格
+            const grid = cat.learnedItems.slice(0, 40).map(function (url) {
+                return '<div style="aspect-ratio:1/1;border-radius:8px;overflow:hidden;background:var(--primary-bg);">'
+                    +   '<img src="' + url + '" style="width:100%;height:100%;object-fit:cover;display:block;" loading="lazy">'
+                    + '</div>';
+            }).join('');
+            const more = cat.learnedItems.length > 40
+                ? '<div style="grid-column:1/-1;text-align:center;font-size:11px;color:var(--text-secondary);padding:6px;">还有 ' + (cat.learnedItems.length - 40) + ' 张未显示</div>'
+                : '';
+            return '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px;">'
+                + grid + more
+                + '</div>';
+        }
+
+        // 文本列表
+        const list = cat.learnedItems.slice(0, 50).map(function (t) {
+            return '<div style="padding:7px 10px;background:var(--primary-bg);border-radius:8px;font-size:12px;color:var(--text-primary);line-height:1.5;word-break:break-word;margin-bottom:5px;">'
+                +   esc(String(t).slice(0, 200))
+                + '</div>';
+        }).join('');
+        const moreText = cat.learnedItems.length > 50
+            ? '<div style="text-align:center;font-size:11px;color:var(--text-secondary);padding:6px;">还有 ' + (cat.learnedItems.length - 50) + ' 条未显示</div>'
+            : '';
+        return '<div style="margin-bottom:8px;">' + list + moreText + '</div>';
+    }
+
+    // ========== ★ 分类卡片 HTML（带点击展开） ==========
     function buildCategoryHTML(categories) {
         if (categories.length === 0) {
             return '<div style="text-align:center;padding:36px 12px;color:var(--text-secondary);font-size:13px;opacity:0.75;line-height:1.8;">'
@@ -437,42 +558,55 @@
         return categories.map(function (cat) {
             const pct = cat.pct;
             const difficulty = Math.max(10, 100 - pct);
-            return '<div style="margin-bottom:18px;">'
+            const canExpand = cat.learnedItems.length > 0;
 
-                +   '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">'
+            return '<div class="wcp-cat" data-cat-key="' + cat.key + '" style="margin-bottom:6px;background:var(--primary-bg);border-radius:12px;border:1px solid var(--border-color);overflow:hidden;">'
+
+                // 可点击的标题行
+                +   '<div class="wcp-cat-header" style="padding:12px 14px 10px;cursor:pointer;user-select:none;display:flex;align-items:center;justify-content:space-between;">'
                 +     '<span style="font-size:14px;font-weight:700;color:var(--text-primary);">'
                 +       cat.icon + ' ' + esc(cat.name)
                 +       '<span style="font-size:10px;font-weight:400;color:var(--text-secondary);margin-left:6px;">'
                 +         cat.learned + '/' + cat.total
                 +       '</span>'
                 +     '</span>'
-                +     '<span style="font-size:11px;color:var(--text-secondary);">'
-                +       '熟练 <b style="color:#8b6fd4;">' + pct + '%</b>'
-                +       ' &nbsp; 难度 <b style="color:#e6a23c;">' + difficulty + '%</b>'
-                +     '</span>'
-                +   '</div>'
-
-                // 熟练度紫条
-                +   '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">'
-                +     '<span style="font-size:10px;color:#8b6fd4;width:26px;flex-shrink:0;font-weight:600;">熟练</span>'
-                +     '<div style="flex:1;height:6px;background:rgba(139,111,212,0.12);border-radius:4px;overflow:hidden;">'
-                +       '<div style="width:' + pct + '%;height:100%;background:linear-gradient(90deg,#9d7fe0,#8b6fd4);border-radius:4px;transition:width 0.6s ease;"></div>'
+                +     '<div style="display:flex;align-items:center;gap:8px;">'
+                +       '<span style="font-size:11px;color:var(--text-secondary);">'
+                +         '熟练 <b style="color:#8b6fd4;">' + pct + '%</b>'
+                +         ' &nbsp; 难度 <b style="color:#e6a23c;">' + difficulty + '%</b>'
+                +       '</span>'
+                +       (canExpand
+                            ? '<span class="wcp-chevron" style="font-size:10px;color:var(--text-secondary);transition:transform 0.2s;display:inline-block;">▼</span>'
+                            : '<span style="font-size:10px;color:var(--text-secondary);opacity:0.3;">·</span>')
                 +     '</div>'
                 +   '</div>'
 
-                // 操控难度黄橙条
-                +   '<div style="display:flex;align-items:center;gap:8px;">'
-                +     '<span style="font-size:10px;color:#e6a23c;width:26px;flex-shrink:0;font-weight:600;">难度</span>'
-                +     '<div style="flex:1;height:6px;background:rgba(230,162,60,0.12);border-radius:4px;overflow:hidden;">'
-                +       '<div style="width:' + difficulty + '%;height:100%;background:linear-gradient(90deg,#f5c26b,#e67e22);border-radius:4px;transition:width 0.6s ease;"></div>'
+                // 进度条
+                +   '<div style="padding:0 14px 12px;">'
+                +     '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">'
+                +       '<span style="font-size:10px;color:#8b6fd4;width:26px;flex-shrink:0;font-weight:600;">熟练</span>'
+                +       '<div style="flex:1;height:6px;background:rgba(139,111,212,0.12);border-radius:4px;overflow:hidden;">'
+                +         '<div style="width:' + pct + '%;height:100%;background:linear-gradient(90deg,#9d7fe0,#8b6fd4);border-radius:4px;transition:width 0.6s ease;"></div>'
+                +       '</div>'
                 +     '</div>'
+                +     '<div style="display:flex;align-items:center;gap:8px;">'
+                +       '<span style="font-size:10px;color:#e6a23c;width:26px;flex-shrink:0;font-weight:600;">难度</span>'
+                +       '<div style="flex:1;height:6px;background:rgba(230,162,60,0.12);border-radius:4px;overflow:hidden;">'
+                +         '<div style="width:' + difficulty + '%;height:100%;background:linear-gradient(90deg,#f5c26b,#e67e22);border-radius:4px;transition:width 0.6s ease;"></div>'
+                +       '</div>'
+                +     '</div>'
+                +   '</div>'
+
+                // 展开详情（默认隐藏）
+                +   '<div class="wcp-cat-detail" style="display:none;padding:0 14px 12px;border-top:1px dashed var(--border-color);margin-top:2px;padding-top:10px;">'
+                +     buildCategoryDetailHTML(cat)
                 +   '</div>'
 
                 + '</div>';
         }).join('');
     }
 
-    // ========== 综合状态文案 ==========
+    // ========== 综合状态 ==========
     function getOverallStatus(pct) {
         if (pct >= 90) return { text: '非常熟练', color: '#2ecc71' };
         if (pct >= 60) return { text: '挺熟练的', color: '#8b6fd4' };
@@ -490,7 +624,9 @@
         const pName = getPartnerName();
         const { categories, overallLearned, overallTotal, overallPct } = computeStats();
         const statusInfo = getOverallStatus(overallPct);
+        const dailyCounts = getDailyLearnCounts(7);
         const categoryHTML = buildCategoryHTML(categories);
+        const curveHTML = buildLearnCurveHTML(dailyCounts);
 
         const modal = document.createElement('div');
         modal.id = 'wcp-panel';
@@ -500,10 +636,9 @@
             '<style>'
             + '@keyframes wcpFade{from{opacity:0}to{opacity:1}}'
             + '@keyframes wcpPop{from{opacity:0;transform:scale(0.94)}to{opacity:1;transform:scale(1)}}'
-            + '@keyframes wcpBarFill{from{width:0}}'
             + '</style>'
 
-            + '<div style="background:var(--secondary-bg);border-radius:24px;padding:20px 18px 16px;width:94%;max-width:420px;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(0,0,0,0.35);animation:wcpPop 0.35s cubic-bezier(0.34,1.56,0.64,1);">'
+            + '<div style="background:var(--secondary-bg);border-radius:24px;padding:20px 18px 16px;width:94%;max-width:420px;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(0,0,0,0.35);animation:wcpPop 0.35s cubic-bezier(0.34,1.56,0.64,1);">'
 
             // 顶部标题
             +   '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-shrink:0;">'
@@ -527,7 +662,7 @@
             +   '</div>'
 
             // 综合熟练度大卡片
-            +   '<div style="background:linear-gradient(135deg,rgba(139,111,212,0.12),rgba(230,162,60,0.06));border-radius:16px;padding:16px 18px;margin-bottom:16px;flex-shrink:0;border:1px solid rgba(139,111,212,0.15);">'
+            +   '<div style="background:linear-gradient(135deg,rgba(139,111,212,0.12),rgba(230,162,60,0.06));border-radius:16px;padding:16px 18px;margin-bottom:14px;flex-shrink:0;border:1px solid rgba(139,111,212,0.15);">'
             +     '<div style="display:flex;align-items:center;justify-content:space-between;">'
             +       '<div style="display:flex;align-items:center;gap:10px;">'
             +         '<div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#9d7fe0,#8b6fd4);display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 4px 12px rgba(139,111,212,0.3);">🧠</div>'
@@ -544,7 +679,10 @@
             +     '<div style="margin-top:10px;font-size:11px;color:var(--text-secondary);">已学习 ' + overallLearned + ' / ' + overallTotal + ' 项</div>'
             +   '</div>'
 
-            // 分类进度列表
+            // 学习曲线
+            +   curveHTML
+
+            // 分类列表（可点击展开）
             +   '<div style="flex:1;overflow-y:auto;padding-right:4px;">'
             +     categoryHTML
             +   '</div>'
@@ -558,6 +696,7 @@
 
         document.body.appendChild(modal);
 
+        // ---- 绑定事件 ----
         const close = function () { modal.remove(); };
         modal.querySelector('#wcp-close-btn').onclick = close;
         modal.addEventListener('click', function (e) { if (e.target === modal) close(); });
@@ -579,6 +718,21 @@
                 showNotification('已重新测评，进度归零', 'success');
             }
         };
+
+        // ★ 分类点击展开/收起
+        modal.querySelectorAll('.wcp-cat-header').forEach(function (header) {
+            header.onclick = function () {
+                const catEl = header.closest('.wcp-cat');
+                const detail = catEl.querySelector('.wcp-cat-detail');
+                const chevron = catEl.querySelector('.wcp-chevron');
+                if (!detail) return;
+                const isOpen = detail.style.display !== 'none';
+                detail.style.display = isOpen ? 'none' : 'block';
+                if (chevron) {
+                    chevron.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+                }
+            };
+        });
     };
 
     // ========== 初始化 ==========
@@ -595,14 +749,12 @@
         setTimeout(autoLearnDaily, 8000);
         setInterval(autoLearnHourly, 15 * 60 * 1000);
         setInterval(scanMessages, 10000);
-
-        // 每 5 分钟让缓存失效一次（保证用户看到的是最新的）
         setInterval(function () { _statsCache.ts = 0; }, 5 * 60 * 1000);
 
         document.addEventListener('visibilitychange', function () {
             if (document.visibilityState === 'visible') {
                 autoLearnDaily();
-                _statsCache.ts = 0; // 切回页面刷新统计
+                _statsCache.ts = 0;
             }
         });
     }
@@ -613,5 +765,5 @@
         setTimeout(init, 1500);
     }
 
-    console.log('[wordcard-progress] 字卡学习进度【终极版】已加载 ✓');
+    console.log('[wordcard-progress] 字卡学习进度【终极版 v3】已加载 ✓');
 })();
