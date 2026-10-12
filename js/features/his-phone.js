@@ -424,8 +424,8 @@
             flashKey(k);
             setDotsFilled(i + 1);
             i++;
-            // 150ms 一下（快）
-            setTimeout(partnerPress, 150);
+            // 350ms 一下（中）
+setTimeout(partnerPress, 350);
         }
         setTimeout(partnerPress, 500);
     }
