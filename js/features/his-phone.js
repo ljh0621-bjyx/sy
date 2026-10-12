@@ -1,6 +1,6 @@
 /* ============================================================
  * his-phone.js - 他的手机
- * 带锁屏密码 + 每日自动更新
+ * 带锁屏 + 每日自动更新
  * ============================================================ */
 (function () {
     'use strict';
@@ -259,6 +259,32 @@
         return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 
+    function getLockAttemptsToday() {
+        const today = todayStr();
+        try {
+            const raw = data.lockAttempts || {};
+            if (raw.date !== today) return { date: today, count: 0 };
+            return raw;
+        } catch (e) {
+            return { date: today, count: 0 };
+        }
+    }
+
+    function saveLockAttempts(obj) {
+        data.lockAttempts = obj;
+        save();
+    }
+
+    function isPhoneLockedNow() {
+        if (!data.lockedUntil) return false;
+        if (Date.now() >= data.lockedUntil) {
+            data.lockedUntil = null;
+            save();
+            return false;
+        }
+        return true;
+    }
+
     // ========== 面板 ==========
     window.openHisPhonePanel = async function () {
         const old = document.getElementById('his-phone-panel');
@@ -310,70 +336,9 @@
         renderLockScreen(modal.querySelector('#hp-screen'), modal);
     };
 
-    // ========== 锁屏（带密码） ==========
-    function getTodayPassword() {
-        const d = new Date();
-        const y = d.getFullYear();
-        const m = d.getMonth() + 1;
-        const day = d.getDate();
-
-        const seed = y * 10000 + m * 100 + day;
-        const rule = seed % 4;
-
-        if (rule === 0) {
-            return {
-                code: String(m).padStart(2, '0') + String(day).padStart(2, '0'),
-                hint: '今天的日期去掉年份'
-            };
-        }
-        if (rule === 1) {
-            return {
-                code: String(day).padStart(2, '0') + String(m).padStart(2, '0'),
-                hint: '今天的日期，月和日倒过来'
-            };
-        }
-        if (rule === 2) {
-            const sum = m + day;
-            const sumStr = (sum < 10 ? '0' : '') + sum;
-            return {
-                code: (sumStr + String(day).padStart(2, '0')).slice(-4),
-                hint: '月和日加起来，再接上今天的号数'
-            };
-        }
-        const diff = Math.max(1, day - m);
-        return {
-            code: String(diff).padStart(2, '0') + String(day).padStart(2, '0'),
-            hint: '日减去月，再接上今天的号数'
-        };
-    }
-
-    function getLockAttemptsToday() {
-        const today = todayStr();
-        try {
-            const raw = data.lockAttempts || {};
-            if (raw.date !== today) return { date: today, count: 0 };
-            return raw;
-        } catch (e) {
-            return { date: today, count: 0 };
-        }
-    }
-
-    function saveLockAttempts(obj) {
-        data.lockAttempts = obj;
-        save();
-    }
-
-    function isPhoneLockedNow() {
-        if (!data.lockedUntil) return false;
-        if (Date.now() >= data.lockedUntil) {
-            data.lockedUntil = null;
-            save();
-            return false;
-        }
-        return true;
-    }
-
+    // ========== 锁屏 ==========
     function renderLockScreen(screen, modal) {
+        // 被锁状态
         if (isPhoneLockedNow()) {
             const remainMs = data.lockedUntil - Date.now();
             const remainMin = Math.ceil(remainMs / 60000);
@@ -391,34 +356,81 @@
             return;
         }
 
+        // 30% 直接进
+        if (Math.random() < 0.30) {
+            renderHome(screen, modal);
+            return;
+        }
+
+        // 生成 4 位密码（每次都不一样）
+        const secret = String(Math.floor(Math.random() * 10000)).padStart(4, '0');
+
+        // 阶段 1：模拟他输入密码（你能看到）
         const now = new Date();
         const hh = String(now.getHours()).padStart(2, '0');
         const mm = String(now.getMinutes()).padStart(2, '0');
         const weekdays = ['星期日','星期一','星期二','星期三','星期四','星期五','星期六'];
         const dateStr = (now.getMonth() + 1) + '月' + now.getDate() + '日 ' + weekdays[now.getDay()];
 
-        const pwdInfo = getTodayPassword();
+        screen.innerHTML =
+            '<div style="min-height:440px;display:flex;flex-direction:column;padding:20px 8px 0;">'
+            +   '<div style="text-align:center;margin-top:26px;">'
+            +     '<div style="font-size:58px;font-weight:200;color:#fff;letter-spacing:-2px;line-height:1;font-family:-apple-system,sans-serif;">' + hh + ':' + mm + '</div>'
+            +     '<div style="font-size:13px;color:rgba(255,255,255,0.6);margin-top:10px;letter-spacing:1px;">' + dateStr + '</div>'
+            +   '</div>'
 
+            +   '<div style="margin:auto 14px;">'
+            +     '<div style="text-align:center;font-size:12px;color:rgba(255,255,255,0.55);margin-bottom:14px;letter-spacing:0.5px;">他正在输入密码…</div>'
+            +     '<div id="hp-watch-dots" style="display:flex;justify-content:center;gap:12px;">'
+            +       [0,1,2,3].map(function (i) {
+                    return '<div class="hp-watch-dot" data-i="' + i + '" style="width:38px;height:46px;border-radius:10px;background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;color:#fff;font-size:20px;font-weight:600;transition:all 0.15s ease;"></div>';
+                }).join('')
+            +     '</div>'
+            +   '</div>'
+
+            +   '<div style="text-align:center;font-size:10.5px;color:rgba(255,255,255,0.3);margin-top:auto;padding-bottom:24px;letter-spacing:0.5px;">'
+            +     '看清了他的密码'
+            +   '</div>'
+            + '</div>';
+
+        const dots = screen.querySelectorAll('.hp-watch-dot');
+        let i = 0;
+        function showDigit() {
+            if (!document.body.contains(screen)) return;
+            if (i >= 4) {
+                setTimeout(function () {
+                    if (!document.body.contains(screen)) return;
+                    showInputScreen(screen, modal, secret);
+                }, 1000);
+                return;
+            }
+            if (dots[i]) {
+                dots[i].textContent = secret[i];
+                dots[i].style.borderColor = 'rgba(120,200,160,0.7)';
+                dots[i].style.background = 'rgba(120,200,160,0.1)';
+            }
+            i++;
+            setTimeout(showDigit, 250);
+        }
+        setTimeout(showDigit, 400);
+    }
+
+    // 阶段 2：你来输入
+    function showInputScreen(screen, modal, secret) {
         screen.innerHTML =
             '<div style="min-height:440px;display:flex;flex-direction:column;padding:20px 8px 0;">'
 
             +   '<div style="text-align:center;margin-top:26px;">'
-            +     '<div id="hp-lock-time" style="font-size:58px;font-weight:200;color:#fff;letter-spacing:-2px;line-height:1;font-family:-apple-system,sans-serif;">' + hh + ':' + mm + '</div>'
-            +     '<div style="font-size:13px;color:rgba(255,255,255,0.6);margin-top:10px;letter-spacing:1px;">' + dateStr + '</div>'
+            +     '<div style="font-size:14px;color:rgba(255,255,255,0.7);letter-spacing:0.5px;">他刚刚输入了密码</div>'
+            +     '<div style="font-size:11.5px;color:rgba(255,255,255,0.4);margin-top:6px;">凭记忆重新输入一遍</div>'
             +   '</div>'
 
             +   '<div style="margin:36px 14px 0;">'
-            +     '<div style="text-align:center;font-size:11.5px;color:rgba(255,255,255,0.55);margin-bottom:6px;letter-spacing:0.5px;">🔒 他的手机有密码</div>'
-            +     '<div style="text-align:center;font-size:11.5px;color:#FFB84D;margin-bottom:16px;line-height:1.6;padding:0 10px;">'
-            +       '💡 提示：' + esc(pwdInfo.hint)
-            +     '</div>'
-
             +     '<div style="display:flex;justify-content:center;gap:12px;margin-bottom:18px;" id="hp-pwd-display">'
             +       [0,1,2,3].map(function (i) {
                     return '<div class="hp-pwd-dot" data-i="' + i + '" style="width:38px;height:46px;border-radius:10px;background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;color:#fff;font-size:20px;font-weight:600;transition:all 0.15s ease;"></div>';
                 }).join('')
             +     '</div>'
-
             +     '<div id="hp-pwd-msg" style="text-align:center;font-size:11.5px;color:#FF6B6B;height:16px;margin-bottom:8px;"></div>'
             +   '</div>'
 
@@ -435,15 +447,6 @@
             +   '</div>'
 
             + '</div>';
-
-        const timeEl = screen.querySelector('#hp-lock-time');
-        const timeTimer = setInterval(function () {
-            if (!document.body.contains(screen)) { clearInterval(timeTimer); return; }
-            const d = new Date();
-            const hh2 = String(d.getHours()).padStart(2, '0');
-            const mm2 = String(d.getMinutes()).padStart(2, '0');
-            if (timeEl) timeEl.textContent = hh2 + ':' + mm2;
-        }, 15000);
 
         let input = '';
         const dots = screen.querySelectorAll('.hp-pwd-dot');
@@ -465,10 +468,9 @@
 
         function tryUnlock() {
             if (input.length !== 4) return;
-            if (input === pwdInfo.code) {
+            if (input === secret) {
                 msgEl.style.color = '#7BC8A4';
                 msgEl.textContent = '✓ 密码正确';
-                clearInterval(timeTimer);
                 setTimeout(function () {
                     screen.style.transition = 'opacity 0.35s ease, transform 0.35s ease';
                     screen.style.opacity = '0';
@@ -479,7 +481,7 @@
                         screen.style.transform = '';
                         renderHome(screen, modal);
                     }, 350);
-                }, 400);
+                }, 300);
             } else {
                 const today = todayStr();
                 const a = getLockAttemptsToday();
@@ -502,7 +504,6 @@
                     data.lockAttempts = { date: today, count: 0 };
                     save();
                     setTimeout(function () {
-                        clearInterval(timeTimer);
                         screen.style.transition = 'opacity 0.4s ease';
                         screen.style.opacity = '0';
                         setTimeout(function () {
