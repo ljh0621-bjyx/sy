@@ -360,17 +360,7 @@
                         + '</div>';
                     }).join('')
                 +   '</div>'
-                +   '<div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-top:12px;width:100%;max-width:280px;">'
-                +     '<div class="hp-sim-btn" data-sim="1" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;background:#007aff;border:none;border-radius:40px;padding:11px 8px;color:#fff;font-size:12px;font-weight:500;cursor:pointer;user-select:none;min-height:48px;transition:all 0.1s ease;">'
-                +       '<span style="display:inline-flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.25);border-radius:50%;width:16px;height:16px;font-size:9px;font-weight:700;">1</span>'
-                +       '<i class="fas fa-phone-alt" style="font-size:13px;"></i>'
-                +       '<span style="font-size:11px;">中国联通1</span>'
-                +     '</div>'
-                +     '<div class="hp-sim-btn" data-sim="2" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;background:#007aff;border:none;border-radius:40px;padding:11px 8px;color:#fff;font-size:12px;font-weight:500;cursor:pointer;user-select:none;min-height:48px;transition:all 0.1s ease;">'
-                +       '<span style="display:inline-flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.25);border-radius:50%;width:16px;height:16px;font-size:9px;font-weight:700;">2</span>'
-                +       '<i class="fas fa-phone-alt" style="font-size:13px;"></i>'
-                +       '<span style="font-size:11px;">中国广电2</span>'
-                +     '</div>'
+                +   '<div style="display:flex;align-items:center;justify-content:flex-end;margin-top:12px;width:100%;max-width:280px;padding-right:4px;">'
                 +     '<div class="hp-key" data-k="⌫" style="width:44px;height:44px;border-radius:50%;background:#333;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all 0.1s ease;user-select:none;color:#fff;font-size:20px;">⌫</div>'
                 +   '</div>'
                 + '</div>'
@@ -468,17 +458,7 @@
                     + '</div>';
                 }).join('')
             +     '</div>'
-            +     '<div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-top:12px;width:100%;max-width:280px;">'
-            +       '<div class="hp-sim-btn" data-sim="1" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;background:#007aff;border:none;border-radius:40px;padding:11px 8px;color:#fff;font-size:12px;font-weight:500;cursor:pointer;user-select:none;min-height:48px;transition:all 0.1s ease;">'
-            +         '<span style="display:inline-flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.25);border-radius:50%;width:16px;height:16px;font-size:9px;font-weight:700;">1</span>'
-            +         '<i class="fas fa-phone-alt" style="font-size:13px;"></i>'
-            +         '<span style="font-size:11px;">中国联通1</span>'
-            +       '</div>'
-            +       '<div class="hp-sim-btn" data-sim="2" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;background:#007aff;border:none;border-radius:40px;padding:11px 8px;color:#fff;font-size:12px;font-weight:500;cursor:pointer;user-select:none;min-height:48px;transition:all 0.1s ease;">'
-            +         '<span style="display:inline-flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.25);border-radius:50%;width:16px;height:16px;font-size:9px;font-weight:700;">2</span>'
-            +         '<i class="fas fa-phone-alt" style="font-size:13px;"></i>'
-            +         '<span style="font-size:11px;">中国广电2</span>'
-            +       '</div>'
+            +     '<div style="display:flex;align-items:center;justify-content:flex-end;margin-top:12px;width:100%;max-width:280px;padding-right:4px;">'
             +       '<div class="hp-key" data-k="⌫" style="width:44px;height:44px;border-radius:50%;background:#333;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all 0.1s ease;user-select:none;color:#fff;font-size:20px;">⌫</div>'
             +     '</div>'
             +   '</div>'
@@ -488,7 +468,6 @@
         let input = '';
         const dots = screen.querySelectorAll('.hp-pwd-circle');
         const keys = screen.querySelectorAll('.hp-key');
-        const simBtns = screen.querySelectorAll('.hp-sim-btn');
         const msgEl = screen.querySelector('#hp-hint-msg');
 
         function refreshDots() {
@@ -581,20 +560,6 @@
                 }
                 refreshDots();
                 if (input.length === 4) setTimeout(tryUnlock, 150);
-            });
-        });
-
-        simBtns.forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                var sim = btn.dataset.sim;
-                msgEl.style.color = 'rgba(255,255,255,0.5)';
-                msgEl.textContent = '📞 拨号中…（' + (sim === '1' ? '中国联通1' : '中国广电2') + '）';
-                setTimeout(function () {
-                    if (msgEl.textContent.indexOf('拨号中') !== -1) {
-                        msgEl.style.color = 'rgba(255,255,255,0.35)';
-                        msgEl.textContent = '输错就直接被发现';
-                    }
-                }, 1200);
             });
         });
     }
