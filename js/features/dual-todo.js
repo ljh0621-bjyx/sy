@@ -1,33 +1,49 @@
 /* ============================================================
- * dual-todo.js - 双人备忘录
- * 你和对方都能写的待办清单，勾掉会留记录
+ * dual-todo.js - 双人备忘录（联动升级版）
+ * 会跟着你的聊天内容加对应的备忘录
  * ============================================================ */
 (function () {
     'use strict';
 
     const KEY = 'dualTodo_v1';
 
-    // 他自己会"加"的条目池
+    // 通用池（聊天没命中关键词时用）
     const HIS_TODOS = [
-        '记得吃药',
-        '多喝水',
-        '别熬夜了',
-        '明天降温，加件衣服',
-        '按时吃饭',
-        '出门带伞',
-        '记得充电',
-        '开会前准备一下',
-        '买点水果放冰箱',
-        '把洗的衣服晾了',
-        '给家里打个电话',
-        '早点休息'
+        '记得吃药', '多喝水', '别熬夜了', '明天降温，加件衣服',
+        '按时吃饭', '出门带伞', '记得充电', '开会前准备一下',
+        '买点水果放冰箱', '把洗的衣服晾了', '给家里打个电话', '早点休息'
+    ];
+
+    // 🎯 关键词 → 他会记的备忘（联动池）
+    const KEYWORD_TODOS = [
+        { keywords: ['嗓子', '喉咙', '咳嗽', '感冒'],        todo: '记得含片，别硬撑' },
+        { keywords: ['头疼', '头痛', '头晕', '发烧'],        todo: '早点休息，明天再说' },
+        { keywords: ['肚子', '胃疼', '吃不下'],              todo: '吃点清淡的，别饿着' },
+        { keywords: ['加班', '熬夜', '开会'],                todo: '记得吃饭，别忙到忘了' },
+        { keywords: ['考试', '面试', '答辩'],                todo: '早点睡，明天好好发挥' },
+        { keywords: ['下雨', '雨', '天气'],                  todo: '出门带伞，别淋雨' },
+        { keywords: ['冷', '降温', '变天'],                  todo: '多穿点，别冻着' },
+        { keywords: ['热', '晒', '中暑'],                    todo: '多喝水，别晒太久' },
+        { keywords: ['累', '困', '想睡'],                    todo: '早点睡，我陪你' },
+        { keywords: ['搬家', '大扫除', '收拾'],              todo: '别搬太重的东西' },
+        { keywords: ['旅行', '出差', '飞机', '高铁'],        todo: '注意行李，到了报平安' },
+        { keywords: ['心情不好', '难过', '烦', '委屈'],      todo: '别憋着，想聊就找我' },
+        { keywords: ['焦虑', '紧张', '担心'],                todo: '深呼吸，慢慢来' },
+        { keywords: ['肚子饿', '没吃饭', '饿'],              todo: '先去吃点东西' },
+        { keywords: ['生日'],                                todo: '别忘记给自己买点喜欢的' },
+        { keywords: ['眼睛', '看电脑', '屏幕'],              todo: '记得让眼睛休息一下' },
+        { keywords: ['腰', '坐太久', '颈椎'],                todo: '起来活动活动' },
+        { keywords: ['迟到', '赶不上', '堵车'],              todo: '别着急，慢慢来' },
+        { keywords: ['减肥', '节食'],                        todo: '健康最重要，别太苛刻' },
+        { keywords: ['聚会', '应酬', '喝'],                  todo: '喝酒适可而止' }
     ];
 
     // 数据
     let data = {
-        items: [],        // { id, text, owner: 'me'|'him', done: bool, createdAt, doneAt }
-        doneLog: [],      // 勾掉的记录
-        lastAddTs: 0
+        items: [],
+        doneLog: [],
+        lastAddTs: 0,
+        lastMsgCount: 0       // 用来扫新消息
     };
 
     let _loaded = false;
@@ -58,28 +74,83 @@
         return (d.getMonth() + 1) + '月' + d.getDate() + '日';
     }
 
-    // 对方随机加一条
-    function hisAddIfNeeded() {
-        // 每 4 小时最多加一条
-        const now = Date.now();
-        if (now - data.lastAddTs < 4 * 3600000) return;
-        if (Math.random() > 0.35) return;
-        const text = HIS_TODOS[Math.floor(Math.random() * HIS_TODOS.length)];
-        // 避免重复
-        if (data.items.some(function (i) { return i.text === text && !i.done; })) return;
+    function getPartnerName() {
+        return (typeof settings !== 'undefined' && settings.partnerName) ? settings.partnerName : '对方';
+    }
+
+    function tryAdd(text, reason) {
+        // 避免重复（同样文字没完成的，就不重复加）
+        if (data.items.some(function (i) { return i.text === text && !i.done; })) return false;
         data.items.push({
             id: 'him_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
             text: text,
             owner: 'him',
             done: false,
-            createdAt: now
+            createdAt: Date.now(),
+            _reason: reason || ''
         });
-        data.lastAddTs = now;
+        data.lastAddTs = Date.now();
         persist();
         if (typeof showNotification === 'function') {
-            const pName = (typeof settings !== 'undefined' && settings.partnerName) ? settings.partnerName : '对方';
-            showNotification(pName + ' 记了一条备忘：' + text, 'info', 2500);
+            showNotification(getPartnerName() + ' 记了一条备忘：' + text, 'info', 2600);
         }
+        return true;
+    }
+
+    // ========== 扫描新消息，匹配关键词 ==========
+    function scanNewMessages() {
+        try {
+            if (typeof messages === 'undefined' || !Array.isArray(messages)) return;
+            const total = messages.length;
+            if (total <= data.lastMsgCount) {
+                if (total < data.lastMsgCount) data.lastMsgCount = total;
+                return;
+            }
+            // 只处理新增的那几条（最多 5 条，避免卡）
+            const newMsgs = messages.slice(Math.max(0, total - 5));
+            data.lastMsgCount = total;
+
+            // 只处理用户发的
+            const recentUserText = newMsgs
+                .filter(function (m) { return m && m.sender === 'user' && m.text; })
+                .map(function (m) { return String(m.text); })
+                .join(' ');
+            if (!recentUserText) return;
+
+            // 4 小时冷却
+            if (Date.now() - data.lastAddTs < 4 * 3600000) return;
+
+            // 30% 概率响应（避免每条都加）
+            if (Math.random() > 0.30) return;
+
+            // 匹配关键词
+            let matched = null;
+            for (let i = 0; i < KEYWORD_TODOS.length; i++) {
+                const rule = KEYWORD_TODOS[i];
+                for (let j = 0; j < rule.keywords.length; j++) {
+                    if (recentUserText.indexOf(rule.keywords[j]) !== -1) {
+                        matched = rule;
+                        break;
+                    }
+                }
+                if (matched) break;
+            }
+            if (!matched) return;
+
+            // 加这条
+            tryAdd(matched.todo, matched.keywords[0]);
+        } catch (e) {
+            console.warn('[dual-todo] scan fail', e);
+        }
+    }
+
+    // ========== 随机加（没有命中关键词时的兜底） ==========
+    function hisAddIfNeeded() {
+        const now = Date.now();
+        if (now - data.lastAddTs < 4 * 3600000) return;
+        if (Math.random() > 0.35) return;
+        const text = HIS_TODOS[Math.floor(Math.random() * HIS_TODOS.length)];
+        tryAdd(text);
     }
 
     // ========== 打开面板 ==========
@@ -89,7 +160,7 @@
         const old = document.getElementById('dual-todo-panel');
         if (old) old.remove();
 
-        const pName = (typeof settings !== 'undefined' && settings.partnerName) ? settings.partnerName : '对方';
+        const pName = getPartnerName();
         const mName = (typeof settings !== 'undefined' && settings.myName) ? settings.myName : '我';
 
         function renderList() {
@@ -149,7 +220,7 @@
             +     '<button id="dt-close" style="background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:18px;"><i class="fas fa-times"></i></button>'
             +   '</div>'
 
-            +   '<div style="font-size:11px;color:var(--text-secondary);margin-bottom:10px;text-align:center;opacity:0.75;">你们都能加、都能勾<br><span style="opacity:0.7;">勾掉后会留在下面"一起完成的"里</span></div>'
+            +   '<div style="font-size:11px;color:var(--text-secondary);margin-bottom:10px;text-align:center;opacity:0.75;">你们都能加、都能勾<br><span style="opacity:0.7;">他会跟着你说的话记下对应的</span></div>'
 
             +   '<div id="dt-list" style="flex:1;overflow-y:auto;padding-right:2px;"></div>'
 
@@ -168,7 +239,6 @@
 
         function refresh() {
             listEl.innerHTML = renderList();
-            // 绑定勾选
             listEl.querySelectorAll('.dt-item').forEach(function (el) {
                 el.onclick = async function () {
                     const id = el.dataset.id;
@@ -229,12 +299,23 @@
         container.appendChild(item);
     }
 
+    // ========== 初始化 ==========
     async function init() {
         await load();
+        // 首次进入，把当前消息数当基线
+        try {
+            if (typeof messages !== 'undefined' && Array.isArray(messages)) {
+                if (data.lastMsgCount === 0) data.lastMsgCount = messages.length;
+            }
+        } catch (e) {}
         bindEntry();
         setTimeout(bindEntry, 1500);
-        // 对方偶尔加一条
-        setInterval(function () { hisAddIfNeeded(); }, 30 * 60 * 1000);
+
+        // 每 8 秒扫一次新消息（关键词联动）
+        setInterval(scanNewMessages, 8000);
+
+        // 每 30 分钟兜底（随机加）
+        setInterval(hisAddIfNeeded, 30 * 60 * 1000);
         setTimeout(hisAddIfNeeded, 2 * 60 * 1000);
     }
 
@@ -246,5 +327,5 @@
         setTimeout(init, 1500);
     }
 
-    console.log('[dual-todo] 双人备忘录已加载 ✓');
+    console.log('[dual-todo] 双人备忘录（联动升级版）已加载 ✓');
 })();
