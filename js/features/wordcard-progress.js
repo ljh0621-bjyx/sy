@@ -264,24 +264,10 @@
         };
     };
 
-    // ========== 入口 ==========
-    function bindEntry() {
-        const container = document.querySelector('#advanced-modal .settings-item-list');
-        if (!container) { setTimeout(bindEntry, 500); return; }
-        if (container.querySelector('#wcp-function')) return;
-
-        const item = document.createElement('div');
-        item.className = 'settings-item';
-        item.id = 'wcp-function';
-        item.style.position = 'relative';
-        item.innerHTML = '<i class="fas fa-book-open-reader"></i><span>学习进度</span>';
-        item.onclick = function () {
-            const adv = document.getElementById('advanced-modal');
-            if (adv && typeof hideModal === 'function') hideModal(adv);
-            window.openWordcardProgressPanel();
-        };
-        container.appendChild(item);
-    }
+    // ========== 入口（已移除高级功能里的入口，只保留顶栏按钮） ==========
+function bindEntry() {
+    // 不挂"高级功能"入口，只用顶栏 📚 按钮
+}
 
     // 顶栏按钮（防止高级功能入口挂不上）
     function bindTopBtn() {
