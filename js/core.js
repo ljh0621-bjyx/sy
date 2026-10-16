@@ -144,7 +144,7 @@ function loadMoreHistory() {
 
 function getDefaultSettings() {
     return {
-        partnerName: "梦角", myName: "我", myStatus: "在线", partnerStatus: "在线",
+        partnerName: "梦角", hisTimezoneOffset: -3, myName: "我", myStatus: "在线", partnerStatus: "在线",
         isDarkMode: false, colorTheme: "gold", soundEnabled: true, typingIndicatorEnabled: true,
         readReceiptsEnabled: true, replyEnabled: true, lastStatusChange: Date.now(),
         nextStatusChange: 1 + Math.random() * 7, fontSize: 16, bubbleStyle: 'standard',
