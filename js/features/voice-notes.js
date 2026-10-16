@@ -1,43 +1,27 @@
 /* ============================================================
- * voice-notes.js - 语音便签
- * 兼容版：localforage 不可用时自动降级到 localStorage
+ * voice-notes.js - 语音便签（独立版）
+ * 只用 localStorage，不依赖 localforage
  * ============================================================ */
 (function () {
     'use strict';
-
-    const KEY = 'voiceNotes_v1';
-    const SETTINGS_KEY = 'voiceNotesSettings_v1';
-
-    // ========== 安全存储层（兼容 localforage / localStorage） ==========
-    const _storage = {
-        async get(key) {
-            try {
-                if (typeof localforage !== 'undefined' && localforage && localforage.getItem) {
-                    const v = await localforage.getItem(key);
-                    if (v !== undefined && v !== null) return v;
-                }
-            } catch (e) {}
-            try {
-                const raw = localStorage.getItem(key);
-                if (raw === null) return null;
-                try { return JSON.parse(raw); } catch (e) { return raw; }
-            } catch (e) { return null; }
-        },
-        async set(key, val) {
-            try {
-                if (typeof localforage !== 'undefined' && localforage && localforage.setItem) {
-                    await localforage.setItem(key, val);
-                }
-            } catch (e) {}
-            try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {}
-        }
-    };
 
     function safeKey(name) {
         try {
             if (typeof getStorageKey === 'function') return getStorageKey(name);
         } catch (e) {}
-        return name;
+        return 'vn_' + name;
+    }
+
+    function lsGet(key) {
+        try {
+            const raw = localStorage.getItem(key);
+            if (raw === null) return null;
+            try { return JSON.parse(raw); } catch (e) { return raw; }
+        } catch (e) { return null; }
+    }
+    function lsSet(key, val) {
+        try { localStorage.setItem(key, JSON.stringify(val)); return true; }
+        catch (e) { console.warn('[voice-notes] localStorage 写入失败', e); return false; }
     }
 
     let settingsVN = {
@@ -62,21 +46,21 @@
         '好梦', '别太累了', '突然想跟你说句话', '嗯…就是想你了'
     ];
 
-    async function load() {
+    function load() {
         if (_loaded) return;
         try {
-            const s = await _storage.get(safeKey(SETTINGS_KEY));
+            const s = lsGet(safeKey('voiceNotesSettings_v1'));
             if (s && typeof s === 'object') Object.assign(settingsVN, s);
-            const d = await _storage.get(safeKey(KEY));
+            const d = lsGet(safeKey('voiceNotes_v1'));
             if (d && typeof d === 'object') Object.assign(data, d);
         } catch (e) { console.warn('[voice-notes] load fail', e); }
         _loaded = true;
     }
-    async function persist() {
-        try { await _storage.set(safeKey(KEY), data); } catch (e) {}
+    function persist() {
+        lsSet(safeKey('voiceNotes_v1'), data);
     }
-    async function persistSettings() {
-        try { await _storage.set(safeKey(SETTINGS_KEY), settingsVN); } catch (e) {}
+    function persistSettings() {
+        lsSet(safeKey('voiceNotesSettings_v1'), settingsVN);
     }
 
     function getPartnerName() {
@@ -113,6 +97,7 @@
         return (d.getMonth() + 1) + '月' + d.getDate() + '日';
     }
 
+    // ========== 生成一条 ==========
     async function writeNewNote(silent) {
         if (!settingsVN.enabled) return false;
         const text = pickText();
@@ -121,6 +106,7 @@
         const dur = estimateDuration(text);
         let voiceUrl = null;
 
+        // 尝试用 MiniMax 语音合成
         try {
             if (typeof window.playPartnerVoice === 'function') {
                 voiceUrl = await window.playPartnerVoice(text, getPartnerName());
@@ -138,7 +124,7 @@
         data.notes.unshift(note);
         if (data.notes.length > 30) data.notes = data.notes.slice(0, 30);
         data.lastWriteTime = Date.now();
-        await persist();
+        persist();
 
         if (!silent) {
             const pn = getPartnerName();
@@ -151,6 +137,7 @@
     }
     window._voiceNoteWriteNow = writeNewNote;
 
+    // ========== 调度 ==========
     function scheduleNext() {
         if (_schedulerTimer) clearTimeout(_schedulerTimer);
         if (!settingsVN.enabled) return;
@@ -165,11 +152,11 @@
         }
 
         _schedulerTimer = setTimeout(async function () {
-            await load();
+            load();
             try {
                 if (!data.initialized) {
                     data.initialized = true;
-                    await persist();
+                    persist();
                     await writeNewNote(false);
                 } else {
                     if (Math.random() * 100 < settingsVN.chance) {
@@ -181,62 +168,64 @@
         }, delayMs);
     }
 
+    // ========== 播放 ==========
     let _playingAudio = null;
 
     function playNote(note, cardEl) {
-    if (_playingAudio) {
-        try { _playingAudio.pause(); } catch (e) {}
-        _playingAudio = null;
-    }
-    try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch (e) {}
+        if (_playingAudio) {
+            try { _playingAudio.pause(); } catch (e) {}
+            _playingAudio = null;
+        }
+        try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch (e) {}
 
-    document.querySelectorAll('.vn-card.playing').forEach(el => el.classList.remove('playing'));
+        document.querySelectorAll('.vn-card.playing').forEach(el => el.classList.remove('playing'));
 
-    // 1) 有 MiniMax 语音 → 直接播
-    if (note.voiceUrl) {
-        const audio = new Audio(note.voiceUrl);
-        _playingAudio = audio;
-        if (cardEl) cardEl.classList.add('playing');
-        audio.play().catch(function () {
-            if (typeof showNotification === 'function') showNotification('播放失败', 'error');
-        });
-        audio.addEventListener('ended', function () {
-            if (cardEl) cardEl.classList.remove('playing');
-            if (_playingAudio === audio) _playingAudio = null;
-        });
-        return;
-    }
-
-    // 2) 没配 API → 用浏览器自带语音朗读
-    if (window.speechSynthesis && typeof SpeechSynthesisUtterance !== 'undefined') {
-        try {
-            const u = new SpeechSynthesisUtterance(String(note.text || ''));
-            u.lang = 'zh-CN';
-            u.rate = 1.0;
-            u.pitch = 1.0;
-            u.volume = 1.0;
+        // 1) 有 MiniMax 语音 → 直接播
+        if (note.voiceUrl) {
+            const audio = new Audio(note.voiceUrl);
+            _playingAudio = audio;
             if (cardEl) cardEl.classList.add('playing');
-            u.onend = function () {
+            audio.play().catch(function () {
+                if (typeof showNotification === 'function') showNotification('播放失败', 'error');
+            });
+            audio.addEventListener('ended', function () {
                 if (cardEl) cardEl.classList.remove('playing');
-            };
-            u.onerror = function () {
-                if (cardEl) cardEl.classList.remove('playing');
-            };
-            window.speechSynthesis.speak(u);
+                if (_playingAudio === audio) _playingAudio = null;
+            });
             return;
-        } catch (e) {
-            console.warn('[voice-notes] speechSynthesis fail', e);
+        }
+
+        // 2) 没配 API → 用浏览器自带语音朗读
+        if (window.speechSynthesis && typeof SpeechSynthesisUtterance !== 'undefined') {
+            try {
+                const u = new SpeechSynthesisUtterance(String(note.text || ''));
+                u.lang = 'zh-CN';
+                u.rate = 1.0;
+                u.pitch = 1.0;
+                u.volume = 1.0;
+                if (cardEl) cardEl.classList.add('playing');
+                u.onend = function () {
+                    if (cardEl) cardEl.classList.remove('playing');
+                };
+                u.onerror = function () {
+                    if (cardEl) cardEl.classList.remove('playing');
+                };
+                window.speechSynthesis.speak(u);
+                return;
+            } catch (e) {
+                console.warn('[voice-notes] speechSynthesis fail', e);
+            }
+        }
+
+        // 3) 都不支持 → 弹提示
+        if (typeof showNotification === 'function') {
+            showNotification('当前设备不支持语音播放', 'warning', 2500);
         }
     }
 
-    // 3) 都不支持 → 弹个提示
-    if (typeof showNotification === 'function') {
-        showNotification('当前设备不支持语音播放', 'warning', 2500);
-    }
-}
     // ========== 便签墙 ==========
-    window.openVoiceNotesPanel = async function () {
-        await load();
+    window.openVoiceNotesPanel = function () {
+        load();
         const old = document.getElementById('voice-notes-panel');
         if (old) old.remove();
 
@@ -403,8 +392,8 @@
     };
 
     // ========== 设置面板 ==========
-    window.openVoiceNotesSettings = async function () {
-        await load();
+    window.openVoiceNotesSettings = function () {
+        load();
         const old = document.getElementById('voice-notes-settings');
         if (old) old.remove();
 
@@ -497,29 +486,32 @@
         };
         chSl.oninput = function () { chVal.textContent = chSl.value + '%'; };
 
-        modal.querySelector('#vns-write-now').onclick = async function () {
-            const ok = await writeNewNote(false);
-            if (ok) {
-                close();
-                setTimeout(function () { window.openVoiceNotesPanel(); }, 100);
-            } else {
-                if (typeof showNotification === 'function') showNotification('生成失败', 'error', 1500);
-            }
+        modal.querySelector('#vns-write-now').onclick = function () {
+            writeNewNote(false).then(function (ok) {
+                if (ok) {
+                    close();
+                    setTimeout(function () { window.openVoiceNotesPanel(); }, 100);
+                } else {
+                    if (typeof showNotification === 'function') showNotification('生成失败', 'error', 1500);
+                }
+            });
         };
 
-        modal.querySelector('#vns-save').onclick = async function () {
+        modal.querySelector('#vns-save').onclick = function () {
             settingsVN.minHours = parseInt(minSl.value, 10);
             settingsVN.maxHours = parseInt(maxSl.value, 10);
             settingsVN.chance = parseInt(chSl.value, 10);
-            await persistSettings();
+            persistSettings();
             close();
             scheduleNext();
             if (typeof showNotification === 'function') showNotification('✓ 已保存', 'success', 1500);
         };
     };
 
+    // ========== 初始化 ==========
     window.initVoiceNotes = function () {
-        load().then(function () { scheduleNext(); });
+        load();
+        scheduleNext();
     };
 
     if (document.readyState === 'loading') {
@@ -528,5 +520,5 @@
         setTimeout(window.initVoiceNotes, 2000);
     }
 
-    console.log('[voice-notes] 语音便签已加载 ✓');
+    console.log('[voice-notes] 语音便签已加载 ✓（独立版）');
 })();
