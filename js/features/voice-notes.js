@@ -184,22 +184,19 @@
     let _playingAudio = null;
 
     function playNote(note, cardEl) {
-        if (!note.voiceUrl) {
-            if (typeof showNotification === 'function') {
-                showNotification('这条便签没有语音（配置语音 API 后可播放）', 'warning', 2500);
-            }
-            return;
-        }
-        if (_playingAudio) {
-            try { _playingAudio.pause(); } catch (e) {}
-            _playingAudio = null;
-        }
-        document.querySelectorAll('.vn-card.playing').forEach(el => el.classList.remove('playing'));
+    if (_playingAudio) {
+        try { _playingAudio.pause(); } catch (e) {}
+        _playingAudio = null;
+    }
+    try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch (e) {}
 
+    document.querySelectorAll('.vn-card.playing').forEach(el => el.classList.remove('playing'));
+
+    // 1) 有 MiniMax 语音 → 直接播
+    if (note.voiceUrl) {
         const audio = new Audio(note.voiceUrl);
         _playingAudio = audio;
         if (cardEl) cardEl.classList.add('playing');
-
         audio.play().catch(function () {
             if (typeof showNotification === 'function') showNotification('播放失败', 'error');
         });
@@ -207,8 +204,36 @@
             if (cardEl) cardEl.classList.remove('playing');
             if (_playingAudio === audio) _playingAudio = null;
         });
+        return;
     }
 
+    // 2) 没配 API → 用浏览器自带语音朗读
+    if (window.speechSynthesis && typeof SpeechSynthesisUtterance !== 'undefined') {
+        try {
+            const u = new SpeechSynthesisUtterance(String(note.text || ''));
+            u.lang = 'zh-CN';
+            u.rate = 1.0;
+            u.pitch = 1.0;
+            u.volume = 1.0;
+            if (cardEl) cardEl.classList.add('playing');
+            u.onend = function () {
+                if (cardEl) cardEl.classList.remove('playing');
+            };
+            u.onerror = function () {
+                if (cardEl) cardEl.classList.remove('playing');
+            };
+            window.speechSynthesis.speak(u);
+            return;
+        } catch (e) {
+            console.warn('[voice-notes] speechSynthesis fail', e);
+        }
+    }
+
+    // 3) 都不支持 → 弹个提示
+    if (typeof showNotification === 'function') {
+        showNotification('当前设备不支持语音播放', 'warning', 2500);
+    }
+}
     // ========== 便签墙 ==========
     window.openVoiceNotesPanel = async function () {
         await load();
