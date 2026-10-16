@@ -5,8 +5,6 @@
 (function () {
     'use strict';
 
-    // ========== 24 节气（公历大致日期） ==========
-    // m月 d日 ；节气日期每年浮动 1~2 天，用近似值足够
     const TERMS = [
         { m: 1,  d: 5,  name: '小寒',   line: '今天是小寒，天冷了记得加衣服。' },
         { m: 1,  d: 20, name: '大寒',   line: '大寒到了，是一年里最冷的时候。' },
@@ -45,19 +43,7 @@
         const now = new Date();
         const m = now.getMonth() + 1;
         const d = now.getDate();
-        // 允许 ±1 天误差
-        for (let off = -1; off <= 1; off++) {
-            const t = new Date(now);
-            t.setDate(t.getDate() + off);
-            const tm = t.getMonth() + 1;
-            const td = t.getDate();
-            const found = TERMS.find(x => x.m === tm && x.d === td);
-            if (found) {
-                // 只在今天或昨天/明天一天
-                if (off === 0) return found;
-            }
-        }
-        return null;
+        return TERMS.find(function (x) { return x.m === m && x.d === d; }) || null;
     }
 
     function hasShownToday() {
@@ -67,7 +53,6 @@
         try { localStorage.setItem(SHOWN_KEY, todayKey()); } catch (e) {}
     }
 
-    // ========== 弹卡片 ==========
     function showTermCard(term) {
         const old = document.getElementById('solar-term-card');
         if (old) old.remove();
@@ -80,21 +65,16 @@
 
         el.innerHTML =
             '<div style="position:relative;background:linear-gradient(160deg, rgba(var(--accent-color-rgb),0.15), rgba(var(--accent-color-rgb),0.02)), var(--secondary-bg);border-radius:24px;padding:36px 28px 28px;width:88%;max-width:340px;text-align:center;box-shadow:0 24px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(var(--accent-color-rgb),0.15);animation:stPop 0.55s cubic-bezier(0.34,1.56,0.64,1);">'
-
             +   '<div style="position:absolute;top:-30px;left:50%;transform:translateX(-50%);width:60px;height:60px;border-radius:50%;background:var(--accent-color);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(var(--accent-color-rgb),0.5), 0 0 0 6px var(--secondary-bg);">'
             +     '<i class="fas fa-leaf" style="color:#fff;font-size:22px;"></i>'
             +   '</div>'
-
             +   '<div style="font-size:11px;letter-spacing:4px;text-transform:uppercase;color:var(--accent-color);font-weight:700;margin-top:16px;margin-bottom:6px;opacity:0.8;">SOLAR TERM</div>'
             +   '<div style="font-size:26px;font-weight:800;color:var(--text-primary);margin-bottom:16px;letter-spacing:4px;">' + term.name + '</div>'
-
             +   '<div style="background:var(--primary-bg);border-radius:14px;padding:14px 16px;margin-bottom:20px;border-left:3px solid var(--accent-color);">'
             +     '<div style="font-size:11px;color:var(--accent-color);font-weight:600;letter-spacing:1px;margin-bottom:6px;text-align:left;">' + pn + ' 说</div>'
             +     '<div style="font-size:13.5px;color:var(--text-primary);line-height:1.8;text-align:left;">' + term.line + '</div>'
             +   '</div>'
-
             +   '<button id="st-close" style="width:100%;padding:12px;border:none;border-radius:12px;background:var(--accent-color);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font-family);letter-spacing:2px;">好 的</button>'
-
             + '</div>';
 
         if (!document.getElementById('st-anim-style')) {
@@ -108,19 +88,17 @@
 
         document.body.appendChild(el);
 
-        const close = () => el.remove();
+        const close = function () { el.remove(); };
         el.querySelector('#st-close').onclick = close;
-        el.addEventListener('click', (e) => { if (e.target === el) close(); });
+        el.addEventListener('click', function (e) { if (e.target === el) close(); });
 
         if (typeof playSound === 'function') {
             try { playSound('favorite'); } catch (e) {}
         }
 
-        // 15 秒后自动关
         setTimeout(function () { if (document.body.contains(el)) close(); }, 15000);
     }
 
-    // ========== 后台悄悄发一条消息（不进卡片也行） ==========
     function sendTermMessage(term) {
         const pn = (typeof settings !== 'undefined' && settings.partnerName) ? settings.partnerName : '对方';
         if (typeof addMessage === 'function') {
@@ -139,41 +117,52 @@
         }
     }
 
-    // ========== 主逻辑 ==========
+    window.testSolarTerm = function (name) {
+        const term = name
+            ? TERMS.find(function (t) { return t.name === name; })
+            : TERMS[Math.floor(Math.random() * TERMS.length)];
+        if (term) showTermCard(term);
+    };
+
     function check() {
         if (hasShownToday()) return;
         const term = getTodayTerm();
         if (!term) return;
 
         markShown();
-
-        // 打开页面 8 秒后弹卡片
         setTimeout(function () {
             showTermCard(term);
-            // 3 秒后聊天里也发一条
             setTimeout(function () { sendTermMessage(term); }, 3000);
         }, 8000);
     }
 
-    // ========== 手动测试用 ==========
-    window.testSolarTerm = function (name) {
-        const term = name
-            ? TERMS.find(t => t.name === name)
-            : TERMS[Math.floor(Math.random() * TERMS.length)];
-        if (term) showTermCard(term);
-    };
-
-    // ========== 初始化 ==========
     window.initSolarTerms = function () {
+        // 手机测试：URL 带 ?testterm=冬至 就立刻弹
+        try {
+            const params = new URLSearchParams(location.search);
+            const testName = params.get('testterm');
+            if (testName) {
+                setTimeout(function () {
+                    if (testName === '1') {
+                        window.testSolarTerm();
+                    } else {
+                        window.testSolarTerm(testName);
+                    }
+                }, 2000);
+                return;
+            }
+        } catch (e) {}
+
         check();
-        // 每小时再查一次（跨天）
         setInterval(function () {
             if (!hasShownToday()) check();
         }, 60 * 60 * 1000);
     };
 
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', function () { setTimeout(window.initSolarTerms, 3000); });
+        document.addEventListener('DOMContentLoaded', function () {
+            setTimeout(window.initSolarTerms, 3000);
+        });
     } else {
         setTimeout(window.initSolarTerms, 3000);
     }
