@@ -1,6 +1,16 @@
 <!DOCTYPE html>
 <html lang="zh-CN" data-theme="light" data-color-theme="black-white">
 <head>
+<head>
+<style>
+/* 隐藏顶栏多余图标，只留电量 */
+#piggy-bank,
+#couple-heartbeat,
+#partner-time-clock,
+#his-time-display {
+    display: none !important;
+}
+</style>
 <script>
 window.onerror = function(msg, url, line, col, err) {
     var el = document.getElementById('__err_hud__');
