@@ -1,12 +1,44 @@
 /* ============================================================
  * voice-notes.js - 语音便签
- * 他偶尔留一段短语音，便签墙可反复听
+ * 兼容版：localforage 不可用时自动降级到 localStorage
  * ============================================================ */
 (function () {
     'use strict';
 
     const KEY = 'voiceNotes_v1';
     const SETTINGS_KEY = 'voiceNotesSettings_v1';
+
+    // ========== 安全存储层（兼容 localforage / localStorage） ==========
+    const _storage = {
+        async get(key) {
+            try {
+                if (typeof localforage !== 'undefined' && localforage && localforage.getItem) {
+                    const v = await localforage.getItem(key);
+                    if (v !== undefined && v !== null) return v;
+                }
+            } catch (e) {}
+            try {
+                const raw = localStorage.getItem(key);
+                if (raw === null) return null;
+                try { return JSON.parse(raw); } catch (e) { return raw; }
+            } catch (e) { return null; }
+        },
+        async set(key, val) {
+            try {
+                if (typeof localforage !== 'undefined' && localforage && localforage.setItem) {
+                    await localforage.setItem(key, val);
+                }
+            } catch (e) {}
+            try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {}
+        }
+    };
+
+    function safeKey(name) {
+        try {
+            if (typeof getStorageKey === 'function') return getStorageKey(name);
+        } catch (e) {}
+        return name;
+    }
 
     let settingsVN = {
         enabled: true,
@@ -24,46 +56,33 @@
     let _loaded = false;
     let _schedulerTimer = null;
 
-    // 内置兜底短句（没有字卡库时用）
     const FALLBACK_TEXTS = [
-        '我在想你',
-        '今天过得好吗',
-        '晚安',
-        '早点睡',
-        '想你了',
-        '刚醒，想到你',
-        '吃饭了吗',
-        '注意保暖',
-        '我在',
-        '等我回来',
-        '好梦',
-        '别太累了',
-        '突然想跟你说句话',
-        '嗯…就是想你了'
+        '我在想你', '今天过得好吗', '晚安', '早点睡', '想你了',
+        '刚醒，想到你', '吃饭了吗', '注意保暖', '我在', '等我回来',
+        '好梦', '别太累了', '突然想跟你说句话', '嗯…就是想你了'
     ];
 
     async function load() {
         if (_loaded) return;
         try {
-            const s = await localforage.getItem(getStorageKey(SETTINGS_KEY));
+            const s = await _storage.get(safeKey(SETTINGS_KEY));
             if (s && typeof s === 'object') Object.assign(settingsVN, s);
-            const d = await localforage.getItem(getStorageKey(KEY));
+            const d = await _storage.get(safeKey(KEY));
             if (d && typeof d === 'object') Object.assign(data, d);
         } catch (e) { console.warn('[voice-notes] load fail', e); }
         _loaded = true;
     }
     async function persist() {
-        try { await localforage.setItem(getStorageKey(KEY), data); } catch (e) {}
+        try { await _storage.set(safeKey(KEY), data); } catch (e) {}
     }
     async function persistSettings() {
-        try { await localforage.setItem(getStorageKey(SETTINGS_KEY), settingsVN); } catch (e) {}
+        try { await _storage.set(safeKey(SETTINGS_KEY), settingsVN); } catch (e) {}
     }
 
     function getPartnerName() {
         return (typeof settings !== 'undefined' && settings.partnerName) ? settings.partnerName : '对方';
     }
 
-    // 从字卡库抽，没有就兜底
     function pickText() {
         try {
             const pool = (typeof customReplies !== 'undefined' && Array.isArray(customReplies))
@@ -94,7 +113,6 @@
         return (d.getMonth() + 1) + '月' + d.getDate() + '日';
     }
 
-    // ========== 写一条新便签 ==========
     async function writeNewNote(silent) {
         if (!settingsVN.enabled) return false;
         const text = pickText();
@@ -103,7 +121,6 @@
         const dur = estimateDuration(text);
         let voiceUrl = null;
 
-        // 尝试用现有语音引擎合成
         try {
             if (typeof window.playPartnerVoice === 'function') {
                 voiceUrl = await window.playPartnerVoice(text, getPartnerName());
@@ -134,14 +151,13 @@
     }
     window._voiceNoteWriteNow = writeNewNote;
 
-    // ========== 调度 ==========
     function scheduleNext() {
         if (_schedulerTimer) clearTimeout(_schedulerTimer);
         if (!settingsVN.enabled) return;
 
         let delayMs;
         if (!data.initialized) {
-            delayMs = 30 * 1000;   // 首次 30 秒后触发一条
+            delayMs = 30 * 1000;
         } else {
             const minMs = settingsVN.minHours * 3600000;
             const maxMs = settingsVN.maxHours * 3600000;
@@ -165,7 +181,6 @@
         }, delayMs);
     }
 
-    // ========== 播放 ==========
     let _playingAudio = null;
 
     function playNote(note, cardEl) {
@@ -175,12 +190,10 @@
             }
             return;
         }
-
         if (_playingAudio) {
             try { _playingAudio.pause(); } catch (e) {}
             _playingAudio = null;
         }
-
         document.querySelectorAll('.vn-card.playing').forEach(el => el.classList.remove('playing'));
 
         const audio = new Audio(note.voiceUrl);
@@ -190,7 +203,6 @@
         audio.play().catch(function () {
             if (typeof showNotification === 'function') showNotification('播放失败', 'error');
         });
-
         audio.addEventListener('ended', function () {
             if (cardEl) cardEl.classList.remove('playing');
             if (_playingAudio === audio) _playingAudio = null;
@@ -231,7 +243,6 @@
 
         modal.innerHTML =
             '<div style="background:var(--secondary-bg);border-radius:22px;padding:22px;width:94%;max-width:440px;height:88vh;max-height:720px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,0.4);">'
-
             +   '<div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:14px;border-bottom:1px solid var(--border-color);flex-shrink:0;">'
             +     '<div style="display:flex;align-items:center;gap:10px;">'
             +       '<div style="width:36px;height:36px;border-radius:11px;background:rgba(var(--accent-color-rgb),0.12);display:flex;align-items:center;justify-content:center;">'
@@ -247,11 +258,9 @@
             +       '<button id="vn-close" style="background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:18px;padding:4px 8px;"><i class="fas fa-times"></i></button>'
             +     '</div>'
             +   '</div>'
-
             +   '<div id="vn-grid" style="flex:1;overflow-y:auto;padding:14px 2px 4px;display:grid;grid-template-columns:repeat(2,1fr);gap:10px;align-content:start;">'
             +     buildCards()
             +   '</div>'
-
             + '</div>';
 
         if (!document.getElementById('vn-style')) {
@@ -359,7 +368,6 @@
             window.openVoiceNotesSettings();
         };
 
-        // 绑定每条便签
         modal.querySelectorAll('.vn-card').forEach(function (el) {
             el.onclick = function () {
                 const id = el.dataset.id;
@@ -385,7 +393,6 @@
             +     '<span style="font-size:16px;font-weight:700;color:var(--text-primary);"><i class="fas fa-cog" style="color:var(--accent-color);margin-right:8px;"></i>语音便签设置</span>'
             +     '<button id="vns-close" style="background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:18px;"><i class="fas fa-times"></i></button>'
             +   '</div>'
-
             +   '<div id="vns-toggle" style="display:flex;align-items:center;gap:12px;padding:14px;background:var(--primary-bg);border:1px solid var(--border-color);border-radius:14px;margin-bottom:12px;cursor:pointer;">'
             +     '<div style="flex:1;">'
             +       '<div style="font-size:13px;font-weight:600;color:var(--text-primary);">开启语音便签</div>'
@@ -395,7 +402,6 @@
             +       '<div id="vns-toggle-knob" style="position:absolute;width:18px;height:18px;border-radius:50%;background:#fff;top:3px;' + (settingsVN.enabled ? 'right:3px' : 'left:3px') + ';transition:all 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2);"></div>'
             +     '</div>'
             +   '</div>'
-
             +   '<div style="background:var(--primary-bg);border:1px solid var(--border-color);border-radius:14px;padding:14px;margin-bottom:12px;">'
             +     '<div style="font-size:12px;font-weight:700;color:var(--text-primary);margin-bottom:10px;">⏱ 间隔（小时）</div>'
             +     '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">'
@@ -409,7 +415,6 @@
             +       '<span id="vns-max-val" style="font-size:13px;font-weight:700;color:var(--accent-color);width:56px;text-align:right;">' + settingsVN.maxHours + '小时</span>'
             +     '</div>'
             +   '</div>'
-
             +   '<div style="background:var(--primary-bg);border:1px solid var(--border-color);border-radius:14px;padding:14px;margin-bottom:16px;">'
             +     '<div style="font-size:12px;font-weight:700;color:var(--text-primary);margin-bottom:10px;">🎯 每次触发的概率</div>'
             +     '<div style="display:flex;align-items:center;gap:12px;">'
@@ -417,11 +422,9 @@
             +       '<span id="vns-chance-val" style="font-size:14px;font-weight:700;color:var(--accent-color);width:48px;text-align:right;">' + settingsVN.chance + '%</span>'
             +     '</div>'
             +   '</div>'
-
             +   '<button id="vns-write-now" style="width:100%;padding:12px;border:1.5px solid var(--accent-color);border-radius:12px;background:none;color:var(--accent-color);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-family);margin-bottom:12px;">'
             +     '<i class="fas fa-microphone-alt"></i> 让他现在留一条'
             +   '</button>'
-
             +   '<div style="display:flex;gap:10px;">'
             +     '<button id="vns-cancel" style="flex:1;padding:11px;border:1.5px solid var(--border-color);border-radius:12px;background:none;color:var(--text-secondary);font-size:13px;cursor:pointer;font-family:var(--font-family);">取消</button>'
             +     '<button id="vns-save" style="flex:2;padding:11px;border:none;border-radius:12px;background:var(--accent-color);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font-family);">保存</button>'
@@ -490,7 +493,6 @@
         };
     };
 
-    // ========== 初始化 ==========
     window.initVoiceNotes = function () {
         load().then(function () { scheduleNext(); });
     };
