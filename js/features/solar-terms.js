@@ -165,24 +165,7 @@
 
     // ========== 初始化 ==========
     window.initSolarTerms = function () {
-    window.initSolarTerms = function () {
-    // 手机测试：URL 里带 ?testterm=冬至 就立刻弹
-    try {
-        const params = new URLSearchParams(location.search);
-        const testName = params.get('testterm');
-        if (testName) {
-            setTimeout(function () {
-                if (testName === '1') {
-                    window.testSolarTerm();
-                } else {
-                    window.testSolarTerm(testName);
-                }
-            }, 2000);
-            return;
-        }
-    } catch (e) {}
-
-    check();
+        check();
         // 每小时再查一次（跨天）
         setInterval(function () {
             if (!hasShownToday()) check();
