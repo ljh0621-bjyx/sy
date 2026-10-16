@@ -14,8 +14,10 @@ window.updateAvatar = window.updateAvatar || function(element, src) {
     'use strict';
 
     const KEY = getStorageKey('avatarExchangeData_v1');
-const CHANCE_KEY = getStorageKey('avatarExchangeChance_v1');      // 他换我头像的概率
-const MY_CHANCE_KEY = getStorageKey('myAvatarExchangeChance_v1'); // 我换他头像时他同意的概率
+const CHANCE_KEY = getStorageKey('avatarExchangeChance_v1');
+const MY_CHANCE_KEY = getStorageKey('myAvatarExchangeChance_v1');
+const SELF_CHANCE_KEY = getStorageKey('avatarSelfChangeChance_v1');
+const MINE_BY_ME_KEY = getStorageKey('avatarMineByMeChance_v1');
     let exchangeData = { myAvatar: null, partnerAvatar: null, pendingRequest: null, history: [] };
 
     async function loadData() {
@@ -34,13 +36,36 @@ const MY_CHANCE_KEY = getStorageKey('myAvatarExchangeChance_v1'); // 我换他�
     //  概率读取
     // ============================================================
     function getPartnerChance() {
-        const v = parseInt(localStorage.getItem(CHANCE_KEY), 10);
-        return isNaN(v) ? 25 : Math.max(0, Math.min(100, v));
-    }
-    function getMyAcceptChance() {
-        const v = parseInt(localStorage.getItem(MY_CHANCE_KEY), 10);
-        return isNaN(v) ? 70 : Math.max(0, Math.min(100, v));
-    }
+    const v = parseInt(localStorage.getItem(CHANCE_KEY), 10);
+    return isNaN(v) ? 25 : Math.max(0, Math.min(100, v));
+}
+function setPartnerChance(v) {
+    localStorage.setItem(CHANCE_KEY, String(Math.max(0, Math.min(100, v))));
+}
+
+function getMyAcceptChance() {
+    const v = parseInt(localStorage.getItem(MY_CHANCE_KEY), 10);
+    return isNaN(v) ? 70 : Math.max(0, Math.min(100, v));
+}
+function setMyAcceptChance(v) {
+    localStorage.setItem(MY_CHANCE_KEY, String(Math.max(0, Math.min(100, v))));
+}
+
+function getSelfChance() {
+    const v = parseInt(localStorage.getItem(SELF_CHANCE_KEY), 10);
+    return isNaN(v) ? 35 : Math.max(0, Math.min(100, v));
+}
+function setSelfChance(v) {
+    localStorage.setItem(SELF_CHANCE_KEY, String(Math.max(0, Math.min(100, v))));
+}
+
+function getMineByMeChance() {
+    const v = parseInt(localStorage.getItem(MINE_BY_ME_KEY), 10);
+    return isNaN(v) ? 100 : Math.max(0, Math.min(100, v));
+}
+function setMineByMeChance(v) {
+    localStorage.setItem(MINE_BY_ME_KEY, String(Math.max(0, Math.min(100, v))));
+}
 
     // ============================================================
     //  他主动请求换我的头像（他给你发请求）
@@ -187,87 +212,124 @@ const MY_CHANCE_KEY = getStorageKey('myAvatarExchangeChance_v1'); // 我换他�
     //  概率设置面板（两个滑块）
     // ============================================================
     window.openAvatarExchangeChancePanel = function () {
-        const old = document.getElementById('avatar-exchange-chance-panel');
-        if (old) old.remove();
+    const old = document.getElementById('avatar-exchange-chance-panel');
+    if (old) old.remove();
 
-        let partnerChance = getPartnerChance();
-        let myAcceptChance = getMyAcceptChance();
+    let partnerChance = getPartnerChance();
+    let myAcceptChance = getMyAcceptChance();
+    let selfChance = getSelfChance();
+    let mineByMeChance = getMineByMeChance();
 
-        const modal = document.createElement('div');
-        modal.id = 'avatar-exchange-chance-panel';
-        modal.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.6);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;';
-        modal.innerHTML = `
-            <div style="background:var(--secondary-bg);border-radius:20px;padding:24px;width:90%;max-width:380px;box-shadow:0 24px 80px rgba(0,0,0,0.4);">
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-                    <span style="font-size:16px;font-weight:700;color:var(--text-primary);">
-                        <i class="fas fa-exchange-alt" style="color:var(--accent-color);margin-right:8px;"></i>头像交换概率
-                    </span>
-                    <button id="aec-close" style="background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:18px;"><i class="fas fa-times"></i></button>
+    const modal = document.createElement('div');
+    modal.id = 'avatar-exchange-chance-panel';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.6);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;';
+
+    modal.innerHTML = `
+        <div style="background:var(--secondary-bg);border-radius:20px;padding:24px;width:92%;max-width:420px;max-height:88vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,0.4);">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+                <span style="font-size:16px;font-weight:700;color:var(--text-primary);">
+                    <i class="fas fa-exchange-alt" style="color:var(--accent-color);margin-right:8px;"></i>头像交换概率
+                </span>
+                <button id="aec-close" style="background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:18px;"><i class="fas fa-times"></i></button>
+            </div>
+
+            <div style="font-size:12px;color:var(--text-secondary);margin-bottom:18px;line-height:1.6;">
+                调整对方主动换头像的概率，以及你主动换他头像时他的同意率。
+            </div>
+
+            <!-- 滑块 1：他换我头像 -->
+            <div style="background:var(--primary-bg);border:1px solid var(--border-color);border-radius:14px;padding:14px;margin-bottom:12px;">
+                <div style="font-size:12px;font-weight:700;color:var(--text-primary);margin-bottom:4px;">
+                    <i class="fas fa-arrow-right" style="color:var(--accent-color);"></i> 他换我头像
                 </div>
-
-                <div style="font-size:12px;color:var(--text-secondary);margin-bottom:18px;line-height:1.6;">
-                    他换你头像时可以同意/拒绝；你换他头像时他也会同意/拒绝。
+                <div style="font-size:11px;color:var(--text-secondary);margin-bottom:10px;">他每隔一段时间会从"我的头像池"挑一张换到你头上</div>
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <input type="range" id="aec-partner-slider" min="0" max="100" step="1" value="${partnerChance}" style="flex:1;accent-color:var(--accent-color);">
+                    <span id="aec-partner-val" style="font-size:14px;font-weight:700;color:var(--accent-color);width:48px;text-align:right;">${partnerChance}%</span>
                 </div>
+            </div>
 
-                <!-- 滑块 1：他换我头像的概率 -->
-                <div style="background:var(--primary-bg);border:1px solid var(--border-color);border-radius:14px;padding:14px;margin-bottom:12px;">
-                    <div style="font-size:12px;font-weight:700;color:var(--text-primary);margin-bottom:4px;">
-                        <i class="fas fa-arrow-right" style="color:var(--accent-color);"></i> 他主动发起请求
-                    </div>
-                    <div style="font-size:11px;color:var(--text-secondary);margin-bottom:10px;">他每隔 20~60 分钟触发一次，概率达到才会向你发请求</div>
-                    <div style="display:flex;align-items:center;gap:12px;">
-                        <input type="range" id="aec-partner-slider" min="0" max="100" step="1" value="${partnerChance}" style="flex:1;accent-color:var(--accent-color);">
-                        <span id="aec-partner-val" style="font-size:14px;font-weight:700;color:var(--accent-color);width:48px;text-align:right;">${partnerChance}%</span>
-                    </div>
+            <!-- 滑块 2：他换他自己的头像 -->
+            <div style="background:var(--primary-bg);border:1px solid var(--border-color);border-radius:14px;padding:14px;margin-bottom:12px;">
+                <div style="font-size:12px;font-weight:700;color:var(--text-primary);margin-bottom:4px;">
+                    <i class="fas fa-user-circle" style="color:var(--accent-color);"></i> 他换自己的头像
                 </div>
-
-                <!-- 滑块 2：我换他头像时他同意的概率 -->
-                <div style="background:var(--primary-bg);border:1px solid var(--border-color);border-radius:14px;padding:14px;margin-bottom:18px;">
-                    <div style="font-size:12px;font-weight:700;color:var(--text-primary);margin-bottom:4px;">
-                        <i class="fas fa-arrow-left" style="color:var(--accent-color);"></i> 我发起请求时他的同意率
-                    </div>
-                    <div style="font-size:11px;color:var(--text-secondary);margin-bottom:10px;">每次你点他的头像池，他按此概率决定同意或拒绝</div>
-                    <div style="display:flex;align-items:center;gap:12px;">
-                        <input type="range" id="aec-my-slider" min="0" max="100" step="1" value="${myAcceptChance}" style="flex:1;accent-color:var(--accent-color);">
-                        <span id="aec-my-val" style="font-size:14px;font-weight:700;color:var(--accent-color);width:48px;text-align:right;">${myAcceptChance}%</span>
-                    </div>
+                <div style="font-size:11px;color:var(--text-secondary);margin-bottom:10px;">他每隔一段时间会从"TA 的头像池"挑一张换到自己头上</div>
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <input type="range" id="aec-self-slider" min="0" max="100" step="1" value="${selfChance}" style="flex:1;accent-color:var(--accent-color);">
+                    <span id="aec-self-val" style="font-size:14px;font-weight:700;color:var(--accent-color);width:48px;text-align:right;">${selfChance}%</span>
                 </div>
+            </div>
 
-                <div style="display:flex;gap:10px;">
-                    <button id="aec-reset" style="flex:1;padding:11px;border:1.5px solid var(--border-color);border-radius:12px;background:none;color:var(--text-secondary);font-size:13px;cursor:pointer;font-family:var(--font-family);">恢复默认</button>
-                    <button id="aec-save" style="flex:2;padding:11px;border:none;border-radius:12px;background:var(--accent-color);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font-family);">保存</button>
+            <!-- 滑块 3：我换他头像时他的同意率 -->
+            <div style="background:var(--primary-bg);border:1px solid var(--border-color);border-radius:14px;padding:14px;margin-bottom:12px;">
+                <div style="font-size:12px;font-weight:700;color:var(--text-primary);margin-bottom:4px;">
+                    <i class="fas fa-arrow-left" style="color:var(--accent-color);"></i> 我换他头像时他的同意率
                 </div>
-            </div>`;
-        document.body.appendChild(modal);
+                <div style="font-size:11px;color:var(--text-secondary);margin-bottom:10px;">你点"TA 的头像池"里的图 → 他按此概率决定同意或拒绝</div>
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <input type="range" id="aec-my-slider" min="0" max="100" step="1" value="${myAcceptChance}" style="flex:1;accent-color:var(--accent-color);">
+                    <span id="aec-my-val" style="font-size:14px;font-weight:700;color:var(--accent-color);width:48px;text-align:right;">${myAcceptChance}%</span>
+                </div>
+            </div>
 
-        const partnerSlider = modal.querySelector('#aec-partner-slider');
-        const partnerVal = modal.querySelector('#aec-partner-val');
-        const mySlider = modal.querySelector('#aec-my-slider');
-        const myVal = modal.querySelector('#aec-my-val');
+            <!-- 滑块 4：我换自己头像时他的同意率（可选） -->
+            <div style="background:var(--primary-bg);border:1px solid var(--border-color);border-radius:14px;padding:14px;margin-bottom:18px;">
+                <div style="font-size:12px;font-weight:700;color:var(--text-primary);margin-bottom:4px;">
+                    <i class="fas fa-user" style="color:var(--accent-color);"></i> 我换自己头像时他的同意率
+                </div>
+                <div style="font-size:11px;color:var(--text-secondary);margin-bottom:10px;">你从"我的头像池"点一张换自己 → 他按此概率决定同意或拒绝</div>
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <input type="range" id="aec-mine-by-me-slider" min="0" max="100" step="1" value="${mineByMeChance}" style="flex:1;accent-color:var(--accent-color);">
+                    <span id="aec-mine-by-me-val" style="font-size:14px;font-weight:700;color:var(--accent-color);width:48px;text-align:right;">${mineByMeChance}%</span>
+                </div>
+            </div>
 
-        partnerSlider.oninput = () => { partnerVal.textContent = partnerSlider.value + '%'; };
-        mySlider.oninput = () => { myVal.textContent = mySlider.value + '%'; };
+            <div style="display:flex;gap:10px;">
+                <button id="aec-reset" style="flex:1;padding:11px;border:1.5px solid var(--border-color);border-radius:12px;background:none;color:var(--text-secondary);font-size:13px;cursor:pointer;font-family:var(--font-family);">恢复默认</button>
+                <button id="aec-save" style="flex:2;padding:11px;border:none;border-radius:12px;background:var(--accent-color);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font-family);">保存</button>
+            </div>
+        </div>`;
+    document.body.appendChild(modal);
 
-        const close = () => modal.remove();
-        modal.querySelector('#aec-close').onclick = close;
-        modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+    const $ = (id) => modal.querySelector(id);
 
-        modal.querySelector('#aec-reset').onclick = () => {
-            partnerSlider.value = 25;
-            partnerVal.textContent = '25%';
-            mySlider.value = 70;
-            myVal.textContent = '70%';
-        };
+    const pSlider = $('#aec-partner-slider');
+    const pVal = $('#aec-partner-val');
+    const sSlider = $('#aec-self-slider');
+    const sVal = $('#aec-self-val');
+    const mySlider = $('#aec-my-slider');
+    const myVal = $('#aec-my-val');
+    const mbmSlider = $('#aec-mine-by-me-slider');
+    const mbmVal = $('#aec-mine-by-me-val');
 
-        modal.querySelector('#aec-save').onclick = () => {
-            localStorage.setItem(CHANCE_KEY, partnerSlider.value);
-            localStorage.setItem(MY_CHANCE_KEY, mySlider.value);
-            close();
-            if (typeof showNotification === 'function') {
-                showNotification('✓ 头像交换概率已保存', 'success', 1800);
-            }
-        };
+    pSlider.oninput = () => { pVal.textContent = pSlider.value + '%'; };
+    sSlider.oninput = () => { sVal.textContent = sSlider.value + '%'; };
+    mySlider.oninput = () => { myVal.textContent = mySlider.value + '%'; };
+    mbmSlider.oninput = () => { mbmVal.textContent = mbmSlider.value + '%'; };
+
+    const close = () => modal.remove();
+    $('#aec-close').onclick = close;
+    modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+
+    $('#aec-reset').onclick = () => {
+        pSlider.value = 25;   pVal.textContent   = '25%';
+        sSlider.value = 35;   sVal.textContent   = '35%';
+        mySlider.value = 70;  myVal.textContent  = '70%';
+        mbmSlider.value = 100; mbmVal.textContent = '100%';
     };
+
+    $('#aec-save').onclick = () => {
+        setPartnerChance(parseInt(pSlider.value, 10));
+        setSelfChance(parseInt(sSlider.value, 10));
+        setMyAcceptChance(parseInt(mySlider.value, 10));
+        setMineByMeChance(parseInt(mbmSlider.value, 10));
+        close();
+        if (typeof showNotification === 'function') {
+            showNotification('✓ 头像交换概率已保存', 'success', 1800);
+        }
+    };
+};
 
     // ============================================================
     //  定时调度：他每隔 20~60 分钟按概率触发一次请求
