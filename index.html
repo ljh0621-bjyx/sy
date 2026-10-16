@@ -1564,6 +1564,9 @@ window.addEventListener('unhandledrejection', function(e) {
      <div class="settings-item" onclick="alert('函数类型：' + typeof window.openHapticsSettings); window.openHapticsSettings && window.openHapticsSettings();">
     <i class="fas fa-mobile-alt"></i><span>触觉消息</span>
 </div>
+<div class="settings-item" onclick="window.openVoiceNotesPanel && window.openVoiceNotesPanel()">
+    <i class="fas fa-microphone-alt"></i><span>语音便签</span>
+</div>
                     <div class="settings-item" id="stats-function">
                         <i class="fas fa-chart-bar"></i><span>消息统计</span>
                     </div>
@@ -2543,6 +2546,7 @@ window.addEventListener('unhandledrejection', function(e) {
 <script src="js/features/avatar-partner-self-change.js"></script>
 <script src="js/features/timezone.js"></script>
 <script src="js/features/haptics.js"></script>
+<script src="js/features/voice-notes.js"></script>
 <script src="js/features/battery.js"></script>
     <script src="js/features/word-cards.js"></script>
     <script src="js/features/word-card-compose.js"></script>
