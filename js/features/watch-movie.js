@@ -40,34 +40,52 @@
     }
 
     async function load() {
+    var saved = null;
+    // 1. 优先从 localforage 读
+    try {
+        if (typeof localforage !== 'undefined' && localforage.getItem) {
+            saved = await localforage.getItem(getWMKey());
+        }
+    } catch (e) {}
+    // 2. 读不到就尝试从 localStorage 读
+    if (!saved) {
         try {
-            var saved = await localforage.getItem(getWMKey());
-            if (saved) {
-                data.videos = (saved.videos || []).map(function (v) {
-                    if (v.type === 'local') return { id: v.id, name: v.name, type: 'local', url: '' };
-                    return v;
-                });
-                data.chatHistory = saved.chatHistory || [];
-                data.currentId = null;
-            } else {
-                data.videos = []; data.currentId = null; data.chatHistory = [];
-            }
-        } catch (e) { console.warn('[watch-movie] load fail', e); }
+            var raw = localStorage.getItem(getWMKey());
+            if (raw) saved = JSON.parse(raw);
+        } catch (e) {}
     }
 
-    async function save() {
-        try {
-            var safe = {
-                videos: data.videos.map(function (v) {
-                    if (v.type === 'local') return { id: v.id, name: v.name, type: 'local' };
-                    return { id: v.id, name: v.name, type: v.type, url: v.url, bvid: v.bvid };
-                }),
-                currentId: null,
-                chatHistory: data.chatHistory.slice(-200)
-            };
-            await localforage.setItem(getWMKey(), safe);
-        } catch (e) { console.warn('[watch-movie] save fail', e); }
+    if (saved) {
+        data.videos = (saved.videos || []).map(function (v) {
+            // 本地视频因为 blob 链接刷新后会失效，强制清空 url 防止报错
+            if (v.type === 'local') return { id: v.id, name: v.name, type: 'local', url: '' };
+            return v;
+        });
+        data.chatHistory = saved.chatHistory || [];
+        data.currentId = null;
+    } else {
+        data.videos = [];
+        data.currentId = null;
+        data.chatHistory = [];
     }
+}
+
+async function save() {
+    try {
+        var safe = {
+            videos: data.videos.map(function (v) {
+                // 保存时丢弃本地视频的 blob 链接，因为存了也没用
+                if (v.type === 'local') return { id: v.id, name: v.name, type: 'local' };
+                return { id: v.id, name: v.name, type: v.type, url: v.url, bvid: v.bvid };
+            }),
+            currentId: null,
+            chatHistory: data.chatHistory.slice(-200)
+        };
+        // 双保险：同时写 localforage 和 localStorage
+        try { if (typeof localforage !== 'undefined' && localforage.setItem) await localforage.setItem(getWMKey(), safe); } catch (e) {}
+        try { localStorage.setItem(getWMKey(), JSON.stringify(safe)); } catch (e) {}
+    } catch (e) { console.warn('[watch-movie] save fail', e); }
+}
 
     function escapeHtml(s) {
         return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -408,19 +426,23 @@
         });
     }
 
-    window.openWatchMoviePanel = function () {
-        if (panelEl) return;
-        panelEl = document.createElement('div');
-        panelEl.id = 'watch-movie-panel';
-        panelEl.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.6);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;';
-        var card = document.createElement('div');
-        card.id = 'watch-movie-card';
-        card.style.cssText = 'background:var(--secondary-bg);border-radius:20px;width:94%;max-width:460px;height:88vh;max-height:760px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,0.4);';
-        panelEl.appendChild(card);
-        panelEl.addEventListener('click', function (e) { if (e.target === panelEl) window.closeWatchMoviePanel(); });
-        document.body.appendChild(panelEl);
-        renderPanel();
-    };
+    window.openWatchMoviePanel = async function () {
+    if (panelEl) return;
+    
+    // ★ 关键：每次打开前重新读一下保存的数据
+    await load(); 
+
+    panelEl = document.createElement('div');
+    panelEl.id = 'watch-movie-panel';
+    panelEl.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.6);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;';
+    var card = document.createElement('div');
+    card.id = 'watch-movie-card';
+    card.style.cssText = 'background:var(--secondary-bg);border-radius:20px;width:94%;max-width:460px;height:88vh;max-height:760px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,0.4);';
+    panelEl.appendChild(card);
+    panelEl.addEventListener('click', function (e) { if (e.target === panelEl) window.closeWatchMoviePanel(); });
+    document.body.appendChild(panelEl);
+    renderPanel();
+};
 
     window.closeWatchMoviePanel = function () {
         if (panelEl) { panelEl.remove(); panelEl = null; }

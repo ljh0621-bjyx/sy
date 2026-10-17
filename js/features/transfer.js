@@ -1,5 +1,5 @@
 /* ============================================================
- * transfer.js - 转账（微信式可点击卡片）
+ * transfer.js - 转账（双向选择：收款 / 退回）
  * ============================================================ */
 (function () {
     'use strict';
@@ -43,7 +43,7 @@
 
     function fmtMoney(n) { return '¥' + Number(n).toFixed(2); }
 
-    // ========== 渲染转账卡片（HTML） ==========
+    // ========== 渲染转账卡片 ==========
     window.renderTransferCardHTML = function (msg) {
         const t = msg.transfer;
         if (!t) return '';
@@ -53,21 +53,31 @@
 
         // 状态文案
         let statusText = '';
+        let isFinished = false;
+
         if (t.status === 'received') {
-            statusText = isMe ? '已收款 ✓' : '已收款 ✓';
-        } else if (isMe) {
-            statusText = '待对方收款';
-        } else {
-            statusText = '点击收款 →';
+            statusText = '已收款 ✓';
+            isFinished = true;
+        } else if (t.status === 'rejected') {
+            statusText = '已退回 ↩';
+            isFinished = true;
+        } else if (t.status === 'pending') {
+            statusText = isMe ? '待对方接收' : '点击收款或退回';
         }
 
-        // 我发的：橙色渐变；对方发的：白色卡片 + 橙色文字
-        const cardBg = isMe
-            ? 'background:linear-gradient(135deg,#FA9D3B 0%,#F58220 100%);color:#fff;box-shadow:0 4px 16px rgba(245,130,32,0.35);'
-            : 'background:#FFF5EB;color:#F58220;border:1px solid rgba(245,130,32,0.3);box-shadow:0 2px 10px rgba(245,130,32,0.12);';
-
-        const subColor = isMe ? 'rgba(255,255,255,0.75)' : 'rgba(245,130,32,0.65)';
-        const noteColor = isMe ? 'rgba(255,255,255,0.85)' : 'rgba(120,80,40,0.7)';
+        // 样式：已退回的卡片变灰
+        let cardBg, subColor, noteColor;
+        if (t.status === 'rejected') {
+            cardBg = 'background:#f0f0f0;color:#999;border:1px solid #e0e0e0;box-shadow:none;';
+            subColor = '#aaa';
+            noteColor = '#aaa';
+        } else {
+            cardBg = isMe
+                ? 'background:linear-gradient(135deg,#FA9D3B 0%,#F58220 100%);color:#fff;box-shadow:0 4px 16px rgba(245,130,32,0.35);'
+                : 'background:#FFF5EB;color:#F58220;border:1px solid rgba(245,130,32,0.3);box-shadow:0 2px 10px rgba(245,130,32,0.12);';
+            subColor = isMe ? 'rgba(255,255,255,0.75)' : 'rgba(245,130,32,0.65)';
+            noteColor = isMe ? 'rgba(255,255,255,0.85)' : 'rgba(120,80,40,0.7)';
+        }
 
         return '<div class="transfer-card" '
             + 'data-msg-id="' + msg.id + '" '
@@ -75,7 +85,7 @@
             + 'style="'
             +   'display:flex;flex-direction:column;gap:6px;'
             +   'padding:14px 16px;border-radius:14px;'
-            +   'min-width:190px;max-width:240px;cursor:pointer;'
+            +   'min-width:190px;max-width:240px;cursor:' + (isFinished ? 'default' : 'pointer') + ';'
             +   'user-select:none;-webkit-tap-highlight-color:transparent;'
             +   'transition:transform 0.15s ease;'
             +   cardBg
@@ -86,7 +96,7 @@
             +   '</div>'
             +   '<div style="font-size:24px;font-weight:800;font-family:Georgia,serif;letter-spacing:0.5px;">¥' + amount + '</div>'
             +   (note ? '<div style="font-size:11.5px;line-height:1.5;color:' + noteColor + ';">' + note + '</div>' : '')
-            +   '<div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;margin-top:6px;padding-top:6px;border-top:1px dashed ' + (isMe ? 'rgba(255,255,255,0.25)' : 'rgba(245,130,32,0.2)') + ';">'
+            +   '<div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;margin-top:6px;padding-top:6px;border-top:1px dashed ' + (isMe && t.status !== 'rejected' ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.1)') + ';">'
             +     '<span style="color:' + subColor + ';font-weight:600;">' + statusText + '</span>'
             +     '<span style="opacity:0.55;color:' + subColor + ';">微信转账</span>'
             +   '</div>'
@@ -101,54 +111,92 @@
         const isMe = msg.sender === 'user';
         const t = msg.transfer;
 
-        // 已收款 → 提示
-        if (t.status === 'received') {
-            if (typeof showNotification === 'function') showNotification('这笔转账已完成', 'info', 1500);
+        // 已处理过
+        if (t.status === 'received' || t.status === 'rejected') {
+            if (typeof showNotification === 'function') showNotification('这笔转账已处理完毕', 'info', 1500);
             return;
         }
 
-        // 我发出的 → 等对方收
+        // 我发出的 → 等对方处理
         if (isMe) {
-            if (typeof showNotification === 'function') showNotification('等待对方收款中…', 'info', 1500);
+            if (typeof showNotification === 'function') showNotification('等待对方接收中…', 'info', 1500);
             return;
         }
 
-        // 对方发来的 → 我收款
-        if (!confirm('确认收款 ' + fmtMoney(t.amount) + ' ？\n备注：' + (t.note || '无'))) return;
+        // 对方发来的 → 我选择收款或退回
+        showTransferActionSheet(msg);
+    };
 
-        t.status = 'received';
+    // 选择操作弹窗
+    function showTransferActionSheet(msg) {
+        const t = msg.transfer;
+        const amount = fmtMoney(t.amount);
+        const old = document.getElementById('transfer-action-sheet');
+        if (old) old.remove();
 
-        // 增加我的余额
-        data.myBalance = (data.myBalance || 0) + Number(t.amount);
+        const sheet = document.createElement('div');
+        sheet.id = 'transfer-action-sheet';
+        sheet.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.6);backdrop-filter:blur(10px);display:flex;align-items:flex-end;justify-content:center;animation:fadeIn 0.2s ease;';
+
+        sheet.innerHTML = `
+            <div style="background:var(--secondary-bg);border-radius:24px 24px 0 0;padding:24px;width:100%;max-width:400px;box-shadow:0 -10px 40px rgba(0,0,0,0.2);animation:slideUp 0.3s ease;">
+                <div style="text-align:center;margin-bottom:20px;">
+                    <div style="font-size:14px;color:var(--text-secondary);margin-bottom:8px;">收到转账</div>
+                    <div style="font-size:32px;font-weight:800;color:#F58220;">${amount}</div>
+                    <div style="font-size:12px;color:var(--text-secondary);margin-top:8px;">备注：${t.note || '无'}</div>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:10px;">
+                    <button onclick="window._acceptTransfer('${msg.id}')" style="width:100%;padding:14px;border:none;border-radius:14px;background:#F58220;color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:var(--font-family);box-shadow:0 4px 12px rgba(245,130,32,0.3);">确认收款</button>
+                    <button onclick="window._rejectTransfer('${msg.id}')" style="width:100%;padding:14px;border:none;border-radius:14px;background:var(--primary-bg);color:var(--text-secondary);font-size:15px;font-weight:600;cursor:pointer;font-family:var(--font-family);">退回</button>
+                    <button onclick="document.getElementById('transfer-action-sheet').remove()" style="width:100%;padding:14px;border:none;border-radius:14px;background:none;color:var(--text-secondary);font-size:13px;cursor:pointer;font-family:var(--font-family);">取消</button>
+                </div>
+            </div>
+        `;
+        
+        // 补充动画样式
+        if (!document.getElementById('transfer-anim-style')) {
+            const style = document.createElement('style');
+            style.id = 'transfer-anim-style';
+            style.textContent = `
+                @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+                @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+            `;
+            document.head.appendChild(style);
+        }
+
+        document.body.appendChild(sheet);
+        sheet.addEventListener('click', (e) => { if (e.target === sheet) sheet.remove(); });
+    }
+
+    // ========== 处理收款 ==========
+    window._acceptTransfer = async function (msgId) {
+        document.getElementById('transfer-action-sheet')?.remove();
+        const msg = (typeof messages !== 'undefined' ? messages : []).find(m => String(m.id) === String(msgId));
+        if (!msg || !msg.transfer) return;
+
+        msg.transfer.status = 'received';
+        data.myBalance = (data.myBalance || 0) + Number(msg.transfer.amount);
         await save();
 
         if (typeof throttledSaveData === 'function') throttledSaveData();
-        else if (typeof saveData === 'function') { try { await saveData(); } catch (e) {} }
-
         if (typeof renderMessages === 'function') renderMessages(true);
         if (typeof playSound === 'function') playSound('favorite');
-        if (typeof showNotification === 'function') showNotification('✓ 已收款 ' + fmtMoney(t.amount), 'success', 2000);
+        if (typeof showNotification === 'function') showNotification('✓ 已收款 ' + fmtMoney(msg.transfer.amount), 'success', 2000);
+    };
 
-        // 对方说一句话
-        setTimeout(function () {
-            const pool = (typeof customReplies !== 'undefined' && Array.isArray(customReplies))
-                ? customReplies.filter(function (x) { return x && String(x).trim(); })
-                : [];
-            if (pool.length === 0) return;
-            const reply = pool[Math.floor(Math.random() * pool.length)];
-            const pn = (typeof settings !== 'undefined' && settings.partnerName) ? settings.partnerName : '对方';
-            if (typeof addMessage === 'function') {
-                addMessage({
-                    id: Date.now() + Math.floor(Math.random() * 1000),
-                    sender: pn,
-                    text: reply,
-                    timestamp: new Date(),
-                    status: 'received',
-                    type: 'normal'
-                });
-            }
-            if (typeof playSound === 'function') playSound('message');
-        }, 1500 + Math.random() * 1500);
+    // ========== 处理退回 ==========
+    window._rejectTransfer = async function (msgId) {
+        document.getElementById('transfer-action-sheet')?.remove();
+        const msg = (typeof messages !== 'undefined' ? messages : []).find(m => String(m.id) === String(msgId));
+        if (!msg || !msg.transfer) return;
+
+        msg.transfer.status = 'rejected';
+        await save();
+
+        if (typeof throttledSaveData === 'function') throttledSaveData();
+        if (typeof renderMessages === 'function') renderMessages(true);
+        if (typeof playSound === 'function') playSound('error');
+        if (typeof showNotification === 'function') showNotification('已退回转账', 'info', 2000);
     };
 
     // ========== 发送转账消息 ==========
@@ -169,7 +217,7 @@
             }
         });
 
-        // 我发出的转账：几秒后对方自动收款
+        // 我发出的转账：几秒后对方自动处理（80%收款，20%退回）
         if (sender === 'user') {
             const delay = 3000 + Math.random() * 4000;
             setTimeout(async () => {
@@ -177,22 +225,36 @@
                 if (!target || !target.transfer) return;
                 if (target.transfer.status !== 'pending') return;
 
-                target.transfer.status = 'received';
-                data.partnerBalance = (data.partnerBalance || 0) + Number(amount);
-                await save();
+                // 80% 概率收款
+                if (Math.random() < 0.5) {
+                    target.transfer.status = 'received';
+                    data.partnerBalance = (data.partnerBalance || 0) + Number(amount);
+                    await save();
 
-                if (typeof throttledSaveData === 'function') throttledSaveData();
-                else if (typeof saveData === 'function') { try { await saveData(); } catch (e) {} }
+                    if (typeof throttledSaveData === 'function') throttledSaveData();
+                    if (typeof renderMessages === 'function') renderMessages(true);
+                    if (typeof playSound === 'function') playSound('favorite');
+                    if (typeof showNotification === 'function') showNotification('对方已收款 ' + fmtMoney(amount), 'success', 2500);
+                } else {
+                    // 20% 概率退回
+                    target.transfer.status = 'rejected';
+                    await save();
 
-                if (typeof renderMessages === 'function') renderMessages(true);
-                if (typeof playSound === 'function') playSound('favorite');
-                if (typeof showNotification === 'function') showNotification('对方已收款 ' + fmtMoney(amount), 'success', 2500);
+                    if (typeof throttledSaveData === 'function') throttledSaveData();
+                    if (typeof renderMessages === 'function') renderMessages(true);
+                    if (typeof playSound === 'function') playSound('error');
+                    if (typeof showNotification === 'function') showNotification('对方退回了转账', 'info', 2500);
+                    
+                    // 退回后钱回你的账户
+                    data.myBalance = (data.myBalance || 0) + Number(amount);
+                    await save();
+                }
             }, delay);
         }
     }
     window.sendTransferMessage = sendTransferMessage;
 
-    // ========== 转账窗口 ==========
+    // ========== 转账发起窗口 ==========
     window.openTransferPanel = function () {
         const old = document.getElementById('transfer-panel');
         if (old) old.remove();
@@ -307,7 +369,7 @@
         scheduleRandomTransfer();
     };
 
-    // ========== 设置面板 ==========
+    // ========== 转账设置面板 ==========
     window.openTransferSettings = function () {
         const old = document.getElementById('transfer-settings-panel');
         if (old) old.remove();
