@@ -1,13 +1,16 @@
 /* ============================================================
- * anti-empty.js - 空气泡终极拦截器
- * 不需要修改 core.js，直接在外部拦截无效消息
+ * anti-empty.js - 终极清理外挂
+ * 1. 拦截新空气泡
+ * 2. 自动隐藏旧的无效图片框
+ * 3. 修复卡死的拼音浮窗
  * ============================================================ */
 (function () {
     'use strict';
 
-    function installHook() {
+    // ================= 1. 拦截新空气泡 =================
+    function installAddMessageHook() {
         if (typeof window.addMessage !== 'function') {
-            setTimeout(installHook, 500);
+            setTimeout(installAddMessageHook, 500);
             return;
         }
         if (window._antiEmptyHookInstalled) return;
@@ -18,14 +21,10 @@
         window.addMessage = function (message) {
             if (!message) return false;
 
-            // 1. 获取清理后的文字
             const txt = String(message.text || '').trim();
-
-            // 2. 判断图片是否有效（长度必须大于10，且是合法的 http 或 base64 链接）
             const img = typeof message.image === 'string' ? message.image.trim() : '';
             const isValidImg = img.length > 10 && (img.startsWith('http') || img.startsWith('data:image'));
 
-            // 3. 终极判定：如果是普通消息，但啥内容都没有，直接拦截！
             if (
                 message.type !== 'system' &&
                 message.type !== 'call-event' &&
@@ -36,25 +35,93 @@
                 !message.transfer &&
                 !message.survey
             ) {
-                console.warn('🚫 [拦截器] 成功拦截了一条空气泡', message);
-                return false; // 直接掐断，不往下执行
+                console.warn('🚫 [外挂] 成功拦截空气泡', message);
+                return false; 
             }
 
-            // 4. 容错处理：如果带了无效图片，强制把 image 删掉，防止出空框
             if (!isValidImg && message.image) {
                 message.image = null;
             }
 
-            // 放行合法的消息
             return originalAddMessage.apply(this, arguments);
         };
-
-        console.log('🛡️ [anti-empty] 空气泡终极拦截器已加载');
     }
 
+    // ================= 2. 修复卡死的拼音浮窗 =================
+    function installFloatHook() {
+        if (typeof window.simulatePartnerTypingProcess !== 'function') {
+            setTimeout(installFloatHook, 500);
+            return;
+        }
+        if (window._fixFloatInstalled) return;
+        window._fixFloatInstalled = true;
+
+        const originalSimulate = window.simulatePartnerTypingProcess;
+        window.simulatePartnerTypingProcess = function (text) {
+            // 如果传进来的是空文本，直接关闭浮窗，不要启动动画
+            if (!text || !String(text).trim()) {
+                const floatWin = document.getElementById('rt-float-window');
+                if (floatWin) floatWin.style.display = 'none';
+                return Promise.resolve();
+            }
+            return originalSimulate.apply(this, arguments);
+        };
+        console.log('🛡️ [外挂] 拼音浮窗防卡死已启用');
+    }
+
+    // ================= 3. 自动清理已经产生的空气泡 =================
+    function cleanOldEmptyBubbles() {
+        const container = document.getElementById('chat-container');
+        if (!container) return;
+
+        // 寻找所有包含图片的消息
+        container.querySelectorAll('.message').forEach(msgDiv => {
+            const img = msgDiv.querySelector('img.message-image');
+            const text = msgDiv.innerText.replace(/[.\s]/g, '').trim(); // 去掉空格和换行
+            
+            if (img && !text) {
+                const src = img.getAttribute('src');
+                // 如果图片没有地址，或者是无效地址，直接隐藏整个外框
+                if (!src || src === '' || src === 'null' || src === 'undefined') {
+                    const wrapper = msgDiv.closest('.message-wrapper');
+                    if (wrapper) {
+                        wrapper.style.display = 'none';
+                    }
+                }
+            }
+        });
+    }
+
+    // 监听页面变化，只要出气泡就检查一次
+    function setupDOMObserver() {
+        const container = document.getElementById('chat-container');
+        if (!container) {
+            setTimeout(setupDOMObserver, 1000);
+            return;
+        }
+        if (container._antiEmptyObs) return;
+        container._antiEmptyObs = true;
+
+        const obs = new MutationObserver(() => {
+            requestAnimationFrame(cleanOldEmptyBubbles);
+        });
+        obs.observe(container, { childList: true, subtree: true });
+        
+        setTimeout(cleanOldEmptyBubbles, 1000);
+    }
+
+    // 启动所有外挂
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => setTimeout(installHook, 1500));
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(installAddMessageHook, 1000);
+            setTimeout(installFloatHook, 1000);
+            setTimeout(setupDOMObserver, 1500);
+        });
     } else {
-        setTimeout(installHook, 1500);
+        setTimeout(installAddMessageHook, 1000);
+        setTimeout(installFloatHook, 1000);
+        setTimeout(setupDOMObserver, 1500);
     }
+    
+    console.log('🛡️ [anti-empty] 终极清理外挂已加载');
 })();
