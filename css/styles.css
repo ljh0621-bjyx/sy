@@ -11676,3 +11676,11 @@ body::after {
 .reply-indicator {
     border-left: none !important;
 }
+/* 彻底干掉发送方和接收方引用框的竖条和背景 */
+.reply-indicator,
+.message-wrapper.sent .reply-indicator,
+.message-wrapper.received .reply-indicator {
+    border-left: none !important;
+    background: transparent !important;
+    padding-left: 0 !important;
+}
