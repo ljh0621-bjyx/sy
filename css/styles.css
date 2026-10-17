@@ -11684,3 +11684,9 @@ body::after {
     background: transparent !important;
     padding-left: 0 !important;
 }
+/* 彻底隐藏所有引用回复框（连竖条带底框全部消失） */
+.reply-indicator,
+.message-wrapper.sent .reply-indicator,
+.message-wrapper.received .reply-indicator {
+    display: none !important;
+}
