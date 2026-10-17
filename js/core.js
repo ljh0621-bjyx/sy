@@ -754,6 +754,13 @@ window.scrollToQuotedMessage = function(el) {
 // ==================== 4. 消息渲染 + 语音转文字（黑灰色） ====================
 function createMessageFragment(msg, prevMsg, nextMsg, lastSenderRef) {
     const fragment = new DocumentFragment();
+    
+    // ★ 终极拦截：如果是一条普通消息，且没有任何内容，直接不画！
+    const _cleanTxt = String(msg.text || '').trim();
+    if (msg.type !== 'system' && msg.type !== 'call-event' && !_cleanTxt && !msg.image && !msg.voiceUrl && !msg._video && !msg.transfer && !msg.survey) {
+        return fragment; // 直接返回空内容，不渲染气泡
+    }
+
     // ★ 撤回的消息不渲染
 if (msg.recalled === true) return fragment;
     const messageDate = new Date(msg.timestamp).toDateString();
