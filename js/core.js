@@ -754,18 +754,6 @@ window.scrollToQuotedMessage = function(el) {
 // ==================== 4. 消息渲染 + 语音转文字（黑灰色） ====================
 function createMessageFragment(msg, prevMsg, nextMsg, lastSenderRef) {
     const fragment = new DocumentFragment();
-    
-    // 如果图片是无效的，把 image 属性删掉，防止渲染出空框
-if (msg.image && (typeof msg.image !== 'string' || msg.image.length < 10)) {
-    msg.image = null;
-}
-
-    // ★ 终极拦截：如果是一条普通消息，且没有任何内容，直接不画！
-    const _cleanTxt = String(msg.text || '').trim();
-    if (msg.type !== 'system' && msg.type !== 'call-event' && !_cleanTxt && !msg.image && !msg.voiceUrl && !msg._video && !msg.transfer && !msg.survey) {
-        return fragment; // 直接返回空内容，不渲染气泡
-    }
-
     // ★ 撤回的消息不渲染
 if (msg.recalled === true) return fragment;
     const messageDate = new Date(msg.timestamp).toDateString();
@@ -1216,19 +1204,7 @@ function renderMessages(preserveScroll = false) {
 }
 
 // ==================== 5. 消息添加 + 语音自动播放 ====================
-const addMessage = (message) => {const addMessage = (message) => {
-    // ★ 超级严格拦截：只要没有有效文字、有效图片，统统不要
-    const _txt = String(message.text || '').trim();
-    const _img = typeof message.image === 'string' ? message.image.trim() : '';
-    
-    // 判断图片是否是有效的链接（不能是空的，也不能是残缺的 base64）
-    const _hasValidImage = _img.length > 10 && (_img.startsWith('http') || _img.startsWith('data:image'));
-
-    if (message.type !== 'system' && message.type !== 'call-event' && !_txt && !_hasValidImage && !message.voiceUrl && !message._video && !message.transfer && !message.survey) {
-        console.warn('[拦截] 阻止了一条无内容的无效消息', message);
-        return; 
-    }
-
+const addMessage = (message) => {
     if (!(message.timestamp instanceof Date)) message.timestamp = new Date(message.timestamp);
     const container = DOMElements.chatContainer;
     const wasEmpty = messages.length === 0;
