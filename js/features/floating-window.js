@@ -431,6 +431,11 @@
     };
 
   window.simulatePartnerTypingProcess = async function (text) {
+    // ★ 如果传入的是空文字、纯空格、换行，直接跳过，绝不弹窗
+    if (!text || !String(text).trim()) {
+        return; 
+    }
+    
     if (_isPlaying) {
         console.warn('[拼音弹窗] _isPlaying 卡住，强制重置');
         _playCancelled = true;
