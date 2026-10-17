@@ -11672,3 +11672,7 @@ body::after {
     display: none !important;
     animation: none !important;
 }
+/* 删除引用回复的竖条 */
+.reply-indicator {
+    border-left: none !important;
+}
