@@ -1599,7 +1599,9 @@ window.addEventListener('unhandledrejection', function(e) {
                     <div class="settings-item" id="envelope-function">
                         <i class="fas fa-envelope"></i><span>信封投递</span>
                     </div>
-                    
+                    <div class="settings-item" onclick="window.openHisLettersPanel && window.openHisLettersPanel()">
+    <i class="fas fa-envelope-open-text"></i><span>信箱</span>
+</div>
                     <div class="settings-item" onclick="window.openPartnerAvatarChangeSettings && window.openPartnerAvatarChangeSettings()">
     <i class="fas fa-portrait"></i><span>他换我头像</span>
 </div>
@@ -2577,6 +2579,7 @@ window.addEventListener('unhandledrejection', function(e) {
     <script src="js/features/typing-sound.js"></script>
     <script src="js/features/partner-image.js"></script>
     <script src="js/features/transfer.js?v=999"></script>
+    <script src="js/features/his-letters.js"></script>
     <script src="js/features/anti-empty.js"></script>
     <!-- <script src="js/features/transfer-card-renderer.js"></script> -->
     <script src="js/features/video-bubble.js?v=4"></script>
