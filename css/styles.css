@@ -11667,3 +11667,8 @@ body::after {
     border-radius: 50%;
     animation: avatarBreath 2s ease-in-out infinite !important;
 }
+/* 关闭对方气泡内的发光心跳/呼吸效果 */
+.message-wrapper.received .message::after {
+    display: none !important;
+    animation: none !important;
+}
