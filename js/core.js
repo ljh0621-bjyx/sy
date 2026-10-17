@@ -1205,11 +1205,14 @@ function renderMessages(preserveScroll = false) {
 
 // ==================== 5. 消息添加 + 语音自动播放 ====================
 const addMessage = (message) => {
-// ★ 拦截空消息（防止出现空气泡）
-if (message.type === 'normal' && !message.text && !message.image && !message.voiceUrl && !message._video && !message.transfer && !message.survey) {
-    console.warn('[拦截] 阻止了一条空消息', message);
-    return; 
-}
+    // ★ 加强版拦截：去掉所有空白字符后，如果没有任何内容，直接丢弃
+    const cleanText = String(message.text || '').trim();
+    
+    if (message.type === 'normal' && !cleanText && !message.image && !message.voiceUrl && !message._video && !message.transfer && !message.survey) {
+        console.warn('[拦截] 阻止了一条空白消息', message);
+        return; 
+    }
+    
     if (!(message.timestamp instanceof Date)) message.timestamp = new Date(message.timestamp);
     const container = DOMElements.chatContainer;
     const wasEmpty = messages.length === 0;
