@@ -186,14 +186,14 @@
         return posts.map(function (p) {
             var name = nameOf(p.author);
             var textHTML = p.text ? '<div style="font-size:13.5px;color:var(--text-primary);line-height:1.7;margin-bottom:8px;white-space:pre-wrap;word-break:break-word;">' + esc(p.text) + '</div>' : '';
-            var imgHTML = p.image ? '<img src="' + p.image + '" style="max-width:100%;max-height:220px;border-radius:10px;display:block;margin-bottom:8px;cursor:pointer;" onclick="if(typeof viewImage===\'function\')viewImage(\'' + p.image.replace(/'/g, "\\'") + '\')" loading="lazy">' : '';
+            var imgHTML = p.image ? '<img src="' + p.image + '" onerror="this.style.display=\'none\'" style="max-width:100%;max-height:220px;border-radius:10px;display:block;margin-bottom:8px;cursor:pointer;" onclick="if(typeof viewImage===\'function\')viewImage(\'' + p.image.replace(/'/g, "\\'") + '\')" loading="lazy">' : '';
             var musicHTML = p.music ? '<div style="background:var(--primary-bg);border-radius:10px;padding:10px 12px;margin-bottom:8px;display:flex;align-items:center;gap:10px;border:1px solid var(--border-color);">'
                 + '<div style="width:34px;height:34px;border-radius:8px;background:var(--accent-color);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="fas fa-music" style="color:#fff;font-size:14px;"></i></div>'
                 + '<div style="flex:1;min-width:0;">'
                 + '<div style="font-size:12.5px;color:var(--text-primary);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + esc(p.music.title || '未知歌曲') + '</div>'
                 + (p.music.sub ? '<div style="font-size:11px;color:var(--text-secondary);">' + esc(p.music.sub) + '</div>' : '')
                 + '</div>'
-                + '<button onclick="window._momentsPlayMusic(' + p.id + ')" style="width:30px;height:30px;border-radius:50%;border:none;background:var(--accent-color);color:#fff;cursor:pointer;flex-shrink:0;"><i class="fas fa-play" style="font-size:11px;"></i></button>'
+                + '<button onclick="window._momentsPlayMusic(\'' + p.id + '\')"style="width:30px;height:30px;border-radius:50%;border:none;background:var(--accent-color);color:#fff;cursor:pointer;flex-shrink:0;"><i class="fas fa-play" style="font-size:11px;"></i></button>'
                 + '</div>' : '';
 
             var likedByMe = p.likes && p.likes.indexOf('me') !== -1;
@@ -206,7 +206,7 @@
                 if (likedByPartner) likers.push(nameOf('partner'));
                 likeLabel = likers.join('、');
             }
-            var likeHtml = '<button onclick="window._momentsToggleLike(' + p.id + ')" style="background:none;border:none;cursor:pointer;font-size:12px;color:' + (likedByMe ? 'var(--accent-color)' : 'var(--text-secondary)') + ';padding:4px 6px;display:flex;align-items:center;gap:4px;">'
+            var likeHtml = '<button onclick="window._momentsToggleLike(\'' + p.id + '\')" style="background:none;border:none;cursor:pointer;font-size:12px;color:' + (likedByMe ? 'var(--accent-color)' : 'var(--text-secondary)') + ';padding:4px 6px;display:flex;align-items:center;gap:4px;">'
                 + '<i class="' + (likedByMe ? 'fas' : 'far') + ' fa-heart"></i> '
                 + (totalLikes ? totalLikes : '')
                 + '</button>';
@@ -225,7 +225,7 @@
             }
 
             var delBtn = (source === 'mine' && p.author === 'me')
-                ? '<button onclick="window._momentsDelete(' + p.id + ')" style="background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:11px;padding:4px 6px;opacity:0.6;"><i class="fas fa-trash"></i></button>'
+                ? '<button onclick="window._momentsDelete(\'' + p.id + '\')"style="background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:11px;padding:4px 6px;opacity:0.6;"><i class="fas fa-trash"></i></button>'
                 : '';
 
             return '<div style="background:var(--secondary-bg);border-radius:14px;padding:14px;margin-bottom:12px;border:1px solid var(--border-color);">'
@@ -240,7 +240,7 @@
                 + textHTML + imgHTML + musicHTML
                 + '<div style="display:flex;align-items:center;gap:6px;padding-top:6px;border-top:1px dashed var(--border-color);">'
                 + likeHtml
-                + '<button onclick="window._momentsComment(' + p.id + ')" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--text-secondary);padding:4px 6px;display:flex;align-items:center;gap:4px;"><i class="far fa-comment"></i> 评论</button>'
+                + '<button onclick="window._momentsComment(\'' + p.id + '\')"style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--text-secondary);padding:4px 6px;display:flex;align-items:center;gap:4px;"><i class="far fa-comment"></i> 评论</button>'
                 + '</div>'
                 + likesDisplay
                 + commentsHtml
