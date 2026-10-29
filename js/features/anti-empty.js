@@ -44,6 +44,40 @@
                 return; // 拦截完毕，不再往下走
             }
 
+// ===== 处理敲门卡片 =====
+if (msgData.type === 'room-invite') {
+    if (msgDiv.dataset.renderedRoom === '1') return;
+    
+    // 强制渲染成微信分享链接的样式
+    msgDiv.innerHTML = `
+        <div onclick="window.enterHisRoom && window.enterHisRoom()" style="
+            width: 220px; 
+            background: #f2f2f2; 
+            border-radius: 10px; 
+            padding: 12px; 
+            cursor: pointer;
+            border: 1px solid #e0e0e0;
+        ">
+            <div style="font-size: 12px; color: #888; margin-bottom: 8px;">${msgData.text}</div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <div style="width: 38px; height: 38px; background: #dcdcdc; border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    <div style="width: 20px; height: 24px; background: #aaa; border-radius: 2px; position: relative;">
+                        <div style="position: absolute; top: 4px; left: 4px; right: 4px; height: 2px; background: #f2f2f2;"></div>
+                        <div style="position: absolute; top: 10px; left: 4px; right: 4px; height: 2px; background: #f2f2f2;"></div>
+                        <div style="position: absolute; bottom: 2px; right: 2px; width: 6px; height: 6px; background: #f2f2f2; border-radius: 50%;"></div>
+                    </div>
+                </div>
+                <div style="font-size: 13px; color: #333; line-height: 1.4;">${msgData.subText}</div>
+            </div>
+        </div>
+    `;
+    
+    // 去掉原本的聊天气泡背景
+    msgDiv.style.cssText = 'padding:0 !important;background:transparent !important;box-shadow:none !important;max-width:none !important;overflow:visible !important;';
+    msgDiv.dataset.renderedRoom = '1';
+    wrapper.style.display = '';
+    return;
+}
             // ===== 处理视频消息 =====
             if (msgData._video) {
                 if (msgDiv.dataset.renderedVideo === '1') return;
