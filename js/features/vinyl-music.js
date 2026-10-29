@@ -1,30 +1,30 @@
 /* ============================================================
- * vinyl-music.js - 黑胶唱片（真实音频直链版）
+ * vinyl-music.js - 黑胶唱片（W3C稳定音频版）
  * ============================================================ */
 (function () {
     'use strict';
 
-    // 这里的 url 换成了直链 MP3，保证能出声
+    // 使用 W3C 官方测试音频，绝对稳定
     const MUSIC_POOL = [
         { 
-            title: '水星记 (试听版)', 
+            title: '水星记 (测试音轨)', 
             artist: '郭顶', 
             cover: 'https://picsum.photos/400/400?random=1', 
-            url: 'https://files.catbox.moe/x5n3jq.mp3', // 真实的测试 MP3
+            url: 'https://media.w3.org/2010/05/sintel/trailer.mp3', 
             comment: '还要多远才能进入你的心。其实我早就进去了，只是你没发现。' 
         },
         { 
-            title: '虚拟 (试听版)', 
+            title: '虚拟 (测试音轨)', 
             artist: '陈粒', 
             cover: 'https://picsum.photos/400/400?random=2', 
-            url: 'https://files.catbox.moe/6s65mp.mp3', // 真实的测试 MP3
+            url: 'https://media.w3.org/2010/05/bunny/trailer.mp3', 
             comment: '你是我朝夕相伴，触手可及的虚拟。' 
         },
         { 
-            title: '想见你 (试听版)', 
+            title: '想见你 (测试音轨)', 
             artist: '八三夭', 
             cover: 'https://picsum.photos/400/400?random=3', 
-            url: 'https://files.catbox.moe/co58d7.mp3', // 真实的测试 MP3
+            url: 'https://media.w3.org/2010/05/video/movie_300.mp3', 
             comment: '穿越了千个万个时间线里，人海里相依。' 
         }
     ];
@@ -49,7 +49,6 @@
         }
     };
 
-    // 渲染卡片
     setInterval(function() {
         const wrappers = document.querySelectorAll('.message-wrapper');
         for (let i = 0; i < wrappers.length; i++) {
@@ -79,7 +78,6 @@
         }
     }, 1000);
 
-    // 播放器
     window.openVinylPlayer = function (msgId) {
         const msgs = (typeof messages !== 'undefined') ? messages : [];
         const msg = msgs.find(function(m) { return String(m.id) === String(msgId); });
@@ -124,22 +122,21 @@
         const playBtn = modal.querySelector('#vinyl-play-btn');
         const playIcon = modal.querySelector('#vinyl-icon');
 
-        // 加载音频
+        // 加载 W3C 稳定音频
         currentAudio = new Audio(music.url);
+        currentAudio.volume = 0.5; // 默认音量50%，别太大声
         
         playBtn.onclick = function() {
             if (currentAudio.paused) {
-                // 播放
                 currentAudio.play().then(function() {
                     disc.classList.add('playing');
                     playIcon.className = 'fas fa-pause';
                     playIcon.style.marginLeft = '0';
                 }).catch(function(e) {
-                    if(typeof showNotification === 'function') showNotification('播放失败：音频链接可能失效或跨域被拦截', 'error');
-                    console.error('播放出错', e);
+                    // 如果播放失败，弹窗报错，让你知道原因
+                    if(typeof showNotification === 'function') showNotification('❌ 播放失败：' + (e.message || '浏览器拦截或网络无法加载'), 'error', 4000);
                 });
             } else {
-                // 暂停
                 currentAudio.pause();
                 disc.classList.remove('playing');
                 playIcon.className = 'fas fa-play';
