@@ -1,5 +1,5 @@
 /* ============================================================
- * anti-empty.js - 终极清理 + 转账/视频渲染外挂
+ * anti-empty.js - 终极清理 + 视频/转账渲染外挂（支持全格式封面）
  * ============================================================ */
 (function () {
     'use strict';
@@ -19,7 +19,7 @@
             delete floatWin.dataset.startTime;
         }
 
-        // 2. 遍历消息，渲染特殊消息，清理空气泡
+        // 2. 遍历消息
         const wrappers = document.querySelectorAll('.message-wrapper');
         wrappers.forEach(wrapper => {
             const msgId = wrapper.dataset.msgId || wrapper.dataset.id;
@@ -31,54 +31,7 @@
             const msgDiv = wrapper.querySelector('.message');
             if (!msgDiv) return;
 
-            // ===== 处理转账消息 =====
-            if (msgData.type === 'transfer') {
-                if (msgDiv.dataset.renderedTransfer === '1') return;
-                if (typeof window.renderTransferCardHTML === 'function') {
-                    msgDiv.innerHTML = window.renderTransferCardHTML(msgData);
-                    msgDiv.className = 'transfer-card-wrapper';
-                    msgDiv.style.cssText = 'padding:0 !important;background:transparent !important;box-shadow:none !important;max-width:none !important;';
-                    msgDiv.dataset.renderedTransfer = '1';
-                    wrapper.style.display = '';
-                }
-                return; // 拦截完毕，不再往下走
-            }
-
-// ===== 处理敲门卡片 =====
-if (msgData.type === 'room-invite') {
-    if (msgDiv.dataset.renderedRoom === '1') return;
-    
-    // 强制渲染成微信分享链接的样式
-    msgDiv.innerHTML = `
-        <div onclick="window.enterHisRoom && window.enterHisRoom()" style="
-            width: 220px; 
-            background: #f2f2f2; 
-            border-radius: 10px; 
-            padding: 12px; 
-            cursor: pointer;
-            border: 1px solid #e0e0e0;
-        ">
-            <div style="font-size: 12px; color: #888; margin-bottom: 8px;">${msgData.text}</div>
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <div style="width: 38px; height: 38px; background: #dcdcdc; border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                    <div style="width: 20px; height: 24px; background: #aaa; border-radius: 2px; position: relative;">
-                        <div style="position: absolute; top: 4px; left: 4px; right: 4px; height: 2px; background: #f2f2f2;"></div>
-                        <div style="position: absolute; top: 10px; left: 4px; right: 4px; height: 2px; background: #f2f2f2;"></div>
-                        <div style="position: absolute; bottom: 2px; right: 2px; width: 6px; height: 6px; background: #f2f2f2; border-radius: 50%;"></div>
-                    </div>
-                </div>
-                <div style="font-size: 13px; color: #333; line-height: 1.4;">${msgData.subText}</div>
-            </div>
-        </div>
-    `;
-    
-    // 去掉原本的聊天气泡背景
-    msgDiv.style.cssText = 'padding:0 !important;background:transparent !important;box-shadow:none !important;max-width:none !important;overflow:visible !important;';
-    msgDiv.dataset.renderedRoom = '1';
-    wrapper.style.display = '';
-    return;
-}
-            // ===== 处理视频消息 =====
+            // ===== 处理视频消息（重点修复封面） =====
             if (msgData._video) {
                 if (msgDiv.dataset.renderedVideo === '1') return;
                 
@@ -88,13 +41,14 @@ if (msgData.type === 'room-invite') {
                 const sec = String(dur % 60).padStart(2, '0');
                 const durStr = min + ':' + sec;
                 
-                // 判断原来的封面是不是有效链接，如果无效就直接用黑底渐变
-                let cover = msgData.image;
+                // 放宽封面限制：支持 http、data:image、blob 等所有格式
+                let cover = msgData.image || msgData._video.cover;
                 let imgHtml = '';
-                if (cover && typeof cover === 'string' && cover.length > 10 && cover.startsWith('http')) {
+                if (cover && typeof cover === 'string' && cover.length > 5) {
                     imgHtml = '<img src="' + cover + '" onerror="this.style.display=\'none\'; this.nextElementSibling.style.display=\'flex\';" style="width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;">'
                             + '<div style="display:none;width:100%;height:100%;position:absolute;top:0;left:0;background:linear-gradient(135deg,#2a2a2a,#111);align-items:center;justify-content:center;"><i class="fas fa-video" style="font-size:30px;color:rgba(255,255,255,0.2);"></i></div>';
                 } else {
+                    // 如果完全没有封面，给个好看的默认黑底
                     imgHtml = '<div style="width:100%;height:100%;position:absolute;top:0;left:0;background:linear-gradient(135deg,#2a2a2a,#111);display:flex;align-items:center;justify-content:center;"><i class="fas fa-video" style="font-size:30px;color:rgba(255,255,255,0.2);"></i></div>';
                 }
 
@@ -109,12 +63,23 @@ if (msgData.type === 'room-invite') {
                 msgDiv.style.cssText = 'padding:0 !important;background:transparent !important;box-shadow:none !important;max-width:none !important;overflow:visible !important;';
                 msgDiv.dataset.renderedVideo = '1';
                 wrapper.style.display = '';
-                return; // 拦截完毕，不再往下走
+                return; 
+            }
+
+            // ===== 处理转账消息 =====
+            if (msgData.type === 'transfer') {
+                if (msgDiv.dataset.renderedTransfer === '1') return;
+                if (typeof window.renderTransferCardHTML === 'function') {
+                    msgDiv.innerHTML = window.renderTransferCardHTML(msgData);
+                    msgDiv.className = 'transfer-card-wrapper';
+                    msgDiv.style.cssText = 'padding:0 !important;background:transparent !important;box-shadow:none !important;max-width:none !important;';
+                    msgDiv.dataset.renderedTransfer = '1';
+                    wrapper.style.display = '';
+                }
+                return;
             }
 
             // ===== 处理空气泡 =====
-            // 跳过敲门卡片
-if (wrapper.dataset.isRoomCard === '1') return;
             if (wrapper.dataset.antiCleaned === '1') return;
             
             const text = (msgDiv.innerText || '').replace(/[\s\u200B-\u200D\uFEFF]/g, '');
