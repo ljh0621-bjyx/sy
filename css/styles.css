@@ -11690,3 +11690,19 @@ body::after {
 .message-wrapper.received .reply-indicator {
     display: none !important;
 }
+/* 强制把视频框改成标准小卡片 */
+.video-bubble {
+    width: 220px !important;
+    height: 140px !important;
+    max-width: 220px !important;
+    max-height: 140px !important;
+    border-radius: 12px !important;
+    overflow: hidden !important;
+    background: #111 !important;
+    position: relative !important;
+}
+.video-bubble img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+}
