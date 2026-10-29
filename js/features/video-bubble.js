@@ -204,33 +204,73 @@
         };
 
         // 上传本地视频
-        modal.querySelector('#vp-upload').onclick = () => {
-            close();
-            const input = document.createElement('input');
-            input.type = 'file'; input.accept = 'video/*';
-            input.onchange = async (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                if (file.size > 100 * 1024 * 1024) { showNotification('视频不能超过 100MB', 'error'); return; }
-                try {
-                    const url = URL.createObjectURL(file);
-                    const dur = await new Promise((resolve) => {
-                        const v = document.createElement('video');
-                        v.preload = 'metadata';
-                        v.onloadedmetadata = () => resolve(Math.round(v.duration));
-                        v.onerror = () => resolve(5);
-                        v.src = url;
-                    });
-                    addMessage({
-                        id: Date.now(), sender: 'user', text: '', image: null,
-                        timestamp: new Date(), status: 'sent', type: 'normal',
-                        _video: { duration: dur, type: 'local', src: url }
-                    });
-                    if (typeof playSound === 'function') playSound('send');
-                } catch (err) { showNotification('视频加载失败', 'error'); }
-            };
-            input.click();
-        };
+        // 上传本地视频
+modal.querySelector('#vp-upload').onclick = () => {
+    close();
+    const input = document.createElement('input');
+    input.type = 'file'; input.accept = 'video/*';
+    input.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        if (file.size > 100 * 1024 * 1024) { 
+            if(typeof showNotification === 'function') showNotification('视频不能超过 100MB', 'error'); 
+            return; 
+        }
+        
+        try {
+            const url = URL.createObjectURL(file);
+            
+            // 1. 获取视频时长和封面
+            const videoInfo = await new Promise((resolve) => {
+                const video = document.createElement('video');
+                video.preload = 'metadata';
+                video.src = url;
+                video.muted = true;
+                video.playsInline = true;
+                
+                video.onloadedmetadata = () => {
+                    const dur = Math.round(video.duration) || 5;
+                    // 把时间跳到第 0.1 秒，避免第一帧是纯黑
+                    video.currentTime = 0.1; 
+                    
+                    video.onseeked = () => {
+                        try {
+                            const canvas = document.createElement('canvas');
+                            canvas.width = video.videoWidth || 480;
+                            canvas.height = video.videoHeight || 270;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                            // 压缩成 jpeg 格式
+                            const coverData = canvas.toDataURL('image/jpeg', 0.7);
+                            resolve({ dur, cover: coverData });
+                        } catch (err) {
+                            resolve({ dur, cover: null });
+                        }
+                    };
+                };
+                
+                video.onerror = () => resolve({ dur: 5, cover: null });
+            });
+
+            // 2. 发送消息（带有封面）
+            addMessage({
+                id: Date.now(), 
+                sender: 'user', 
+                text: '', 
+                image: videoInfo.cover, // 将截取的封面存入 image 属性
+                timestamp: new Date(), 
+                status: 'sent', 
+                type: 'normal',
+                _video: { duration: videoInfo.dur, type: 'local', src: url, cover: videoInfo.cover }
+            });
+            
+            if (typeof playSound === 'function') playSound('send');
+        } catch (err) { 
+            if(typeof showNotification === 'function') showNotification('视频加载失败', 'error'); 
+        }
+    };
+    input.click();
+};
 
         // AI 生成（真 MiniMax）
         modal.querySelector('#vp-ai').onclick = async () => {
