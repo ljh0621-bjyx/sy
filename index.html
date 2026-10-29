@@ -1906,6 +1906,9 @@ document.addEventListener('click', function(e) {
 <div class="settings-item" onclick="window.myOpenRoom && window.myOpenRoom()">
     <i class="fas fa-door-open"></i><span>去他房间</span>
 </div>
+<div class="settings-item" onclick="window.sendSurpriseBox && window.sendSurpriseBox()">
+    <i class="fas fa-gift" style="color:#ff6699;"></i><span>让他寄个盲盒</span>
+</div>
 <div class="settings-item" onclick="window.openParallelSpace && window.openParallelSpace()">
     <i class="fas fa-globe"></i><span>他的平行空间</span>
 </div>
@@ -2864,6 +2867,7 @@ document.addEventListener('click', function(e) {
 <script src="js/features/room.js"></script>
 <script src="js/features/parallel-space.js"></script>
 <script src="js/features/daily-tarot.js"></script>
+<script src="js/features/surprise-box.js"></script>
 <script>
 (function () {
     var AMBIENT_KEY = 'chatApp_ambientMood';
