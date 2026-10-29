@@ -333,7 +333,8 @@
 
         document.body.appendChild(modal);
 
-        const $ = (id) => modal.querySelector('#' + id);
+        // ★ 修正点：这里的 $ 只接受带 # 的 selector
+        const $ = (selector) => modal.querySelector(selector);
 
         // 开关
         $('#nm-toggle').onclick = () => {
