@@ -1578,6 +1578,9 @@ window.addEventListener('unhandledrejection', function(e) {
                     <div class="settings-item" id="custom-replies-function">
                         <i class="fas fa-comment-dots"></i><span>自定义回复</span>
                     </div>
+                    <div class="settings-item" onclick="window.knockHisRoom && window.knockHisRoom()">
+    <i class="fas fa-door-open"></i><span>去他房间</span>
+</div>
      <div class="settings-item" onclick="alert('函数类型：' + typeof window.openHapticsSettings); window.openHapticsSettings && window.openHapticsSettings();">
     <i class="fas fa-mobile-alt"></i><span>触觉消息</span>
 </div>
@@ -2567,7 +2570,6 @@ window.addEventListener('unhandledrejection', function(e) {
 <script src="js/features/haptics.js"></script>
 <script src="js/features/voice-notes.js"></script>
 <script src="js/features/voice-fix.js"></script>
-<script src="js/features/battery.js"></script>
     <script src="js/features/word-cards.js"></script>
     <script src="js/features/word-card-compose.js"></script>
     <script src="js/features/dream-divination.js"></script>
@@ -2630,6 +2632,7 @@ window.addEventListener('unhandledrejection', function(e) {
 <script src="js/features/memory.js"></script>
 <script src="js/features/dual-todo.js?v=1"></script>
 <script src="js/features/wordcard-progress.js?v=1"></script>
+<script src="js/features/room.js"></script>
     <script>
 (function () {
     var KEY = 'partnerTypingAnimEnabled';
