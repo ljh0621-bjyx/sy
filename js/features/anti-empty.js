@@ -1,5 +1,5 @@
 /* ============================================================
- * anti-empty.js - 终极清理 + 视频/转账渲染外挂（支持全格式封面）
+ * anti-empty.js - 终极清理 + 视频封面/转账渲染外挂
  * ============================================================ */
 (function () {
     'use strict';
@@ -31,7 +31,7 @@
             const msgDiv = wrapper.querySelector('.message');
             if (!msgDiv) return;
 
-            // ===== 处理视频消息（重点修复封面） =====
+            // ===== 处理视频消息（包含封面提取） =====
             if (msgData._video) {
                 if (msgDiv.dataset.renderedVideo === '1') return;
                 
@@ -41,18 +41,19 @@
                 const sec = String(dur % 60).padStart(2, '0');
                 const durStr = min + ':' + sec;
                 
-                // 放宽封面限制：支持 http、data:image、blob 等所有格式
                 let cover = msgData.image || msgData._video.cover;
                 let imgHtml = '';
-                if (cover && typeof cover === 'string' && cover.length > 5) {
-                    imgHtml = '<img src="' + cover + '" onerror="this.style.display=\'none\'; this.nextElementSibling.style.display=\'flex\';" style="width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;">'
-                            + '<div style="display:none;width:100%;height:100%;position:absolute;top:0;left:0;background:linear-gradient(135deg,#2a2a2a,#111);align-items:center;justify-content:center;"><i class="fas fa-video" style="font-size:30px;color:rgba(255,255,255,0.2);"></i></div>';
+                
+                // 如果有通过 canvas 截到的有效图片，优先用图片
+                if (cover && typeof cover === 'string' && cover.length > 10) {
+                    imgHtml = '<img src="' + cover + '" onerror="this.style.display=\'none\'; this.nextElementSibling.style.display=\'block\';" style="width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;pointer-events:none;">'
+                            + '<video src="' + src + '" preload="metadata" style="display:none;width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;pointer-events:none;" muted playsinline webkit-playsinline></video>';
                 } else {
-                    // 如果完全没有封面，给个好看的默认黑底
-                    imgHtml = '<div style="width:100%;height:100%;position:absolute;top:0;left:0;background:linear-gradient(135deg,#2a2a2a,#111);display:flex;align-items:center;justify-content:center;"><i class="fas fa-video" style="font-size:30px;color:rgba(255,255,255,0.2);"></i></div>';
+                    // ★ 核心绝招：如果没有截到图，直接拿 video 当封面，让浏览器去加载第一帧
+                    imgHtml = '<video src="' + src + '" preload="metadata" style="width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;pointer-events:none;" muted playsinline webkit-playsinline></video>';
                 }
 
-                msgDiv.innerHTML = '<div class="video-bubble" data-video-type="' + (msgData._video.type || 'local') + '" data-video-src="' + src + '" style="position:relative;width:220px;height:140px;border-radius:12px;overflow:hidden;background:#000;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,0.1);">'
+                msgDiv.innerHTML = '<div class="video-bubble" data-video-type="' + (msgData._video.type || 'local') + '" data-video-src="' + src + '" style="position:relative;width:220px;height:140px;border-radius:12px;overflow:hidden;background:#111;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,0.1);">'
                     +   imgHtml
                     +   '<div style="position:absolute;width:46px;height:46px;border-radius:50%;border:2px solid rgba(255,255,255,0.9);background:rgba(0,0,0,0.4);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:2;">'
                     +     '<i class="fas fa-play" style="color:#fff;font-size:16px;margin-left:4px;"></i>'
@@ -79,12 +80,35 @@
                 return;
             }
 
+            // ===== 处理敲门卡片 =====
+            if (msgData.isRoomInvite) {
+                if (msgDiv.dataset.renderedRoom === '1') return;
+                
+                msgDiv.innerHTML = `
+                    <div data-action="enter-room" style="background:#f2f2f2; border-radius:12px; padding:12px; width:240px; cursor:pointer; text-align:left; border:1px solid #e0e0e0; box-shadow:0 2px 8px rgba(0,0,0,0.05);">
+                        <div style="font-size:12px; color:#888; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+                            <i class="fas fa-home"></i> 希望可以进你家
+                        </div>
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <div style="width:44px; height:44px; background:#dcdcdc; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:24px; flex-shrink:0;">🚪</div>
+                            <div style="font-size:13px; color:#333; flex:1; line-height:1.5; font-weight:500;">咚咚。我在门口，可以进去吗？</div>
+                        </div>
+                    </div>
+                `;
+                
+                msgDiv.style.cssText = 'padding:0 !important; background:transparent !important; box-shadow:none !important; max-width:none !important;';
+                msgDiv.dataset.renderedRoom = '1';
+                wrapper.style.display = '';
+                wrapper.dataset.antiCleaned = '1'; 
+                return;
+            }
+
             // ===== 处理空气泡 =====
             if (wrapper.dataset.antiCleaned === '1') return;
             
             const text = (msgDiv.innerText || '').replace(/[\s\u200B-\u200D\uFEFF]/g, '');
             const img = msgDiv.querySelector('img');
-            const otherContent = msgDiv.querySelector('.voice-bubble, .transfer-card, .survey-message-wrapper');
+            const otherContent = msgDiv.querySelector('.voice-bubble, .transfer-card, .survey-message-wrapper, .video-bubble');
 
             let needHide = false;
             if (!text && !otherContent) {
@@ -105,3 +129,12 @@
         });
     }, 1000);
 })();
+
+// ===== 全局监听房间卡片点击 =====
+document.addEventListener('click', function(e) {
+    if (e.target.closest('[data-action="enter-room"]')) {
+        if (typeof window.enterHisRoom === 'function') {
+            window.enterHisRoom();
+        }
+    }
+});
