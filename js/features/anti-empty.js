@@ -67,8 +67,50 @@
                 return; 
             }
 
+// ===== 处理黑胶唱片 =====
+if (msgData.isVinylMusic) {
+    if (msgDiv.dataset.renderedVinyl === '1') return;
+    const m = msgData.musicData;
+    
+    msgDiv.innerHTML = `
+        <div onclick="window.openVinylPlayer('${msgData.id}')" style="background:linear-gradient(135deg, #2b2b36, #18181f); border-radius:12px; padding:12px; width:240px; cursor:pointer; text-align:left; border:1px solid rgba(255,255,255,0.1); box-shadow:0 4px 12px rgba(0,0,0,0.2); display:flex; align-items:center; gap:12px;">
+            <div style="width:44px; height:44px; border-radius:50%; overflow:hidden; border:2px solid #333; flex-shrink:0;">
+                <img src="${m.cover}" style="width:100%; height:100%; object-fit:cover;">
+            </div>
+            <div style="flex:1; min-width:0;">
+                <div style="font-size:14px; color:#fff; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${m.title}</div>
+                <div style="font-size:11px; color:#999; margin-top:2px;">${m.artist}</div>
+            </div>
+            <div style="width:28px; height:28px; border-radius:50%; background:rgba(255,255,255,0.1); display:flex; align-items:center; justify-content:center; color:#fff; flex-shrink:0;">
+                <i class="fas fa-play" style="font-size:10px; margin-left:2px;"></i>
+            </div>
+        </div>
+    `;
+    
+    msgDiv.style.cssText = 'padding:0 !important; background:transparent !important; box-shadow:none !important; max-width:none !important;';
+    msgDiv.dataset.renderedVinyl = '1';
+    wrapper.style.display = '';
+    wrapper.dataset.antiCleaned = '1'; 
+    return;
+}
 // ===== 处理盲盒消息 =====
 if (msgData.isSurpriseBox) {
+    // ★ 新增：如果已经拆开，显示灰掉的盒子
+    if (msgData.isOpened || msgData.opened) {
+        if (msgDiv.dataset.renderedBox === '1') return;
+        msgDiv.innerHTML = `
+            <div style="background:#f0f0f0; border:1.5px dashed #ccc; border-radius:12px; padding:16px; width:220px; text-align:center; opacity:0.6;">
+                <div style="font-size:40px; margin-bottom:8px; filter:grayscale(1);">🎁</div>
+                <div style="font-size:13px; color:#999; font-weight:700;">已拆开</div>
+            </div>
+        `;
+        msgDiv.style.cssText = 'padding:0 !important; background:transparent !important; box-shadow:none !important; max-width:none !important;';
+        msgDiv.dataset.renderedBox = '1';
+        wrapper.style.display = '';
+        wrapper.dataset.antiCleaned = '1'; 
+        return;
+    }
+
     if (msgDiv.dataset.renderedBox === '1') return;
     
     // 注入晃动动画
