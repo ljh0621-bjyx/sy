@@ -1906,14 +1906,14 @@ document.addEventListener('click', function(e) {
 <div class="settings-item" onclick="window.myOpenRoom && window.myOpenRoom()">
     <i class="fas fa-door-open"></i><span>去他房间</span>
 </div>
-<div class="settings-item" onclick="window.sendSurpriseBox && window.sendSurpriseBox()">
-    <i class="fas fa-gift" style="color:#ff6699;"></i><span>让他寄个盲盒</span>
-</div>
 <div class="settings-item" onclick="window.openParallelSpace && window.openParallelSpace()">
     <i class="fas fa-globe"></i><span>他的平行空间</span>
 </div>
 <div class="settings-item" onclick="window.openDailyTarot && window.openDailyTarot()">
     <i class="fas fa-star"></i><span>每日塔罗</span>
+</div>
+<div class="settings-item" onclick="window.openHisPhone && window.openHisPhone()">
+    <i class="fas fa-mobile-alt"></i><span>他的手机</span>
 </div>
 <div class="settings-item" id="partner-invite-function" onclick="openPartnerInviteSettings()">
     <i class="fas fa-envelope-open-text"></i><span>对方邀请设置</span>
@@ -2868,6 +2868,7 @@ document.addEventListener('click', function(e) {
 <script src="js/features/parallel-space.js"></script>
 <script src="js/features/daily-tarot.js"></script>
 <script src="js/features/surprise-box.js"></script>
+<script src="js/features/his-phone.js"></script>
 <script>
 (function () {
     var AMBIENT_KEY = 'chatApp_ambientMood';
