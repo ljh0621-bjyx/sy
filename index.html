@@ -112,6 +112,82 @@ window.myOpenRoom = function() {
     }, 1500);
 };
 </script>
+<script>
+// ========== 敲门卡片与房间互动 ==========
+window.myOpenRoom = function() {
+    const pName = (typeof settings !== 'undefined' && settings.partnerName) ? settings.partnerName : '他';
+    const msgId = Date.now();
+    
+    // 1. 发送一条普通消息，好让它存进数据库
+    if (typeof addMessage === 'function') {
+        addMessage({
+            id: msgId, 
+            sender: 'user', 
+            text: '希望可以进你家', 
+            timestamp: new Date(), 
+            status: 'sent', 
+            type: 'normal'
+        });
+    }
+
+    // 2. 稍等片刻后，把这条消息偷偷替换成“卡片”样式
+    setTimeout(() => {
+        const wrapper = document.querySelector(`.message-wrapper[data-id="${msgId}"]`) || document.querySelector(`.message-wrapper[data-msg-id="${msgId}"]`);
+        if (wrapper) {
+            const msgDiv = wrapper.querySelector('.message');
+            if (msgDiv) {
+                msgDiv.innerHTML = `
+                    <div onclick="window.enterHisRoom()" style="background:#f6f6f6; border-radius:8px; padding:12px; width:220px; cursor:pointer; text-align:left; border:1px solid #e5e5e5; box-shadow:0 2px 8px rgba(0,0,0,0.05);">
+                        <div style="font-size:12px; color:#999; margin-bottom:8px;">希望可以进你家</div>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <div style="width:36px; height:36px; background:#dcdcdc; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:18px;">🚪</div>
+                            <div style="font-size:13px; color:#333; flex:1; line-height:1.4;">咚咚。我在门口，可以进去吗？</div>
+                        </div>
+                    </div>
+                `;
+                msgDiv.style.cssText = 'padding:0 !important; background:transparent !important; box-shadow:none !important;';
+            }
+        }
+    }, 100);
+
+    // 3. 对方经过 2~4 秒的“犹豫”回复
+    setTimeout(() => {
+        const isReject = Math.random() < 0.5; // 50% 概率拒绝
+        const text = isReject ? '……你先别进来。' : '进来吧，门没锁。';
+        if (typeof addMessage === 'function') {
+            addMessage({id: Date.now(), sender: pName, text: text, timestamp: new Date(), status: 'received', type: 'normal'});
+        }
+    }, 2000 + Math.random() * 2000);
+};
+
+// ========== 房间界面 ==========
+window.enterHisRoom = function() {
+    const pName = (typeof settings !== 'undefined' && settings.partnerName) ? settings.partnerName : '他';
+    const old = document.getElementById('room-modal');
+    if (old) old.remove();
+    
+    const modal = document.createElement('div');
+    modal.id = 'room-modal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:999999;background:rgba(20,20,25,0.95);backdrop-filter:blur(10px);display:flex;flex-direction:column;color:#fff;';
+    
+    modal.innerHTML = `
+        <div style="height:60px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;border-bottom:1px solid rgba(255,255,255,0.1);">
+            <span style="font-size:15px;font-weight:600;">🚪 ${pName} 的房间</span>
+            <button onclick="document.getElementById('room-modal').remove();" style="background:rgba(255,255,255,0.1);border:none;color:#fff;padding:6px 14px;border-radius:15px;font-size:12px;cursor:pointer;">退出</button>
+        </div>
+        <div style="flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;">
+            <div style="font-size:64px;margin-bottom:20px;">🛋️</div>
+            <h2 style="font-size:20px;font-weight:700;margin-bottom:12px;">你走进了他的领地</h2>
+            <p style="font-size:14px;color:rgba(255,255,255,0.6);">他就在你面前，你要做点什么？</p>
+        </div>
+        <div style="padding:20px;text-align:center;display:flex;gap:10px;justify-content:center;">
+            <button onclick="alert('你抱住了他，他没有躲开。')" style="background:rgba(255,255,255,0.1);color:#fff;border:1px solid rgba(255,255,255,0.2);padding:10px 20px;border-radius:20px;font-size:13px;">抱抱他</button>
+            <button onclick="alert('你牵起了他的手，十指紧扣。')" style="background:rgba(255,255,255,0.1);color:#fff;border:1px solid rgba(255,255,255,0.2);padding:10px 20px;border-radius:20px;font-size:13px;">牵他的手</button>
+        </div>
+    `;
+    document.body.appendChild(modal);
+};
+</script>
 <body>
 <div id="splash-declaration">
     <div class="splash-bg-stars" id="splash-stars"></div>
