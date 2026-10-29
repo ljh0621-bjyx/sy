@@ -1906,6 +1906,12 @@ document.addEventListener('click', function(e) {
 <div class="settings-item" onclick="window.myOpenRoom && window.myOpenRoom()">
     <i class="fas fa-door-open"></i><span>去他房间</span>
 </div>
+<div class="settings-item" onclick="window.openParallelSpace && window.openParallelSpace()">
+    <i class="fas fa-globe"></i><span>他的平行空间</span>
+</div>
+<div class="settings-item" onclick="window.openDailyTarot && window.openDailyTarot()">
+    <i class="fas fa-star"></i><span>每日塔罗</span>
+</div>
 <div class="settings-item" id="partner-invite-function" onclick="openPartnerInviteSettings()">
     <i class="fas fa-envelope-open-text"></i><span>对方邀请设置</span>
 </div>
@@ -2856,6 +2862,8 @@ document.addEventListener('click', function(e) {
 <script src="js/features/dual-todo.js?v=1"></script>
 <script src="js/features/wordcard-progress.js?v=1"></script>
 <script src="js/features/room.js"></script>
+<script src="js/features/parallel-space.js"></script>
+<script src="js/features/daily-tarot.js"></script>
 <script>
 (function () {
     var AMBIENT_KEY = 'chatApp_ambientMood';
