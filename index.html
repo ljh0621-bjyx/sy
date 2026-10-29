@@ -78,6 +78,40 @@ window.addEventListener('unhandledrejection', function(e) {
 
     <style id="css-live-preview-style"></style>
 </head>
+<script>
+window.myOpenRoom = function() {
+    const pName = (typeof settings !== 'undefined' && settings.partnerName) ? settings.partnerName : '对方';
+    
+    if (typeof addMessage === 'function') {
+        addMessage({id: Date.now(), sender: 'user', text: '咚咚。我在门口，可以进去吗？', timestamp: new Date(), status: 'sent', type: 'normal'});
+    }
+    
+    setTimeout(() => {
+        if (typeof addMessage === 'function') {
+            addMessage({id: Date.now() + 1, sender: pName, text: '进来吧，门没锁。', timestamp: new Date(), status: 'received', type: 'normal'});
+        }
+        
+        const old = document.getElementById('his-room-panel');
+        if (old) old.remove();
+        
+        const modal = document.createElement('div');
+        modal.id = 'his-room-panel';
+        modal.style.cssText = 'position:fixed;inset:0;z-index:999999;background:linear-gradient(135deg, #1e1e24, #0f0f13);display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;';
+        
+        modal.innerHTML = `
+            <div style="text-align:center;">
+                <div style="font-size:64px;margin-bottom:20px;">🚪</div>
+                <h2 style="font-size:24px;font-weight:700;letter-spacing:2px;margin-bottom:12px;">你走进了 ${pName} 的房间</h2>
+                <p style="font-size:14px;color:rgba(255,255,255,0.6);line-height:1.8;max-width:300px;margin:0 auto;">房间里弥漫着淡淡的香气。<br>他靠在桌边，抬眼看着你。</p>
+            </div>
+            <button onclick="document.getElementById('his-room-panel').remove();" style="margin-top:40px;padding:12px 36px;border:none;border-radius:30px;background:rgba(255,255,255,0.2);color:#fff;font-size:14px;font-weight:600;cursor:pointer;">
+                退出房间
+            </button>
+        `;
+        document.body.appendChild(modal);
+    }, 1500);
+};
+</script>
 <body>
 <div id="splash-declaration">
     <div class="splash-bg-stars" id="splash-stars"></div>
@@ -1578,9 +1612,6 @@ window.addEventListener('unhandledrejection', function(e) {
                     <div class="settings-item" id="custom-replies-function">
                         <i class="fas fa-comment-dots"></i><span>自定义回复</span>
                     </div>
-                    <div class="settings-item" onclick="alert('按钮点到了！'); window.knockHisRoom && window.knockHisRoom()">
-    <i class="fas fa-door-open"></i><span>去他房间</span>
-</div>
      <div class="settings-item" onclick="alert('函数类型：' + typeof window.openHapticsSettings); window.openHapticsSettings && window.openHapticsSettings();">
     <i class="fas fa-mobile-alt"></i><span>触觉消息</span>
 </div>
@@ -1682,6 +1713,9 @@ window.addEventListener('unhandledrejection', function(e) {
 </div>
 <div class="settings-item" id="companion-function">
     <i class="fas fa-heart"></i><span>陪伴</span>
+</div>
+<div class="settings-item" onclick="window.myOpenRoom && window.myOpenRoom()">
+    <i class="fas fa-door-open"></i><span>去他房间</span>
 </div>
 <div class="settings-item" id="partner-invite-function" onclick="openPartnerInviteSettings()">
     <i class="fas fa-envelope-open-text"></i><span>对方邀请设置</span>
@@ -2632,7 +2666,26 @@ window.addEventListener('unhandledrejection', function(e) {
 <script src="js/features/memory.js"></script>
 <script src="js/features/dual-todo.js?v=1"></script>
 <script src="js/features/wordcard-progress.js?v=1"></script>
-<script src="js/features/room.js"></script>
+<div class="settings-item" onclick="
+  const pName = (typeof settings !== 'undefined' && settings.partnerName) ? settings.partnerName : '对方';
+  if(typeof addMessage === 'function') {
+      addMessage({id: Date.now(), sender: 'user', text: '咚咚。我在门口，可以进去吗？', timestamp: new Date(), status: 'sent', type: 'normal'});
+  }
+  setTimeout(() => {
+      if(typeof addMessage === 'function') {
+          addMessage({id: Date.now()+1, sender: pName, text: '进来吧，门没锁。', timestamp: new Date(), status: 'received', type: 'normal'});
+      }
+      const old = document.getElementById('his-room-panel');
+      if (old) old.remove();
+      const modal = document.createElement('div');
+      modal.id = 'his-room-panel';
+      modal.style.cssText = 'position:fixed;inset:0;z-index:999999;background:linear-gradient(135deg, #1e1e24, #0f0f13);display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;';
+      modal.innerHTML = '<div style=\'text-align:center;\'><div style=\'font-size:64px;margin-bottom:20px;\'>🚪</div><h2 style=\'font-size:24px;font-weight:700;margin-bottom:12px;\'>你走进了 '+pName+' 的房间</h2><p style=\'font-size:14px;color:rgba(255,255,255,0.6);\'>他靠在桌边，抬眼看着你。</p></div><button onclick=\'document.getElementById(\'his-room-panel\').remove();\' style=\'margin-top:40px;padding:12px 36px;border:none;border-radius:30px;background:rgba(255,255,255,0.2);color:#fff;font-size:14px;\'>退出房间</button>';
+      document.body.appendChild(modal);
+  }, 1500);
+">
+    <i class="fas fa-door-open"></i><span>去他房间</span>
+</div>
     <script>
 (function () {
     var KEY = 'partnerTypingAnimEnabled';
