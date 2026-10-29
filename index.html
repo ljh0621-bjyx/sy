@@ -113,31 +113,36 @@ window.myOpenRoom = function() {
 };
 </script>
 <script>
-// ========== 敲门卡片与房间互动 ==========
+// ========== 敲门卡片与房间互动（免死金牌版） ==========
 window.myOpenRoom = function() {
     const pName = (typeof settings !== 'undefined' && settings.partnerName) ? settings.partnerName : '他';
-    const msgId = Date.now();
+    const msgId = Date.now() + Math.floor(Math.random() * 1000);
     
-    // 1. 发送一条普通消息，好让它存进数据库
+    // 1. 发送一条普通消息，携带特殊标记
     if (typeof addMessage === 'function') {
         addMessage({
             id: msgId, 
             sender: 'user', 
-            text: '希望可以进你家', 
+            text: '希望可以进你家', // 必须带文字，防止被空气泡拦截
             timestamp: new Date(), 
             status: 'sent', 
-            type: 'normal'
+            type: 'normal',
+            isRoomInvite: true // 特殊标记
         });
     }
 
-    // 2. 稍等片刻后，把这条消息偷偷替换成“卡片”样式
+    // 2. 强行抓取并修改样式
     setTimeout(() => {
         const wrapper = document.querySelector(`.message-wrapper[data-id="${msgId}"]`) || document.querySelector(`.message-wrapper[data-msg-id="${msgId}"]`);
         if (wrapper) {
+            // 给巡查兵打上“免死金牌”标记
+            wrapper.dataset.antiCleaned = '1'; 
+            wrapper.dataset.isRoomCard = '1'; 
+            
             const msgDiv = wrapper.querySelector('.message');
             if (msgDiv) {
                 msgDiv.innerHTML = `
-                    <div onclick="window.enterHisRoom()" style="background:#f6f6f6; border-radius:8px; padding:12px; width:220px; cursor:pointer; text-align:left; border:1px solid #e5e5e5; box-shadow:0 2px 8px rgba(0,0,0,0.05);">
+                    <div style="background:#f6f6f6; border-radius:8px; padding:12px; width:220px; cursor:pointer; text-align:left; border:1px solid #e5e5e5; box-shadow:0 2px 8px rgba(0,0,0,0.05);">
                         <div style="font-size:12px; color:#999; margin-bottom:8px;">希望可以进你家</div>
                         <div style="display:flex; align-items:center; gap:8px;">
                             <div style="width:36px; height:36px; background:#dcdcdc; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:18px;">🚪</div>
@@ -146,11 +151,16 @@ window.myOpenRoom = function() {
                     </div>
                 `;
                 msgDiv.style.cssText = 'padding:0 !important; background:transparent !important; box-shadow:none !important;';
+                
+                // 绑定点击事件
+                msgDiv.onclick = function() {
+                    window.enterHisRoom();
+                };
             }
         }
-    }, 100);
+    }, 200);
 
-    // 3. 对方经过 2~4 秒的“犹豫”回复
+    // 3. 对方回复
     setTimeout(() => {
         const isReject = Math.random() < 0.5; // 50% 概率拒绝
         const text = isReject ? '……你先别进来。' : '进来吧，门没锁。';
