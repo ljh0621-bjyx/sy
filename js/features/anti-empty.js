@@ -113,6 +113,8 @@ if (msgData.type === 'room-invite') {
             }
 
             // ===== 处理空气泡 =====
+            // 跳过敲门卡片
+if (wrapper.dataset.isRoomCard === '1') return;
             if (wrapper.dataset.antiCleaned === '1') return;
             
             const text = (msgDiv.innerText || '').replace(/[\s\u200B-\u200D\uFEFF]/g, '');
