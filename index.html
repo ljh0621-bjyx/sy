@@ -1915,6 +1915,9 @@ document.addEventListener('click', function(e) {
 <div class="settings-item" onclick="window.openHisPhone && window.openHisPhone()">
     <i class="fas fa-mobile-alt"></i><span>他的手机</span>
 </div>
+<div class="settings-item" onclick="window.openPeriodTracker && window.openPeriodTracker()">
+    <i class="fas fa-heartbeat" style="color:#ff6699;"></i><span>姨妈助手</span>
+</div>
 <div class="settings-item" id="partner-invite-function" onclick="openPartnerInviteSettings()">
     <i class="fas fa-envelope-open-text"></i><span>对方邀请设置</span>
 </div>
@@ -2869,6 +2872,7 @@ document.addEventListener('click', function(e) {
 <script src="js/features/daily-tarot.js"></script>
 <script src="js/features/surprise-box.js"></script>
 <script src="js/features/his-phone.js"></script>
+<script src="js/features/period-tracker.js"></script>
 <script>
 (function () {
     var AMBIENT_KEY = 'chatApp_ambientMood';
