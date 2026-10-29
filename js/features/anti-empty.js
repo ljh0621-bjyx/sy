@@ -67,6 +67,31 @@
                 return; 
             }
 
+// ===== 处理盲盒消息 =====
+if (msgData.isSurpriseBox) {
+    if (msgDiv.dataset.renderedBox === '1') return;
+    
+    // 注入晃动动画
+    if (!document.getElementById('box-anim-style')) {
+        const style = document.createElement('style');
+        style.id = 'box-anim-style';
+        style.textContent = '@keyframes shakeBox { 0%{transform:rotate(0)} 25%{transform:rotate(-15deg) scale(1.1)} 50%{transform:rotate(15deg) scale(1.1)} 75%{transform:rotate(-10deg) scale(1.05)} 100%{transform:rotate(0)} }';
+        document.head.appendChild(style);
+    }
+
+    msgDiv.innerHTML = `
+        <div onclick="window.openSurpriseBox('${msgData.id}', this)" style="background:linear-gradient(135deg, #FFE5E5, #FFF0F5); border:1.5px dashed #FF6699; border-radius:12px; padding:16px; width:220px; cursor:pointer; text-align:center; box-shadow:0 4px 12px rgba(255,102,153,0.15);">
+            <div style="font-size:40px; margin-bottom:8px; filter:drop-shadow(0 4px 6px rgba(0,0,0,0.1));">🎁</div>
+            <div style="font-size:13px; color:#FF6699; font-weight:700;">点击拆开盲盒</div>
+        </div>
+    `;
+    
+    msgDiv.style.cssText = 'padding:0 !important; background:transparent !important; box-shadow:none !important; max-width:none !important;';
+    msgDiv.dataset.renderedBox = '1';
+    wrapper.style.display = '';
+    wrapper.dataset.antiCleaned = '1'; 
+    return;
+}
             // ===== 处理转账消息 =====
             if (msgData.type === 'transfer') {
                 if (msgDiv.dataset.renderedTransfer === '1') return;
