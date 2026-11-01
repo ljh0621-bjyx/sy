@@ -2151,49 +2151,60 @@ function _escapeAttr(s) {
         .replace(/>/g, '&gt;');
 }
 // ==========================================
-// 修复「对方打字动画」开关无法点击的问题
+// 强力修复「对方打字动画」开关
 // ==========================================
-(function fixTypingAnimToggle() {
-    function init() {
-        const toggle = document.getElementById('partner-typing-anim-toggle');
-        if (!toggle || toggle._fixedBound) return;
-        toggle._fixedBound = true;
+(function fixTypingAnimToggleUltimate() {
+    // 1. 点击拦截器：不管你点的是文字还是那个小圆点，都能生效
+    document.addEventListener('click', function(e) {
+        // 找到是不是点在了这个开关所在的行上
+        const row = e.target.closest('#partner-typing-anim-toggle');
+        if (!row) return;
         
-        // 读取当前状态（默认开启）
+        // 阻止其他乱七八糟的点击事件冲突
+        e.preventDefault();
+        e.stopPropagation();
+
+        // 读取当前状态
         let isEnabled = localStorage.getItem('partnerTypingAnimEnabled') !== '0';
+        // 切换状态
+        isEnabled = !isEnabled;
         
-        // 同步 UI 状态（点亮/变灰）
-        if (isEnabled) toggle.classList.add('active');
-        else toggle.classList.remove('active');
+        // 保存到本地（floating-window.js 会读这个值来决定弹不弹窗）
+        localStorage.setItem('partnerTypingAnimEnabled', isEnabled ? '1' : '0');
+        
+        // 更新 UI 样式（亮金色 / 灰色）
+        if (isEnabled) {
+            row.classList.add('active');
+        } else {
+            row.classList.remove('active');
+        }
+        
+        // 弹个提示
+        if (typeof showNotification === 'function') {
+            showNotification(isEnabled ? '已开启对方打字动画' : '已关闭对方打字动画', 'success', 1500);
+        }
+    }, true); // 使用 true 捕获阶段，比页面原有的代码执行得更早
 
-        // 绑定点击事件
-        toggle.onclick = function() {
-            isEnabled = !isEnabled;
-            // 保存状态到本地，floating-window.js 会读取这个值
-            localStorage.setItem('partnerTypingAnimEnabled', isEnabled ? '1' : '0');
-            
-            // 切换 UI 样式
-            if (isEnabled) toggle.classList.add('active');
-            else toggle.classList.remove('active');
-            
-            // 提示
-            if (typeof showNotification === 'function') {
-                showNotification(isEnabled ? '已开启对方打字动画' : '已关闭对方打字动画', 'success', 1500);
-            }
-        };
+    // 2. UI 同步器：每次打开聊天设置时，自动把开关的状态同步成正确的
+    function syncUI() {
+        const row = document.getElementById('partner-typing-anim-toggle');
+        if (!row) return;
+        
+        const isEnabled = localStorage.getItem('partnerTypingAnimEnabled') !== '0';
+        if (isEnabled) {
+            row.classList.add('active');
+        } else {
+            row.classList.remove('active');
+        }
     }
 
-    // 页面加载完毕后初始化
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => setTimeout(init, 1000));
-    } else {
-        setTimeout(init, 1000);
-    }
-    
-    // 每次打开「聊天设置」时，刷新一下开关状态
+    // 监听“聊天设置”按钮的点击，每次打开都同步一下
     document.addEventListener('click', function(e) {
         if (e.target.closest('#chat-settings')) {
-            setTimeout(init, 200);
+            setTimeout(syncUI, 200);
         }
     });
+    
+    // 页面刚加载时也同步一下
+    setTimeout(syncUI, 1000);
 })();
