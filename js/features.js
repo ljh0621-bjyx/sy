@@ -1540,12 +1540,16 @@ function _pickOptionsFromCards(n) {
     return [];
 }
 
+/* ============================================================
+ * 问卷编辑器（选择题 + 文字题 双模式）
+ * ============================================================ */
 window.openSurveyPanel = function () {
     const old = document.getElementById('survey-panel');
     if (old) old.remove();
 
     let editorOptions = ['', ''];
     let isMulti = false;
+    let surveyMode = 'choice';  // 'choice' = 选择题 / 'text' = 文字题
 
     const modal = document.createElement('div');
     modal.id = 'survey-panel';
@@ -1562,10 +1566,35 @@ window.openSurveyPanel = function () {
         }).join('');
     };
 
+    // 模式切换后刷新界面
+    const applyMode = () => {
+        const isText = surveyMode === 'text';
+        const choiceSection = modal.querySelector('#sp-choice-section');
+        const optionList    = modal.querySelector('#sp-ed-options-list');
+        const addOptBtn     = modal.querySelector('#sp-ed-add-opt');
+        const hintEl        = modal.querySelector('#sp-mode-hint');
+        const modeBtns      = modal.querySelectorAll('.sp-mode-main');
+
+        modeBtns.forEach(function (b) {
+            const active = b.dataset.mode === surveyMode;
+            b.style.background = active ? 'var(--accent-color)' : 'transparent';
+            b.style.color      = active ? '#fff' : '#888';
+        });
+
+        if (choiceSection) choiceSection.style.display = isText ? 'none' : 'block';
+        if (optionList)    optionList.style.display    = isText ? 'none' : 'block';
+        if (addOptBtn)     addOptBtn.style.display     = isText ? 'none' : 'block';
+        if (hintEl) {
+            hintEl.textContent = isText
+                ? '对方会用拼音打字的方式，自由组字回答你'
+                : '对方会从选项中选择答案';
+        }
+    };
+
     modal.innerHTML =
         '<div style="background:#fff;border-radius:24px;padding:22px 20px;width:92%;max-width:420px;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(0,0,0,0.18);">'
 
-        + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-shrink:0;">'
+        + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-shrink:0;">'
         +   '<div style="width:28px;height:28px;border-radius:50%;background:var(--accent-color);color:#fff;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;">?</div>'
         +   '<span style="font-size:22px;font-weight:700;color:#2a2a2a;">问问你</span>'
         +   '<div style="flex:1;"></div>'
@@ -1573,15 +1602,26 @@ window.openSurveyPanel = function () {
         +   '<button id="sp-ask-me-btn" style="background:none;border:none;color:var(--accent-color);cursor:pointer;font-size:17px;padding:4px 8px;" title="让他问我一个问题"><i class="fas fa-dice"></i></button>'
         + '</div>'
 
+        // ★ 模式切换栏（选择题 / 文字题）
+        + '<div style="display:flex;gap:4px;padding:3px;background:#f5f5f5;border-radius:20px;margin-bottom:10px;flex-shrink:0;">'
+        +   '<button type="button" class="sp-mode-main" data-mode="choice" style="flex:1;padding:8px 12px;border:none;border-radius:16px;background:var(--accent-color);color:#fff;font-size:12.5px;font-weight:600;cursor:pointer;font-family:var(--font-family);"><i class="fas fa-list-ul" style="margin-right:4px;"></i>选择题</button>'
+        +   '<button type="button" class="sp-mode-main" data-mode="text" style="flex:1;padding:8px 12px;border:none;border-radius:16px;background:transparent;color:#888;font-size:12.5px;font-weight:600;cursor:pointer;font-family:var(--font-family);"><i class="fas fa-keyboard" style="margin-right:4px;"></i>文字题</button>'
+        + '</div>'
+
+        + '<div id="sp-mode-hint" style="font-size:11px;color:#999;margin-bottom:12px;text-align:center;flex-shrink:0;">对方会从选项中选择答案</div>'
+
         + '<div style="padding:4px;border:2px solid rgba(var(--accent-color-rgb), 0.4);border-radius:18px;background:#fff;margin-bottom:16px;flex-shrink:0;">'
         +   '<textarea id="sp-question-input" placeholder="输入你想问的问题..." style="width:100%;min-height:64px;padding:12px 14px;border:none;background:transparent;color:#2a2a2a;font-size:15px;outline:none;font-family:var(--font-family);resize:none;box-sizing:border-box;line-height:1.5;"></textarea>'
         + '</div>'
 
-        + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-shrink:0;">'
-        +   '<span style="font-size:15px;font-weight:600;color:#2a2a2a;">选项</span>'
-        +   '<div style="display:flex;gap:4px;padding:3px;background:#f5f5f5;border-radius:20px;">'
-        +     '<button type="button" class="sp-mode-btn" data-mode="single" style="padding:5px 16px;border:none;border-radius:16px;background:var(--accent-color);color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-family);">单选</button>'
-        +     '<button type="button" class="sp-mode-btn" data-mode="multi" style="padding:5px 16px;border:none;border-radius:16px;background:transparent;color:#888;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-family);">多选</button>'
+        // 选择题的"单/多选"切换
+        + '<div id="sp-choice-section" style="flex-shrink:0;">'
+        +   '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">'
+        +     '<span style="font-size:15px;font-weight:600;color:#2a2a2a;">选项</span>'
+        +     '<div style="display:flex;gap:4px;padding:3px;background:#f5f5f5;border-radius:20px;">'
+        +       '<button type="button" class="sp-mode-btn" data-mode="single" style="padding:5px 16px;border:none;border-radius:16px;background:var(--accent-color);color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-family);">单选</button>'
+        +       '<button type="button" class="sp-mode-btn" data-mode="multi" style="padding:5px 16px;border:none;border-radius:16px;background:transparent;color:#888;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-family);">多选</button>'
+        +     '</div>'
         +   '</div>'
         + '</div>'
 
@@ -1593,22 +1633,40 @@ window.openSurveyPanel = function () {
         +   '<button id="sp-ed-cancel" style="flex:1;padding:14px;border:none;border-radius:14px;background:#f0f0f0;color:#666;font-size:15px;font-weight:600;cursor:pointer;font-family:var(--font-family);">取消</button>'
         +   '<button id="sp-ed-send" style="flex:1.5;padding:14px;border:none;border-radius:14px;background:var(--accent-color);color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:var(--font-family);">发送问题</button>'
         + '</div>'
+
         + '</div>';
 
     document.body.appendChild(modal);
 
-    const bindOptionEvents = () => {
-        modal.querySelectorAll('.sp-ed-opt-input').forEach(inp => {
-            inp.addEventListener('input', () => {
+    // --- 模式切换 ---
+    modal.querySelectorAll('.sp-mode-main').forEach(function (btn) {
+        btn.onclick = function () {
+            surveyMode = btn.dataset.mode;
+            applyMode();
+        };
+    });
+
+    // --- 单选/多选 ---
+    modal.querySelectorAll('.sp-mode-btn').forEach(function (btn) {
+        btn.onclick = function () {
+            isMulti = btn.dataset.mode === 'multi';
+            modal.querySelectorAll('.sp-mode-btn').forEach(function (b) {
+                const active = b.dataset.mode === btn.dataset.mode;
+                b.style.background = active ? 'var(--accent-color)' : 'transparent';
+                b.style.color      = active ? '#fff' : '#888';
+            });
+        };
+    });
+
+    const bindOptionEvents = function () {
+        modal.querySelectorAll('.sp-ed-opt-input').forEach(function (inp) {
+            inp.addEventListener('input', function () {
                 editorOptions[parseInt(inp.dataset.idx)] = inp.value;
             });
         });
-        modal.querySelectorAll('.sp-ed-opt-del').forEach(btn => {
-            btn.onclick = () => {
-                if (editorOptions.length <= 2) {
-                    showNotification('至少保留 2 个选项', 'warning');
-                    return;
-                }
+        modal.querySelectorAll('.sp-ed-opt-del').forEach(function (btn) {
+            btn.onclick = function () {
+                if (editorOptions.length <= 2) { showNotification('至少保留 2 个选项', 'warning'); return; }
                 editorOptions.splice(parseInt(btn.dataset.idx), 1);
                 modal.querySelector('#sp-ed-options-list').innerHTML = renderOptions();
                 bindOptionEvents();
@@ -1617,42 +1675,39 @@ window.openSurveyPanel = function () {
     };
     bindOptionEvents();
 
-    modal.querySelector('#sp-ed-add-opt').onclick = () => {
+    modal.querySelector('#sp-ed-add-opt').onclick = function () {
         editorOptions.push('');
         modal.querySelector('#sp-ed-options-list').innerHTML = renderOptions();
         bindOptionEvents();
     };
 
-    modal.querySelectorAll('.sp-mode-btn').forEach(btn => {
-        btn.onclick = () => {
-            isMulti = btn.dataset.mode === 'multi';
-            modal.querySelectorAll('.sp-mode-btn').forEach(b => {
-                const active = b.dataset.mode === btn.dataset.mode;
-                b.style.background = active ? 'var(--accent-color)' : 'transparent';
-                b.style.color = active ? '#fff' : '#888';
-            });
-        };
-    });
-
-    const close = () => modal.remove();
+    const close = function () { modal.remove(); };
     modal.querySelector('#sp-ed-cancel').onclick = close;
-    modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+    modal.addEventListener('click', function (e) { if (e.target === modal) close(); });
 
-    modal.querySelector('#sp-bank-btn').onclick = () => _openSurveyBankManager();
+    modal.querySelector('#sp-bank-btn').onclick = function () { _openSurveyBankManager(); };
 
-    modal.querySelector('#sp-ask-me-btn').onclick = () => {
+    modal.querySelector('#sp-ask-me-btn').onclick = function () {
         const ok = _sendPartnerQuestion();
-        if (ok) {
-            showNotification('他已经问你了，去聊天里看看～', 'info', 3000);
-        } else {
-            showNotification('题库为空，请先点 ⚙ 添加问题', 'warning');
-        }
+        if (ok) showNotification('他已经问你了，去聊天里看看～', 'info', 3000);
+        else    showNotification('题库为空，请先点 ⚙ 添加问题', 'warning');
     };
 
-    modal.querySelector('#sp-ed-send').onclick = () => {
+    // --- 发送按钮 ---
+    modal.querySelector('#sp-ed-send').onclick = function () {
         const q = modal.querySelector('#sp-question-input').value.trim();
-        const opts = editorOptions.map(o => (o || '').trim()).filter(Boolean);
         if (!q) { showNotification('请输入问题', 'warning'); return; }
+
+        // ★★★ 文字题分支 ★★★
+        if (surveyMode === 'text') {
+            _sendTextSurvey(q);
+            close();
+            showNotification('✓ 文字题已发送，等待对方组字回答…', 'success', 2500);
+            return;
+        }
+
+        // === 以下为原来的选择题逻辑（保持不动） ===
+        const opts = editorOptions.map(function (o) { return (o || '').trim(); }).filter(Boolean);
         if (opts.length < 2) { showNotification('至少填写 2 个选项', 'warning'); return; }
 
         addMessage({
@@ -1662,13 +1717,7 @@ window.openSurveyPanel = function () {
             timestamp: new Date(),
             status: 'sent',
             type: 'survey',
-            survey: {
-                question: q,
-                options: opts,
-                multi: isMulti,
-                answered: false,
-                answer: []
-            }
+            survey: { question: q, options: opts, multi: isMulti, answered: false, answer: [] }
         });
         if (typeof playSound === 'function') playSound('send');
         close();
@@ -1678,17 +1727,17 @@ window.openSurveyPanel = function () {
         const _spMax = Math.max(_spMin + 500, (typeof settings !== 'undefined' && settings.surveyReplyDelayMax) || 60000);
         const _spDelay1 = _spMin + Math.random() * (_spMax - _spMin);
         const _spDelay2 = Math.max(400, _spMin * 0.4 + Math.random() * (_spMax - _spMin) * 0.4);
-
         const myMsgId = messages[messages.length - 1].id;
-        setTimeout(() => {
-            const idx = messages.findIndex(m => String(m.id) === String(myMsgId));
+
+        setTimeout(function () {
+            const idx = messages.findIndex(function (m) { return String(m.id) === String(myMsgId); });
             if (idx === -1) return;
             const msg = messages[idx];
             if (!msg || msg.type !== 'survey' || msg.survey.answered) return;
 
             if (msg.survey.multi) {
                 const count = Math.random() < 0.5 ? 1 : 2;
-                const shuffled = msg.survey.options.slice().sort(() => Math.random() - 0.5);
+                const shuffled = msg.survey.options.slice().sort(function () { return Math.random() - 0.5; });
                 msg.survey.answer = shuffled.slice(0, Math.min(count, shuffled.length));
             } else {
                 msg.survey.answer = [msg.survey.options[Math.floor(Math.random() * msg.survey.options.length)]];
@@ -1699,20 +1748,16 @@ window.openSurveyPanel = function () {
             renderMessages(true);
             if (typeof playSound === 'function') playSound('favorite');
 
-            setTimeout(() => {
+            setTimeout(function () {
                 const pool = (typeof customReplies !== 'undefined' && Array.isArray(customReplies))
-                    ? customReplies.filter(t => t && String(t).trim())
+                    ? customReplies.filter(function (t) { return t && String(t).trim(); })
                     : [];
                 if (pool.length > 0) {
                     const reply = pool[Math.floor(Math.random() * pool.length)];
                     const partnerName = (typeof settings !== 'undefined' && settings.partnerName) ? settings.partnerName : '对方';
                     addMessage({
-                        id: Date.now() + Math.random(),
-                        sender: partnerName,
-                        text: reply,
-                        timestamp: new Date(),
-                        status: 'received',
-                        type: 'normal'
+                        id: Date.now() + Math.random(), sender: partnerName, text: reply,
+                        timestamp: new Date(), status: 'received', type: 'normal'
                     });
                     if (typeof playSound === 'function') playSound('message');
                 }
@@ -1720,20 +1765,96 @@ window.openSurveyPanel = function () {
         }, _spDelay1);
     };
 
-    setTimeout(() => {
+    setTimeout(function () {
         const inp = modal.querySelector('#sp-question-input');
         if (inp) inp.focus();
     }, 150);
-
-    if (Math.random() < 0.3) {
-        setTimeout(() => {
-            const ok = _sendPartnerQuestion();
-            if (ok) {
-                showNotification('他问了你一个问题，去聊天里看看～', 'info', 3000);
-            }
-        }, 800);
-    }
 };
+
+/* ============================================================
+ * 文字题：从字卡库抽取，自由组字生成一句话
+ * ============================================================ */
+function _generateTextAnswer() {
+    const pool = (typeof customReplies !== 'undefined' && Array.isArray(customReplies))
+        ? customReplies.filter(function (t) { return t && String(t).trim(); })
+        : [];
+    if (pool.length === 0) return '……';
+
+    const rand = Math.random();
+    const count = rand < 0.55 ? 1 : (rand < 0.85 ? 2 : 3);
+    const parts = [];
+    for (let i = 0; i < count; i++) {
+        parts.push(pool[Math.floor(Math.random() * pool.length)]);
+    }
+    let answer = parts.join('，');
+    if (!/[。！？…]$/.test(answer)) answer += '。';
+    return answer;
+}
+
+/* ============================================================
+ * 文字题：发送 + 思考延迟 + 拼音打字 → 最后文字回填
+ * ============================================================ */
+function _sendTextSurvey(question) {
+    const msgId = Date.now() + Math.floor(Math.random() * 1000);
+
+    addMessage({
+        id: msgId,
+        sender: 'user',
+        text: question,
+        timestamp: new Date(),
+        status: 'sent',
+        type: 'survey-text',
+        survey: {
+            question: question,
+            answered: false,
+            typing: false,
+            answer: ''
+        }
+    });
+    if (typeof playSound === 'function') playSound('send');
+
+    // 1) 思考延迟：5~13 秒（想调整节奏改这里）
+    const thinkDelay = 5000 + Math.random() * 8000;
+
+    setTimeout(async function () {
+        const msg = (typeof messages !== 'undefined' ? messages : []).find(function (m) {
+            return String(m.id) === String(msgId);
+        });
+        if (!msg || msg.type !== 'survey-text' || msg.survey.answered) return;
+
+        const answer = _generateTextAnswer();
+        if (!answer) return;
+
+        // 2) 标记"正在组句"
+        msg.survey.typing = true;
+        if (typeof throttledSaveData === 'function') throttledSaveData();
+        if (typeof renderMessages === 'function') renderMessages(true);
+
+        // 3) 播放拼音打字动画（每个字约 1~2 秒，等它播完再回填）
+        try {
+            if (typeof window.simulatePartnerTypingProcess === 'function') {
+                await window.simulatePartnerTypingProcess(answer);
+            }
+        } catch (e) {
+            console.warn('[text-survey] 拼音动画失败:', e);
+        }
+
+        // 4) 回填文字答案
+        msg.survey.typing = false;
+        msg.survey.answered = true;
+        msg.survey.answer = answer;
+        if (typeof throttledSaveData === 'function') throttledSaveData();
+        if (typeof renderMessages === 'function') renderMessages(true);
+        if (typeof playSound === 'function') playSound('message');
+
+        try {
+            const pn = (typeof settings !== 'undefined' && settings.partnerName) ? settings.partnerName : '对方';
+            if (typeof showNotification === 'function') {
+                showNotification(pn + ' 回答了你的文字题', 'info', 2000);
+            }
+        } catch (e) {}
+    }, thinkDelay);
+}
 
 function _sendPartnerQuestion() {
     const list = _loadSurveyForPartner();

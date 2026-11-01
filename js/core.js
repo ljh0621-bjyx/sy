@@ -978,6 +978,80 @@ const borderColor = 'rgba(var(--accent-color-rgb), 0.35)';
     lastSenderRef.current = 'system';
     return fragment;
 }
+// ===== 文字题卡片（我出题，对方打字回答）=====
+if (msg.type === 'survey-text' && msg.survey) {
+    const surveyDiv = document.createElement('div');
+    surveyDiv.className = 'survey-message-wrapper';
+    surveyDiv.dataset.id = msg.id;
+    surveyDiv.dataset.msgId = msg.id;
+    surveyDiv.style.display = 'flex';
+    surveyDiv.style.justifyContent = 'flex-end';
+    surveyDiv.style.marginBottom = '12px';
+    surveyDiv.style.alignItems = 'flex-end';
+
+    const survey  = msg.survey;
+    const q       = survey.question || '';
+    const answered = survey.answered || false;
+    const answer  = survey.answer || '';
+    const typing  = survey.typing || false;
+    const pn      = (typeof settings !== 'undefined' && settings.partnerName) ? settings.partnerName : '对方';
+
+    // 我方头像
+    if (settings.inChatAvatarEnabled) {
+        const av = document.createElement('div');
+        av.className = 'message-avatar';
+        av.innerHTML = DOMElements.me.avatar.innerHTML;
+        const avatarShape = settings.myAvatarShape || 'circle';
+        if (avatarShape !== 'none') av.classList.add('shape-' + avatarShape);
+        av.style.flexShrink = '0';
+        av.style.margin = '0 0 0 10px';
+        av.style.order = 2;
+        surveyDiv.appendChild(av);
+    }
+
+    const cardBox = document.createElement('div');
+    cardBox.style.order = '1';
+    cardBox.style.maxWidth = '300px';
+    cardBox.style.minWidth = '220px';
+
+    let answerHTML = '';
+    if (!answered && !typing) {
+        answerHTML =
+            '<div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-secondary);font-style:italic;opacity:0.75;padding:8px 0;">'
+            +   '<i class="fas fa-ellipsis-h" style="color:var(--accent-color);"></i>'
+            +   '<span>等待 ' + pn.replace(/</g, '&lt;') + ' 回复…</span>'
+            + '</div>';
+    } else if (typing) {
+        answerHTML =
+            '<div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--accent-color);padding:8px 0;">'
+            +   '<i class="fas fa-keyboard"></i>'
+            +   '<span>' + pn.replace(/</g, '&lt;') + ' 正在组句…</span>'
+            + '</div>';
+    } else {
+        answerHTML =
+            '<div style="background:rgba(var(--accent-color-rgb), 0.08);border-radius:10px;padding:10px 12px;font-size:13.5px;line-height:1.7;color:var(--text-primary);word-break:break-word;">'
+            +   '<div style="font-size:10.5px;color:var(--text-secondary);margin-bottom:4px;">' + pn.replace(/</g, '&lt;') + ' 的回答</div>'
+            +   String(answer).replace(/</g, '&lt;').replace(/\n/g, '<br>')
+            + '</div>';
+    }
+
+    cardBox.innerHTML = '<div style="'
+        + 'background:var(--secondary-bg);'
+        + 'border:1.5px solid rgba(var(--accent-color-rgb), 0.35);'
+        + 'border-radius:18px;padding:16px;'
+        + 'box-shadow:0 2px 12px rgba(0,0,0,0.06);">'
+        +   '<div style="font-size:14.5px;font-weight:700;color:var(--text-primary);line-height:1.6;margin-bottom:12px;word-break:break-word;">'
+        +     '<i class="fas fa-question-circle" style="color:var(--accent-color);margin-right:6px;font-size:13px;"></i>'
+        +     q.replace(/</g, '&lt;')
+        +   '</div>'
+        +   answerHTML
+        + '</div>';
+
+    surveyDiv.appendChild(cardBox);
+    fragment.appendChild(surveyDiv);
+    lastSenderRef.current = 'system';
+    return fragment;
+}
     let showTimestamp = true;
     if (settings.timeFormat === 'off') showTimestamp = false;
     else if (nextMsg) {
