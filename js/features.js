@@ -1813,146 +1813,95 @@ modal.querySelector('#sp-ask-me-btn').onclick = function () {
  * 文字题：生成回答（支持中/日）
  * ============================================================ */
 /* ============================================================
- * 自由组字引擎（中文/日文随机拼凑，带标点）
+ * 自由词性拼装引擎（完全不依赖字卡库，随机组字、随机标点）
  * ============================================================ */
-const FREE_WORDS_ZH = {
-    prefix: ['其实', '我觉得', '那个', '今天', '突然想', '不知道', '感觉', '要是', '怎么办'],
-    subject: ['你', '我', '我们', '心里'],
-    action: ['在干嘛呢', '吃饭了吗', '好想见你', '累不累啊', '好喜欢你', '早点休息', '抱抱', '理理我', '梦到我了吗', '怎么回事', '有没有想我'],
-    punc: ['。', '！', '？', '……', '~', '...']
-};
-
-const FREE_WORDS_JA = [
-    { ja: '今日', zh: '今天' },
-    { ja: '会いたい', zh: '好想见你' },
-    { ja: '好きだよ', zh: '喜欢你哦' },
-    { ja: '何してるの', zh: '在干嘛呢' },
-    { ja: 'お腹すいた', zh: '肚子饿了' },
-    { ja: 'おやすみ', zh: '晚安' },
-    { ja: '大好き', zh: '最喜欢了' },
-    { ja: '一緒にいたい', zh: '想和你在一起' },
-    { ja: '寂しいな', zh: '有点寂寞呢' },
-    { ja: '愛してる', zh: '我爱你' },
-    { ja: '頑張って', zh: '加油' },
-    { ja: '大丈夫', zh: '没事的' },
-    { ja: '君のことが好き', zh: '喜欢你' },
-    { ja: 'ずっと一緒', zh: '一直在一起' },
-    { ja: '会えなくて寂しい', zh: '见不到你好寂寞' },
-    { ja: '何を考えてるの', zh: '在想什么呢' },
-    { ja: '私のことを考えてる？', zh: '在想我吗？' }
-];
-
 function _generateFreeText(lang) {
-    const pool = (typeof customReplies !== 'undefined' && Array.isArray(customReplies))
-        ? customReplies.filter(function (t) { return t && String(t).trim(); })
-        : [];
-    
-    // ---- 日文自由组合 ----
-    if (lang === 'ja') {
-        const count = Math.random() < 0.6 ? 1 : 2; // 随机1到2个片段
-        let jaParts = [];
-        let zhParts = [];
-        for (let i = 0; i < count; i++) {
-            // 50%概率用内置日文，50%概率用字卡库
-            if (pool.length > 0 && Math.random() < 0.5) {
-                const pick = pool[Math.floor(Math.random() * pool.length)];
-                jaParts.push(pick); // 字卡本身当假名/汉字用
-                zhParts.push(pick); // 翻译就是本身
-            } else {
-                const word = FREE_WORDS_JA[Math.floor(Math.random() * FREE_WORDS_JA.length)];
-                jaParts.push(word.ja);
-                zhParts.push(word.zh);
-            }
-        }
-        const punc = FREE_WORDS_ZH.punc[Math.floor(Math.random() * FREE_WORDS_ZH.punc.length)];
-        const jaText = jaParts.join('、');
-        const zhText = zhParts.join('，');
-        return jaText + '（' + zhText + '）' + punc;
-    }
-    
-    // ---- 中文自由组合 ----
-    // 40%概率直接抽字卡（加上标点），60%概率自己组合
-    if (pool.length > 0 && Math.random() < 0.4) {
-        const pick = pool[Math.floor(Math.random() * pool.length)];
-        const punc = FREE_WORDS_ZH.punc[Math.floor(Math.random() * FREE_WORDS_ZH.punc.length)];
-        return pick + punc;
-    } else {
-        const p = Math.random() < 0.4 ? FREE_WORDS_ZH.prefix[Math.floor(Math.random() * FREE_WORDS_ZH.prefix.length)] : '';
-        const s = FREE_WORDS_ZH.subject[Math.floor(Math.random() * FREE_WORDS_ZH.subject.length)];
-        const a = FREE_WORDS_ZH.action[Math.floor(Math.random() * FREE_WORDS_ZH.action.length)];
-        const punc = FREE_WORDS_ZH.punc[Math.floor(Math.random() * FREE_WORDS_ZH.punc.length)];
-        
-        // 随机决定是加逗号分成两句话，还是连在一起
-        if (Math.random() < 0.5) {
-            return p + s + '，' + a + punc;
+    // 标点库
+    const puncs = ['。', '！', '？', '……', '~', '...', '！！', '？！'];
+    const p = () => puncs[Math.floor(Math.random() * puncs.length)];
+    const randItem = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+    // ================= 中文自由组词 =================
+    if (lang === 'zh') {
+        // 词汇库
+        const subjects = ['我', '你', '其实我', '感觉你', '要是你', '我们', '心里'];
+        const times = ['今天', '刚才', '最近', '突然', '一直', '昨晚', '有时候', '刚才那一瞬间'];
+        const verbs = ['想', '喜欢', '爱', '觉得', '看', '等', '梦到', '想念', '好想', '是不是'];
+        const adjectives = ['好累', '很开心', '有点难过', '好无聊', '很可爱', '有点酸', '好困', '不安', '好安静', '好想你'];
+        const objects = ['你', '你了', '抱抱', '理理我', '陪我', '在一起', '见面', '不讲话', '看着我'];
+        const particles = ['呢', '啊', '吧', '吗', '哦', ''];
+
+        // 随机选择一种句型拼装
+        const type = Math.random();
+        if (type < 0.25) {
+            // 句型1：主 + 谓 + 宾 + 语气 + 标点 （例：我好想你啊！）
+            return randItem(subjects) + randItem(verbs) + randItem(objects) + randItem(particles) + p();
+        } else if (type < 0.5) {
+            // 句型2：时间 + 主 + 谓 + 宾 + 标点 （例：刚才那一瞬间，觉得有点难过……）
+            return randItem(times) + '，' + randItem(subjects) + randItem(['觉得', '感觉', '好像']) + randItem(adjectives) + p();
+        } else if (type < 0.75) {
+            // 句型3：主 + 形容词 + 语气 + 标点 （例：心里有点酸酸的？）
+            return randItem(subjects) + randItem(['有点', '特别', '真的很']) + randItem(adjectives) + randItem(particles) + p();
         } else {
-            return p + s + a + punc;
+            // 句型4：感叹 + 逗号 + 疑问 （例：唉，你究竟在干嘛呢？）
+            return randItem(['唉', '嗯…', '那个', '其实']) + '，' + randItem(subjects) + randItem(['在干嘛呢', '吃饭了吗', '睡了吗', '有没有想我']) + p();
         }
     }
-}
 
-/* ============================================================
- * 文字题：发送 + 思考延迟 + 拼音打字 → 最后文字回填
- * ============================================================ */
-function _sendTextSurvey(question, lang) {
-    lang = lang || 'zh';
-    const msgId = Date.now() + Math.floor(Math.random() * 1000);
+    // ================= 日文自由组词 =================
+    if (lang === 'ja') {
+        // 日文采用 SOV（主宾谓）结构模板拼装
+        const jaTemplates = [
+            // 模板：あなたは[动作]（你[动作]）
+            { ja: '{sub}は{act}', zh: '{sub_zh}{act_zh}' },
+            // 模板：[时间]も[动作]
+            { ja: '{time}も{act}', zh: '{time_zh}也{act_zh}' },
+            // 模板：[感叹]！{sub}のことが[动作]
+            { ja: '{interj}！{sub}のことが{act}', zh: '{interj_zh}！{sub_zh}的事{act_zh}' },
+            // 模板：[动作]。[时间]も。
+            { ja: '{act}。{time}も。', zh: '{act_zh}。{time_zh}也是。' }
+        ];
 
-    addMessage({
-        id: msgId,
-        sender: 'user',
-        text: question,
-        timestamp: new Date(),
-        status: 'sent',
-        type: 'survey-text',
-        survey: {
-            question: question,
-            lang: lang,
-            answered: false,
-            typing: false,
-            answer: ''
-        }
-    });
-    if (typeof playSound === 'function') playSound('send');
+        const jaSubs = [
+            { ja: 'あなた', zh: '你' }, { ja: '君', zh: '你' }, 
+            { ja: '私', zh: '我' }, { ja: '僕', zh: '我' }
+        ];
+        const jaTimes = [
+            { ja: '今日', zh: '今天' }, { ja: 'ずっと', zh: '一直' }, 
+            { ja: '今すぐ', zh: '现在马上' }, { ja: '毎日', zh: '每天' }
+        ];
+        const jaActs = [
+            { ja: '会いたいんだ', zh: '好想见你' }, { ja: '愛してる', zh: '我爱你' },
+            { ja: '好きだよ', zh: '喜欢你哦' }, { ja: '離れたくない', zh: '不想离开你' },
+            { ja: '抱きしめたい', zh: '想紧紧抱住你' }, { ja: '何してるの', zh: '在干嘛呢' },
+            { ja: '寂しいよ', zh: '好寂寞啊' }, { ja: 'そばにいたい', zh: '想陪在你身边' }
+        ];
+        const jaInterjs = [
+            { ja: 'ねえ', zh: '呐' }, { ja: 'あのね', zh: '那个啊' }, 
+            { ja: 'えっと', zh: '嗯…' }, { ja: '実はね', zh: '其实啊' }
+        ];
 
-    // 思考延迟：5~13 秒
-    const thinkDelay = 5000 + Math.random() * 8000;
+        const tpl = randItem(jaTemplates);
+        const sub = randItem(jaSubs);
+        const tim = randItem(jaTimes);
+        const act = randItem(jaActs);
+        const inter = randItem(jaInterjs);
 
-    setTimeout(async function () {
-        const msg = (typeof messages !== 'undefined' ? messages : []).find(function (m) {
-            return String(m.id) === String(msgId);
-        });
-        if (!msg || msg.type !== 'survey-text' || msg.survey.answered) return;
+        // 替换日文模板
+        let jaText = tpl.ja
+            .replace('{sub}', sub.ja).replace('{time}', tim.ja)
+            .replace('{act}', act.ja).replace('{interj}', inter.ja);
+            
+        // 替换中文翻译模板
+        let zhText = tpl.zh
+            .replace('{sub_zh}', sub.zh).replace('{time_zh}', tim.zh)
+            .replace('{act_zh}', act.zh).replace('{interj_zh}', inter.zh);
 
-        // ★ 调用自由组字引擎
-        const answer = _generateFreeText(msg.survey.lang);
-        if (!answer) return;
-
-        msg.survey.typing = true;
-        if (typeof throttledSaveData === 'function') throttledSaveData();
-        if (typeof renderMessages === 'function') renderMessages(true);
-
-        // 拼音打字动画
-        try {
-            if (typeof window.simulatePartnerTypingProcess === 'function') {
-                await window.simulatePartnerTypingProcess(answer);
-            }
-        } catch (e) {
-            console.warn('[text-survey] 拼音动画失败:', e);
-        }
-
-        msg.survey.typing = false;
-        msg.survey.answered = true;
-        msg.survey.answer = answer;
-        if (typeof throttledSaveData === 'function') throttledSaveData();
-        if (typeof renderMessages === 'function') renderMessages(true);
-        if (typeof playSound === 'function') playSound('message');
-
-        try {
-            const pn = (typeof settings !== 'undefined' && settings.partnerName) ? settings.partnerName : '对方';
-            if (typeof showNotification === 'function') showNotification(pn + ' 回答了你的文字题', 'info', 2000);
-        } catch (e) {}
-    }, thinkDelay);
+        // 拼接带翻译的最终句子，并加上随机标点
+        return jaText + '（' + zhText + '）' + p();
+    }
+    
+    return '……';
 }
 
 
