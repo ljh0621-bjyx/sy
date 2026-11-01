@@ -2037,20 +2037,33 @@ function _openSurveyBankManager() {
         });
     };
 }
-
+/* ============================================================
+ * 问卷题库编辑器（支持中文题 / 日文题 带翻译）
+ * ============================================================ */
 function _openSurveyItemEditor(item, onSave) {
     const old = document.getElementById('sp-item-editor');
     if (old) old.remove();
 
     const isNew = !item;
-    const initialQuestion = item ? item.question : '';
-    const initialOptions = (item && item.options) ? item.options.slice() : [];
+    let currentLang = (item && item.lang) ? item.lang : 'zh';
+    let initialQuestion = item ? item.question : '';
+    let initialOptions = (item && item.options) ? item.options.slice() : [];
 
     const editor = document.createElement('div');
     editor.id = 'sp-item-editor';
     editor.style.cssText = 'position:fixed;inset:0;z-index:100001;background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;';
 
     let options = initialOptions.length ? initialOptions : ['', ''];
+
+    // ★ 日文快捷模板库（一键填入）
+    const JA_TEMPLATES = [
+        { q: '今日、私のことを考えましたか？（今天想我了吗？）', opts: ['はい（想了）', 'いいえ（没想）', 'ずっと（一直在想）'] },
+        { q: '私のどこが好きですか？（你喜欢我哪里？）', opts: ['全部（全部）', '顔（脸）', '性格（性格）'] },
+        { q: '一緒にどこへ行きたいですか？（想和我去哪里？）', opts: ['海（海边）', '山（山上）', '家（家里）'] },
+        { q: '愛してる？（爱我吗？）', opts: ['はい、愛してる（是的，爱你）', 'もちろん（当然）'] },
+        { q: '今日の気分はどう？（今天心情怎么样？）', opts: ['いい（不错）', '普通（一般）', '疲れた（有点累）'] },
+        { q: '会いたい？（想见我吗？）', opts: ['会いたい（想见你）', '今すぐ（现在就见）'] }
+    ];
 
     const renderOptions = () => {
         return options.map((opt, i) => {
@@ -2063,34 +2076,77 @@ function _openSurveyItemEditor(item, onSave) {
         }).join('');
     };
 
+    const updateLangUI = () => {
+        const zhBtn = editor.querySelector('#sp-lang-zh');
+        const jaBtn = editor.querySelector('#sp-lang-ja');
+        const qInp = editor.querySelector('#sp-ed-question');
+        const templateBtn = editor.querySelector('#sp-ja-template-btn');
+        
+        if (currentLang === 'zh') {
+            zhBtn.style.background = 'var(--accent-color)'; zhBtn.style.color = '#fff';
+            jaBtn.style.background = 'transparent'; jaBtn.style.color = '#888';
+            templateBtn.style.display = 'none';
+            qInp.placeholder = '例如：今天想我了吗？';
+        } else {
+            jaBtn.style.background = 'var(--accent-color)'; jaBtn.style.color = '#fff';
+            zhBtn.style.background = 'transparent'; zhBtn.style.color = '#888';
+            templateBtn.style.display = 'flex';
+            qInp.placeholder = '输入日文（可带中文翻译）...';
+        }
+    };
+
     editor.innerHTML =
         '<div style="background:#fff;border-radius:24px;padding:22px;width:92%;max-width:440px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(0,0,0,0.2);">'
-        + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-shrink:0;">'
-        +   '<span style="font-size:16px;font-weight:700;color:#2a2a2a;">' + (isNew ? '添加问题' : '编辑问题') + '</span>'
-        +   '<button id="sp-ed-close" style="background:none;border:none;color:#aaa;cursor:pointer;font-size:18px;"><i class="fas fa-times"></i></button>'
-        + '</div>'
+        +   '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-shrink:0;">'
+        +     '<span style="font-size:16px;font-weight:700;color:#2a2a2a;">' + (isNew ? '添加问题' : '编辑问题') + '</span>'
+        +     '<button id="sp-ed-close" style="background:none;border:none;color:#aaa;cursor:pointer;font-size:18px;"><i class="fas fa-times"></i></button>'
+        +   '</div>'
 
-        + '<div style="flex:1;overflow-y:auto;padding-right:2px;">'
+        // ★ 语言切换栏
+        +   '<div style="display:flex;gap:4px;padding:3px;background:#f5f5f5;border-radius:20px;margin-bottom:14px;flex-shrink:0;">'
+        +     '<button id="sp-lang-zh" type="button" style="flex:1;padding:8px 12px;border:none;border-radius:16px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:var(--font-family);">中文题</button>'
+        +     '<button id="sp-lang-ja" type="button" style="flex:1;padding:8px 12px;border:none;border-radius:16px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:var(--font-family);">日文题 (带翻译)</button>'
+        +   '</div>'
 
-        + '<div style="font-size:12px;color:#888;margin-bottom:6px;font-weight:600;">问题</div>'
-        + '<div style="padding:3px;border:2px solid rgba(var(--accent-color-rgb), 0.4);border-radius:14px;background:#fff;margin-bottom:10px;">'
-        + '<input id="sp-ed-question" type="text" value="' + _escapeAttr(initialQuestion) + '" placeholder="例如：今天想我了吗？" style="width:100%;padding:10px 12px;border:none;background:transparent;color:#2a2a2a;font-size:13px;outline:none;font-family:var(--font-family);box-sizing:border-box;">'
-        + '</div>'
-        + '<div style="font-size:10.5px;color:#999;margin-bottom:14px;line-height:1.6;">💡 选项留空 → 对方收到问题后可自由输入回答<br>💡 填写选项 → 以选择方式作答</div>'
+        +   '<div style="flex:1;overflow-y:auto;padding-right:2px;">'
 
-        + '<div style="font-size:12px;color:#888;margin-bottom:6px;font-weight:600;">选项（可选）</div>'
-        + '<div id="sp-ed-options">' + renderOptions() + '</div>'
-        + '<button id="sp-ed-add-opt" style="width:100%;padding:10px;border:2px dashed var(--accent-color);border-radius:12px;background:none;color:var(--accent-color);font-size:12px;cursor:pointer;font-family:var(--font-family);margin-top:4px;">+ 添加选项</button>'
+        +   '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">'
+        +     '<div style="font-size:12px;color:#888;font-weight:600;">问题</div>'
+        +     '<button id="sp-ja-template-btn" type="button" style="display:none;padding:4px 10px;border:1px dashed var(--accent-color);border-radius:8px;background:none;color:var(--accent-color);font-size:11px;cursor:pointer;font-family:var(--font-family);">✨ 填入日文模板</button>'
+        +   '</div>'
+        
+        +   '<div style="padding:3px;border:2px solid rgba(var(--accent-color-rgb), 0.4);border-radius:14px;background:#fff;margin-bottom:10px;">'
+        +     '<input id="sp-ed-question" type="text" value="' + _escapeAttr(initialQuestion) + '" style="width:100%;padding:10px 12px;border:none;background:transparent;color:#2a2a2a;font-size:13px;outline:none;font-family:var(--font-family);box-sizing:border-box;">'
+        +   '</div>'
+        
+        +   '<div style="font-size:10.5px;color:#999;margin-bottom:14px;line-height:1.6;">💡 选项留空 → 对方收到问题后可自由输入回答<br>💡 填写选项 → 以选择方式作答</div>'
 
-        + '</div>'
+        +   '<div style="font-size:12px;color:#888;margin-bottom:6px;font-weight:600;">选项（可选）</div>'
+        +   '<div id="sp-ed-options">' + renderOptions() + '</div>'
+        +   '<button id="sp-ed-add-opt" style="width:100%;padding:10px;border:2px dashed var(--accent-color);border-radius:12px;background:none;color:var(--accent-color);font-size:12px;cursor:pointer;font-family:var(--font-family);margin-top:4px;">+ 添加选项</button>'
 
-        + '<div style="display:flex;gap:10px;margin-top:14px;flex-shrink:0;">'
-        +   '<button id="sp-ed-cancel" style="flex:1;padding:12px;border:none;border-radius:12px;background:#f0f0f0;color:#666;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-family);">取消</button>'
-        +   '<button id="sp-ed-save" style="flex:1.5;padding:12px;border:none;border-radius:12px;background:var(--accent-color);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font-family);">保存</button>'
-        + '</div>'
+        +   '</div>'
+
+        +   '<div style="display:flex;gap:10px;margin-top:14px;flex-shrink:0;">'
+        +     '<button id="sp-ed-cancel" style="flex:1;padding:12px;border:none;border-radius:12px;background:#f0f0f0;color:#666;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-family);">取消</button>'
+        +     '<button id="sp-ed-save" style="flex:1.5;padding:12px;border:none;border-radius:12px;background:var(--accent-color);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font-family);">保存</button>'
+        +   '</div>'
         + '</div>';
 
     document.body.appendChild(editor);
+
+    // 绑定语言切换
+    editor.querySelector('#sp-lang-zh').onclick = () => { currentLang = 'zh'; updateLangUI(); };
+    editor.querySelector('#sp-lang-ja').onclick = () => { currentLang = 'ja'; updateLangUI(); };
+    
+    // 绑定一键填入模板
+    editor.querySelector('#sp-ja-template-btn').onclick = () => {
+        const tpl = JA_TEMPLATES[Math.floor(Math.random() * JA_TEMPLATES.length)];
+        editor.querySelector('#sp-ed-question').value = tpl.q;
+        options = tpl.opts.slice();
+        editor.querySelector('#sp-ed-options').innerHTML = renderOptions();
+        bindOptEvents();
+    };
 
     const bindOptEvents = () => {
         editor.querySelectorAll('.sp-opt-input').forEach(inp => {
@@ -2127,12 +2183,15 @@ function _openSurveyItemEditor(item, onSave) {
         const result = {
             id: item && item.id ? item.id : ('sq_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6)),
             question: q,
-            options: opts
+            options: opts,
+            lang: currentLang // ★ 存入语言标记
         };
         onSave(result);
         close();
         showNotification('✓ 已保存', 'success');
     };
+    
+    updateLangUI();
 }
 
 function _escapeHtmlSurvey(s) {
