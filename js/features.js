@@ -1543,6 +1543,9 @@ function _pickOptionsFromCards(n) {
 /* ============================================================
  * 问卷编辑器（选择题 + 文字题 双模式）
  * ============================================================ */
+/* ============================================================
+ * 问卷编辑器（选择题 + 文字题 双模式 + 中日双语支持）
+ * ============================================================ */
 window.openSurveyPanel = function () {
     const old = document.getElementById('survey-panel');
     if (old) old.remove();
@@ -1550,6 +1553,7 @@ window.openSurveyPanel = function () {
     let editorOptions = ['', ''];
     let isMulti = false;
     let surveyMode = 'choice';  // 'choice' = 选择题 / 'text' = 文字题
+    let surveyLang = 'zh';      // 'zh' = 中文 / 'ja' = 日文
 
     const modal = document.createElement('div');
     modal.id = 'survey-panel';
@@ -1573,6 +1577,7 @@ window.openSurveyPanel = function () {
         const optionList    = modal.querySelector('#sp-ed-options-list');
         const addOptBtn     = modal.querySelector('#sp-ed-add-opt');
         const hintEl        = modal.querySelector('#sp-mode-hint');
+        const langSection   = modal.querySelector('#sp-lang-section');
         const modeBtns      = modal.querySelectorAll('.sp-mode-main');
 
         modeBtns.forEach(function (b) {
@@ -1584,9 +1589,13 @@ window.openSurveyPanel = function () {
         if (choiceSection) choiceSection.style.display = isText ? 'none' : 'block';
         if (optionList)    optionList.style.display    = isText ? 'none' : 'block';
         if (addOptBtn)     addOptBtn.style.display     = isText ? 'none' : 'block';
+        
+        // 语言选择仅在文字题显示
+        if (langSection)   langSection.style.display   = isText ? 'flex' : 'none';
+
         if (hintEl) {
             hintEl.textContent = isText
-                ? '对方会用拼音打字的方式，自由组字回答你'
+                ? (surveyLang === 'ja' ? '对方会用拼音打出日文，并附带中文翻译' : '对方会用拼音打字的方式，自由组字回答你')
                 : '对方会从选项中选择答案';
         }
     };
@@ -1606,6 +1615,12 @@ window.openSurveyPanel = function () {
         + '<div style="display:flex;gap:4px;padding:3px;background:#f5f5f5;border-radius:20px;margin-bottom:10px;flex-shrink:0;">'
         +   '<button type="button" class="sp-mode-main" data-mode="choice" style="flex:1;padding:8px 12px;border:none;border-radius:16px;background:var(--accent-color);color:#fff;font-size:12.5px;font-weight:600;cursor:pointer;font-family:var(--font-family);"><i class="fas fa-list-ul" style="margin-right:4px;"></i>选择题</button>'
         +   '<button type="button" class="sp-mode-main" data-mode="text" style="flex:1;padding:8px 12px;border:none;border-radius:16px;background:transparent;color:#888;font-size:12.5px;font-weight:600;cursor:pointer;font-family:var(--font-family);"><i class="fas fa-keyboard" style="margin-right:4px;"></i>文字题</button>'
+        + '</div>'
+
+        // ★ 语言切换栏（仅在文字题显示）
+        + '<div id="sp-lang-section" style="display:none;gap:4px;padding:3px;background:#f5f5f5;border-radius:20px;margin-bottom:10px;flex-shrink:0;">'
+        +   '<button type="button" class="sp-lang-btn" data-lang="zh" style="flex:1;padding:6px 12px;border:none;border-radius:16px;background:var(--accent-color);color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-family);">中文回答</button>'
+        +   '<button type="button" class="sp-lang-btn" data-lang="ja" style="flex:1;padding:6px 12px;border:none;border-radius:16px;background:transparent;color:#888;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-family);">日文回答 (带翻译)</button>'
         + '</div>'
 
         + '<div id="sp-mode-hint" style="font-size:11px;color:#999;margin-bottom:12px;text-align:center;flex-shrink:0;">对方会从选项中选择答案</div>'
@@ -1643,6 +1658,19 @@ window.openSurveyPanel = function () {
         btn.onclick = function () {
             surveyMode = btn.dataset.mode;
             applyMode();
+        };
+    });
+
+    // --- 语言切换 ---
+    modal.querySelectorAll('.sp-lang-btn').forEach(function (btn) {
+        btn.onclick = function () {
+            surveyLang = btn.dataset.lang;
+            modal.querySelectorAll('.sp-lang-btn').forEach(function (b) {
+                const active = b.dataset.lang === surveyLang;
+                b.style.background = active ? 'var(--accent-color)' : 'transparent';
+                b.style.color      = active ? '#fff' : '#888';
+            });
+            applyMode(); // 刷新提示文字
         };
     });
 
@@ -1700,13 +1728,13 @@ window.openSurveyPanel = function () {
 
         // ★★★ 文字题分支 ★★★
         if (surveyMode === 'text') {
-            _sendTextSurvey(q);
+            _sendTextSurvey(q, surveyLang);
             close();
-            showNotification('✓ 文字题已发送，等待对方组字回答…', 'success', 2500);
+            showNotification('✓ 文字题已发送，等待对方回答…', 'success', 2500);
             return;
         }
 
-        // === 以下为原来的选择题逻辑（保持不动） ===
+        // === 选择题逻辑 ===
         const opts = editorOptions.map(function (o) { return (o || '').trim(); }).filter(Boolean);
         if (opts.length < 2) { showNotification('至少填写 2 个选项', 'warning'); return; }
 
@@ -1772,14 +1800,48 @@ window.openSurveyPanel = function () {
 };
 
 /* ============================================================
- * 文字题：从字卡库抽取，自由组字生成一句话
+ * 文字题：生成回答（支持中/日）
  * ============================================================ */
-function _generateTextAnswer() {
+function _generateTextAnswer(lang) {
+    // 日文情话语料库（带翻译）
+    const JA_POOL = [
+        'あなたのことが好きです（我喜欢你）',
+        'ずっと一緒にいたい（想一直和你在一起）',
+        '今日もお疲れ様（今天也辛苦了）',
+        '会えなくて寂しい（见不到你好寂寞）',
+        'いつもありがとう（一直以来谢谢你）',
+        '君のことが大好きだよ（最喜欢你了）',
+        'おやすみ、いい夢見てね（晚安，做个好梦）',
+        '明日も君に会えますように（希望明天也能见到你）',
+        '今、何してる？（现在在做什么呢？）',
+        '君に会いたいな（好想见你啊）',
+        '一緒にいると落ち着く（和你在一起就很安心）',
+        'ずっと君の味方だよ（我会一直站在你这边）'
+    ];
+
     const pool = (typeof customReplies !== 'undefined' && Array.isArray(customReplies))
         ? customReplies.filter(function (t) { return t && String(t).trim(); })
         : [];
-    if (pool.length === 0) return '……';
+    
+    // 如果是日文模式
+    if (lang === 'ja') {
+        // 50%概率用内置日文，50%概率用字卡库的句子前面加个简单的问候（模拟机翻）
+        if (Math.random() < 0.6 || pool.length === 0) {
+            const count = Math.random() < 0.7 ? 1 : 2;
+            const parts = [];
+            for (let i = 0; i < count; i++) {
+                parts.push(JA_POOL[Math.floor(Math.random() * JA_POOL.length)]);
+            }
+            return parts.join('、');
+        } else {
+            const pick = pool[Math.floor(Math.random() * pool.length)];
+            // 如果是中文，简单包一个日文前缀（如果想更真一点，可以扩写一个词典）
+            return 'えっと、' + pick + '（嗯…' + pick + '）';
+        }
+    }
 
+    // 中文模式默认逻辑
+    if (pool.length === 0) return '……';
     const rand = Math.random();
     const count = rand < 0.55 ? 1 : (rand < 0.85 ? 2 : 3);
     const parts = [];
@@ -1794,7 +1856,8 @@ function _generateTextAnswer() {
 /* ============================================================
  * 文字题：发送 + 思考延迟 + 拼音打字 → 最后文字回填
  * ============================================================ */
-function _sendTextSurvey(question) {
+function _sendTextSurvey(question, lang) {
+    lang = lang || 'zh';
     const msgId = Date.now() + Math.floor(Math.random() * 1000);
 
     addMessage({
@@ -1806,6 +1869,7 @@ function _sendTextSurvey(question) {
         type: 'survey-text',
         survey: {
             question: question,
+            lang: lang,
             answered: false,
             typing: false,
             answer: ''
@@ -1813,7 +1877,7 @@ function _sendTextSurvey(question) {
     });
     if (typeof playSound === 'function') playSound('send');
 
-    // 1) 思考延迟：5~13 秒（想调整节奏改这里）
+    // 1) 思考延迟：5~13 秒
     const thinkDelay = 5000 + Math.random() * 8000;
 
     setTimeout(async function () {
@@ -1822,7 +1886,8 @@ function _sendTextSurvey(question) {
         });
         if (!msg || msg.type !== 'survey-text' || msg.survey.answered) return;
 
-        const answer = _generateTextAnswer();
+        // 生成回答
+        const answer = _generateTextAnswer(msg.survey.lang);
         if (!answer) return;
 
         // 2) 标记"正在组句"
@@ -1830,7 +1895,7 @@ function _sendTextSurvey(question) {
         if (typeof throttledSaveData === 'function') throttledSaveData();
         if (typeof renderMessages === 'function') renderMessages(true);
 
-        // 3) 播放拼音打字动画（每个字约 1~2 秒，等它播完再回填）
+        // 3) 播放拼音打字动画
         try {
             if (typeof window.simulatePartnerTypingProcess === 'function') {
                 await window.simulatePartnerTypingProcess(answer);
