@@ -2150,3 +2150,50 @@ function _escapeAttr(s) {
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;');
 }
+// ==========================================
+// 修复「对方打字动画」开关无法点击的问题
+// ==========================================
+(function fixTypingAnimToggle() {
+    function init() {
+        const toggle = document.getElementById('partner-typing-anim-toggle');
+        if (!toggle || toggle._fixedBound) return;
+        toggle._fixedBound = true;
+        
+        // 读取当前状态（默认开启）
+        let isEnabled = localStorage.getItem('partnerTypingAnimEnabled') !== '0';
+        
+        // 同步 UI 状态（点亮/变灰）
+        if (isEnabled) toggle.classList.add('active');
+        else toggle.classList.remove('active');
+
+        // 绑定点击事件
+        toggle.onclick = function() {
+            isEnabled = !isEnabled;
+            // 保存状态到本地，floating-window.js 会读取这个值
+            localStorage.setItem('partnerTypingAnimEnabled', isEnabled ? '1' : '0');
+            
+            // 切换 UI 样式
+            if (isEnabled) toggle.classList.add('active');
+            else toggle.classList.remove('active');
+            
+            // 提示
+            if (typeof showNotification === 'function') {
+                showNotification(isEnabled ? '已开启对方打字动画' : '已关闭对方打字动画', 'success', 1500);
+            }
+        };
+    }
+
+    // 页面加载完毕后初始化
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => setTimeout(init, 1000));
+    } else {
+        setTimeout(init, 1000);
+    }
+    
+    // 每次打开「聊天设置」时，刷新一下开关状态
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('#chat-settings')) {
+            setTimeout(init, 200);
+        }
+    });
+})();
