@@ -1715,11 +1715,21 @@ window.openSurveyPanel = function () {
 
     modal.querySelector('#sp-bank-btn').onclick = function () { _openSurveyBankManager(); };
 
-    modal.querySelector('#sp-ask-me-btn').onclick = function () {
+    // ★ 让他问我（支持自由组字）
+modal.querySelector('#sp-ask-me-btn').onclick = function () {
+    const choice = prompt("请选择他提问的方式：\n1. 从题库随机抽题\n2. 自由组字 (中文)\n3. 自由组字 (日文带翻译)\n\n请输入数字 1, 2 或 3:", "1");
+    if (choice === '2') {
+        _sendPartnerQuestion('zh');
+        showNotification('他已经用中文自由组字问你了…', 'info', 2000);
+    } else if (choice === '3') {
+        _sendPartnerQuestion('ja');
+        showNotification('他已经用日文自由组字问你了…', 'info', 2000);
+    } else if (choice === '1') {
         const ok = _sendPartnerQuestion();
         if (ok) showNotification('他已经问你了，去聊天里看看～', 'info', 3000);
-        else    showNotification('题库为空，请先点 ⚙ 添加问题', 'warning');
-    };
+        else    showNotification('题库为空，请先用自由组字或添加题目', 'warning');
+    }
+};
 
     // --- 发送按钮 ---
     modal.querySelector('#sp-ed-send').onclick = function () {
@@ -1802,55 +1812,83 @@ window.openSurveyPanel = function () {
 /* ============================================================
  * 文字题：生成回答（支持中/日）
  * ============================================================ */
-function _generateTextAnswer(lang) {
-    // 日文情话语料库（带翻译）
-    const JA_POOL = [
-        'あなたのことが好きです（我喜欢你）',
-        'ずっと一緒にいたい（想一直和你在一起）',
-        '今日もお疲れ様（今天也辛苦了）',
-        '会えなくて寂しい（见不到你好寂寞）',
-        'いつもありがとう（一直以来谢谢你）',
-        '君のことが大好きだよ（最喜欢你了）',
-        'おやすみ、いい夢見てね（晚安，做个好梦）',
-        '明日も君に会えますように（希望明天也能见到你）',
-        '今、何してる？（现在在做什么呢？）',
-        '君に会いたいな（好想见你啊）',
-        '一緒にいると落ち着く（和你在一起就很安心）',
-        'ずっと君の味方だよ（我会一直站在你这边）'
-    ];
+/* ============================================================
+ * 自由组字引擎（中文/日文随机拼凑，带标点）
+ * ============================================================ */
+const FREE_WORDS_ZH = {
+    prefix: ['其实', '我觉得', '那个', '今天', '突然想', '不知道', '感觉', '要是', '怎么办'],
+    subject: ['你', '我', '我们', '心里'],
+    action: ['在干嘛呢', '吃饭了吗', '好想见你', '累不累啊', '好喜欢你', '早点休息', '抱抱', '理理我', '梦到我了吗', '怎么回事', '有没有想我'],
+    punc: ['。', '！', '？', '……', '~', '...']
+};
 
+const FREE_WORDS_JA = [
+    { ja: '今日', zh: '今天' },
+    { ja: '会いたい', zh: '好想见你' },
+    { ja: '好きだよ', zh: '喜欢你哦' },
+    { ja: '何してるの', zh: '在干嘛呢' },
+    { ja: 'お腹すいた', zh: '肚子饿了' },
+    { ja: 'おやすみ', zh: '晚安' },
+    { ja: '大好き', zh: '最喜欢了' },
+    { ja: '一緒にいたい', zh: '想和你在一起' },
+    { ja: '寂しいな', zh: '有点寂寞呢' },
+    { ja: '愛してる', zh: '我爱你' },
+    { ja: '頑張って', zh: '加油' },
+    { ja: '大丈夫', zh: '没事的' },
+    { ja: '君のことが好き', zh: '喜欢你' },
+    { ja: 'ずっと一緒', zh: '一直在一起' },
+    { ja: '会えなくて寂しい', zh: '见不到你好寂寞' },
+    { ja: '何を考えてるの', zh: '在想什么呢' },
+    { ja: '私のことを考えてる？', zh: '在想我吗？' }
+];
+
+function _generateFreeText(lang) {
     const pool = (typeof customReplies !== 'undefined' && Array.isArray(customReplies))
         ? customReplies.filter(function (t) { return t && String(t).trim(); })
         : [];
     
-    // 如果是日文模式
+    // ---- 日文自由组合 ----
     if (lang === 'ja') {
-        // 50%概率用内置日文，50%概率用字卡库的句子前面加个简单的问候（模拟机翻）
-        if (Math.random() < 0.6 || pool.length === 0) {
-            const count = Math.random() < 0.7 ? 1 : 2;
-            const parts = [];
-            for (let i = 0; i < count; i++) {
-                parts.push(JA_POOL[Math.floor(Math.random() * JA_POOL.length)]);
+        const count = Math.random() < 0.6 ? 1 : 2; // 随机1到2个片段
+        let jaParts = [];
+        let zhParts = [];
+        for (let i = 0; i < count; i++) {
+            // 50%概率用内置日文，50%概率用字卡库
+            if (pool.length > 0 && Math.random() < 0.5) {
+                const pick = pool[Math.floor(Math.random() * pool.length)];
+                jaParts.push(pick); // 字卡本身当假名/汉字用
+                zhParts.push(pick); // 翻译就是本身
+            } else {
+                const word = FREE_WORDS_JA[Math.floor(Math.random() * FREE_WORDS_JA.length)];
+                jaParts.push(word.ja);
+                zhParts.push(word.zh);
             }
-            return parts.join('、');
+        }
+        const punc = FREE_WORDS_ZH.punc[Math.floor(Math.random() * FREE_WORDS_ZH.punc.length)];
+        const jaText = jaParts.join('、');
+        const zhText = zhParts.join('，');
+        return jaText + '（' + zhText + '）' + punc;
+    }
+    
+    // ---- 中文自由组合 ----
+    // 40%概率直接抽字卡（加上标点），60%概率自己组合
+    if (pool.length > 0 && Math.random() < 0.4) {
+        const pick = pool[Math.floor(Math.random() * pool.length)];
+        const punc = FREE_WORDS_ZH.punc[Math.floor(Math.random() * FREE_WORDS_ZH.punc.length)];
+        return pick + punc;
+    } else {
+        const p = Math.random() < 0.4 ? FREE_WORDS_ZH.prefix[Math.floor(Math.random() * FREE_WORDS_ZH.prefix.length)] : '';
+        const s = FREE_WORDS_ZH.subject[Math.floor(Math.random() * FREE_WORDS_ZH.subject.length)];
+        const a = FREE_WORDS_ZH.action[Math.floor(Math.random() * FREE_WORDS_ZH.action.length)];
+        const punc = FREE_WORDS_ZH.punc[Math.floor(Math.random() * FREE_WORDS_ZH.punc.length)];
+        
+        // 随机决定是加逗号分成两句话，还是连在一起
+        if (Math.random() < 0.5) {
+            return p + s + '，' + a + punc;
         } else {
-            const pick = pool[Math.floor(Math.random() * pool.length)];
-            // 如果是中文，简单包一个日文前缀（如果想更真一点，可以扩写一个词典）
-            return 'えっと、' + pick + '（嗯…' + pick + '）';
+            return p + s + a + punc;
         }
     }
-
-    // 中文模式默认逻辑
-    if (pool.length === 0) return '……';
-    const rand = Math.random();
-    const count = rand < 0.55 ? 1 : (rand < 0.85 ? 2 : 3);
-    const parts = [];
-    for (let i = 0; i < count; i++) {
-        parts.push(pool[Math.floor(Math.random() * pool.length)]);
-    }
-    let answer = parts.join('，');
-    if (!/[。！？…]$/.test(answer)) answer += '。';
-    return answer;
 }
 
 /* ============================================================
@@ -1877,7 +1915,7 @@ function _sendTextSurvey(question, lang) {
     });
     if (typeof playSound === 'function') playSound('send');
 
-    // 1) 思考延迟：5~13 秒
+    // 思考延迟：5~13 秒
     const thinkDelay = 5000 + Math.random() * 8000;
 
     setTimeout(async function () {
@@ -1886,16 +1924,15 @@ function _sendTextSurvey(question, lang) {
         });
         if (!msg || msg.type !== 'survey-text' || msg.survey.answered) return;
 
-        // 生成回答
-        const answer = _generateTextAnswer(msg.survey.lang);
+        // ★ 调用自由组字引擎
+        const answer = _generateFreeText(msg.survey.lang);
         if (!answer) return;
 
-        // 2) 标记"正在组句"
         msg.survey.typing = true;
         if (typeof throttledSaveData === 'function') throttledSaveData();
         if (typeof renderMessages === 'function') renderMessages(true);
 
-        // 3) 播放拼音打字动画
+        // 拼音打字动画
         try {
             if (typeof window.simulatePartnerTypingProcess === 'function') {
                 await window.simulatePartnerTypingProcess(answer);
@@ -1904,7 +1941,6 @@ function _sendTextSurvey(question, lang) {
             console.warn('[text-survey] 拼音动画失败:', e);
         }
 
-        // 4) 回填文字答案
         msg.survey.typing = false;
         msg.survey.answered = true;
         msg.survey.answer = answer;
@@ -1914,36 +1950,90 @@ function _sendTextSurvey(question, lang) {
 
         try {
             const pn = (typeof settings !== 'undefined' && settings.partnerName) ? settings.partnerName : '对方';
-            if (typeof showNotification === 'function') {
-                showNotification(pn + ' 回答了你的文字题', 'info', 2000);
-            }
+            if (typeof showNotification === 'function') showNotification(pn + ' 回答了你的文字题', 'info', 2000);
         } catch (e) {}
     }, thinkDelay);
 }
 
-function _sendPartnerQuestion() {
-    const list = _loadSurveyForPartner();
-    if (list.length === 0) return false;
-    const item = list[Math.floor(Math.random() * list.length)];
-    let questionText = item.question;
-    if (/^【随机】/.test(questionText)) {
-        questionText = questionText.replace(/^【随机】\s*/, '');
-    }
-    let options = (item.options && item.options.length) ? item.options.slice() : [];
+
+function _sendPartnerQuestion(forceLang) {
     const partnerName = (typeof settings !== 'undefined' && settings.partnerName) ? settings.partnerName : '对方';
+    let questionText = '';
+    let isJa = false;
+
+    // ★ 如果指定了语言，或者题库为空，就直接自由组字
+    if (forceLang) {
+        questionText = _generateFreeText(forceLang);
+        isJa = (forceLang === 'ja');
+    } else {
+        const list = _loadSurveyForPartner();
+        if (list.length > 0) {
+            const item = list[Math.floor(Math.random() * list.length)];
+            questionText = item.question;
+            if (/^【随机】/.test(questionText)) {
+                questionText = questionText.replace(/^【随机】\s*/, '');
+            }
+            if (!item.lang) item.lang = 'zh';
+            isJa = (item.lang === 'ja');
+        } else {
+            // 题库为空，且没指定语言 -> 随机选一个语言自由组字
+            const randomLang = Math.random() < 0.5 ? 'zh' : 'ja';
+            questionText = _generateFreeText(randomLang);
+            isJa = (randomLang === 'ja');
+        }
+    }
+
+    if (!questionText) return false;
+
+    // 发送一个让你填写的“问卷卡片”
     addMessage({
-        id: Date.now() + Math.random(),
+        id: Date.now() + Math.floor(Math.random() * 1000),
         sender: partnerName,
         text: questionText,
         timestamp: new Date(),
         status: 'received',
         type: 'survey',
-        survey: { question: questionText, options: options, multi: false, answered: false, answer: [] }
+        survey: {
+            question: questionText,
+            options: [], // 自由提问没有选项，让你直接输入
+            isPartnerAsk: true,
+            answered: false,
+            answer: [],
+            deadline: Date.now() + 10 * 60 * 1000
+        }
     });
+    
     if (typeof playSound === 'function') playSound('message');
     if (typeof window._sendPartnerNotification === 'function') {
-        window._sendPartnerNotification(partnerName, '【问卷】' + questionText);
+        window._sendPartnerNotification(partnerName, isJa ? '【日文问卷】' + questionText : '【问卷】' + questionText);
     }
+
+    // 超时未回答提示
+    setTimeout(function () {
+        const msgs = (typeof messages !== 'undefined') ? messages : [];
+        for (let i = msgs.length - 1; i >= 0; i--) {
+            const m = msgs[i];
+            if (m.type === 'survey' && m.survey && m.survey.isPartnerAsk && !m.survey.answered && !m.survey.expired) {
+                if (m.survey.deadline && Date.now() >= m.survey.deadline) {
+                    m.survey.expired = true;
+                    if (typeof throttledSaveData === 'function') throttledSaveData();
+                    if (typeof renderMessages === 'function') renderMessages(true);
+
+                    const tips = ['不想回答也没关系。', '我猜你会选…算了，不猜了。', '这个问题先放着吧。'];
+                    const tip = tips[Math.floor(Math.random() * tips.length)];
+                    if (typeof addMessage === 'function') {
+                        addMessage({
+                            id: Date.now() + Math.random(), sender: partnerName, text: tip,
+                            timestamp: new Date(), status: 'received', type: 'normal'
+                        });
+                    }
+                    if (typeof playSound === 'function') playSound('message');
+                }
+                break;
+            }
+        }
+    }, 10 * 60 * 1000);
+
     return true;
 }
 
