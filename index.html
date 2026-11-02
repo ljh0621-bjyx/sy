@@ -3137,45 +3137,48 @@ document.addEventListener('click', function(e) {
 })();
 </script>
 <script>
-// 手机端一键急救：延迟 5 秒等页面加载完，如果数据是空的，就弹窗提示恢复备份
+// ===== 手机端地毯式搜索：找回丢失的 IndexedDB 数据 =====
 setTimeout(function() {
-    try {
-        // 只有当前消息为空时才触发急救
-        if (typeof messages !== 'undefined' && messages.length === 0) {
-            var sid = (typeof SESSION_ID !== 'undefined' && SESSION_ID) ? SESSION_ID : 'default';
-            var bk = localStorage.getItem('BACKUP_V1_critical_' + sid);
-            if (!bk) bk = localStorage.getItem('BACKUP_V1_critical');
-            
-            if (bk) {
-                var d = JSON.parse(bk);
-                if (d.messages && d.messages.length > 0) {
-                    if (confirm("⚠️ 检测到聊天记录为空，但发现了 " + d.messages.length + " 条本地备份！\n\n点击【确定】立即恢复！")) {
-                        messages = d.messages;
-                        if (d.settings) Object.assign(settings, d.settings);
-                        if (typeof throttledSaveData === 'function') throttledSaveData();
-                        if (typeof renderMessages === 'function') renderMessages();
-                        if (typeof updateUI === 'function') updateUI();
-                        alert("✅ 恢复成功！请刷新页面。");
+    if (typeof localforage === 'undefined') return alert('存储引擎未加载');
+    
+    alert('🔍 正在深度扫描手机数据库，请稍等几秒钟…');
+
+    async function searchAll() {
+        var maxMsgs = 0;
+        var bestKey = '';
+        var bestData = null;
+
+        try {
+            var keys = await localforage.keys();
+            for (var i = 0; i < keys.length; i++) {
+                var k = keys[i];
+                if (k.indexOf('chatMessages') !== -1) {
+                    var m = await localforage.getItem(k);
+                    if (Array.isArray(m) && m.length > maxMsgs) {
+                        maxMsgs = m.length;
+                        bestKey = k;
+                        bestData = m;
                     }
-                } else {
-                    alert("备份里也没有消息。");
+                }
+            }
+
+            if (maxMsgs > 0) {
+                if (confirm('🎉 成功找到了隐藏的聊天记录！\n\n存档位置：' + bestKey + '\n包含消息：' + maxMsgs + ' 条\n\n是否立即恢复到当前界面？')) {
+                    // 强制写入当前界面的存储中
+                    var currentKey = (typeof getStorageKey === 'function') ? getStorageKey('chatMessages') : 'chatMessages';
+                    await localforage.setItem(currentKey, bestData);
+                    alert('✅ 恢复成功！页面即将刷新。');
+                    window.location.reload();
                 }
             } else {
-                // 如果没有当前会话的备份，试着搜一下所有备份
-                var found = false;
-                for (var i = 0; i < localStorage.length; i++) {
-                    var k = localStorage.key(i);
-                    if (k && k.indexOf('BACKUP_V1_critical') === 0) {
-                        alert("🔍 发现了一个别的会话的备份: " + k + "\n可能需要你在「会话管理」里切换。");
-                        found = true;
-                        break;
-                    }
-                }
-                if(!found) alert("本地没有找到任何历史备份。");
+                alert('❌ 数据库里确实没有找到任何聊天记录。');
             }
+        } catch (e) {
+            alert('扫描出错: ' + e.message);
         }
-    } catch(e) {}
-}, 5000);
+    }
+    searchAll();
+}, 4000);
 </script>
 </body>
 </html>
