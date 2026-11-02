@@ -3136,5 +3136,46 @@ document.addEventListener('click', function(e) {
     };
 })();
 </script>
+<script>
+// 手机端一键急救：延迟 5 秒等页面加载完，如果数据是空的，就弹窗提示恢复备份
+setTimeout(function() {
+    try {
+        // 只有当前消息为空时才触发急救
+        if (typeof messages !== 'undefined' && messages.length === 0) {
+            var sid = (typeof SESSION_ID !== 'undefined' && SESSION_ID) ? SESSION_ID : 'default';
+            var bk = localStorage.getItem('BACKUP_V1_critical_' + sid);
+            if (!bk) bk = localStorage.getItem('BACKUP_V1_critical');
+            
+            if (bk) {
+                var d = JSON.parse(bk);
+                if (d.messages && d.messages.length > 0) {
+                    if (confirm("⚠️ 检测到聊天记录为空，但发现了 " + d.messages.length + " 条本地备份！\n\n点击【确定】立即恢复！")) {
+                        messages = d.messages;
+                        if (d.settings) Object.assign(settings, d.settings);
+                        if (typeof throttledSaveData === 'function') throttledSaveData();
+                        if (typeof renderMessages === 'function') renderMessages();
+                        if (typeof updateUI === 'function') updateUI();
+                        alert("✅ 恢复成功！请刷新页面。");
+                    }
+                } else {
+                    alert("备份里也没有消息。");
+                }
+            } else {
+                // 如果没有当前会话的备份，试着搜一下所有备份
+                var found = false;
+                for (var i = 0; i < localStorage.length; i++) {
+                    var k = localStorage.key(i);
+                    if (k && k.indexOf('BACKUP_V1_critical') === 0) {
+                        alert("🔍 发现了一个别的会话的备份: " + k + "\n可能需要你在「会话管理」里切换。");
+                        found = true;
+                        break;
+                    }
+                }
+                if(!found) alert("本地没有找到任何历史备份。");
+            }
+        }
+    } catch(e) {}
+}, 5000);
+</script>
 </body>
 </html>
