@@ -2448,14 +2448,11 @@ window.openSurveyPanel = function () {
     modal.querySelector('#sp-ed-cancel').onclick = close;
     modal.addEventListener('click', function (e) { if (e.target === modal) close(); });
 
-    modal.querySelector('#sp-ask-me-btn').onclick = function () {
-        const choice = prompt("请选择他提问的方式：\n1. 自由组字 (中文)\n2. 自由组字 (日文带翻译)\n\n请输入 1 或 2:", "1");
-        if (choice === '1' || choice === '2') {
-            _sendPartnerQuestion(choice === '1' ? 'zh' : 'ja');
-            showNotification('他正在自由组字问你…', 'info', 2000);
-            close();
-        }
-    };
+   // ★ 点击骰子，让他自己随机决定用中文还是日文问你
+modal.querySelector('#sp-ask-me-btn').onclick = function () {
+    close(); // 关闭当前的问卷面板
+    _sendPartnerQuestion(); // 里面会自动随机中/日文
+};
 
     modal.querySelector('#sp-ed-send').onclick = function () {
         const q = modal.querySelector('#sp-question-input').value.trim();
@@ -2534,8 +2531,23 @@ function _generateFreeText(lang) {
 
 function _sendTextSurvey(question, lang) {
     const msgId = Date.now() + Math.floor(Math.random() * 1000);
-    addMessage({ id: msgId, sender: 'user', text: question, timestamp: new Date(), status: 'sent', type: 'survey-text', survey: { question: question, lang: lang, answered: false, typing: false, answer: '' } });
+    addMessage({ 
+        id: msgId, 
+        sender: 'user', 
+        text: question, 
+        timestamp: new Date(), 
+        status: 'sent', 
+        type: 'survey-text', 
+        survey: { question: question, lang: lang, answered: false, typing: false, answer: '' } 
+    });
     if (typeof playSound === 'function') playSound('send');
+
+    // ★ 读取你在「聊天设置 -> 节奏」里设置的问卷回复速度
+    let thinkDelayMin = (typeof settings !== 'undefined' && settings.surveyReplyDelayMin) ? settings.surveyReplyDelayMin : 30000;
+    let thinkDelayMax = (typeof settings !== 'undefined' && settings.surveyReplyDelayMax) ? settings.surveyReplyDelayMax : 60000;
+    
+    // 稍微缩短一点点，因为拼音打字本身还要花时间，否则等太久
+    const thinkDelay = (thinkDelayMin * 0.5) + Math.random() * ((thinkDelayMax - thinkDelayMin) * 0.5);
 
     setTimeout(async function () {
         const msg = (typeof messages !== 'undefined' ? messages : []).find(function (m) { return String(m.id) === String(msgId); });
@@ -2553,7 +2565,7 @@ function _sendTextSurvey(question, lang) {
         msg.survey.answer = answer;
         if (typeof throttledSaveData === 'function') throttledSaveData();
         if (typeof renderMessages === 'function') renderMessages(true);
-    }, 5000 + Math.random() * 3000);
+    }, thinkDelay);
 }
 
 function _sendPartnerQuestion(forceLang) {
