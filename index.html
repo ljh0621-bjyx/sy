@@ -3136,49 +3136,5 @@ document.addEventListener('click', function(e) {
     };
 })();
 </script>
-<script>
-// ===== 手机端地毯式搜索：找回丢失的 IndexedDB 数据 =====
-setTimeout(function() {
-    if (typeof localforage === 'undefined') return alert('存储引擎未加载');
-    
-    alert('🔍 正在深度扫描手机数据库，请稍等几秒钟…');
-
-    async function searchAll() {
-        var maxMsgs = 0;
-        var bestKey = '';
-        var bestData = null;
-
-        try {
-            var keys = await localforage.keys();
-            for (var i = 0; i < keys.length; i++) {
-                var k = keys[i];
-                if (k.indexOf('chatMessages') !== -1) {
-                    var m = await localforage.getItem(k);
-                    if (Array.isArray(m) && m.length > maxMsgs) {
-                        maxMsgs = m.length;
-                        bestKey = k;
-                        bestData = m;
-                    }
-                }
-            }
-
-            if (maxMsgs > 0) {
-                if (confirm('🎉 成功找到了隐藏的聊天记录！\n\n存档位置：' + bestKey + '\n包含消息：' + maxMsgs + ' 条\n\n是否立即恢复到当前界面？')) {
-                    // 强制写入当前界面的存储中
-                    var currentKey = (typeof getStorageKey === 'function') ? getStorageKey('chatMessages') : 'chatMessages';
-                    await localforage.setItem(currentKey, bestData);
-                    alert('✅ 恢复成功！页面即将刷新。');
-                    window.location.reload();
-                }
-            } else {
-                alert('❌ 数据库里确实没有找到任何聊天记录。');
-            }
-        } catch (e) {
-            alert('扫描出错: ' + e.message);
-        }
-    }
-    searchAll();
-}, 4000);
-</script>
 </body>
 </html>
