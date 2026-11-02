@@ -2306,3 +2306,260 @@ function _escapeAttr(s) {
     // 页面刚加载时也同步一下
     setTimeout(syncUI, 1000);
 })();
+/* ============================================================
+ * 【纯净最终版】问卷双模式（选择/文字） + 自由组字引擎
+ * ============================================================ */
+
+window.openSurveyPanel = function () {
+    const old = document.getElementById('survey-panel');
+    if (old) old.remove();
+
+    let editorOptions = ['', ''];
+    let isMulti = false;
+    let surveyMode = 'choice';
+    let surveyLang = 'zh';
+
+    const modal = document.createElement('div');
+    modal.id = 'survey-panel';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.5);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;';
+
+    const renderOptions = () => {
+        return editorOptions.map((opt, i) => {
+            const letter = String.fromCharCode(65 + i);
+            return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">'
+                + '<div style="width:36px;height:36px;border-radius:50%;background:var(--accent-color);color:#fff;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + letter + '</div>'
+                + '<input type="text" class="sp-ed-opt-input" data-idx="' + i + '" value="' + _escapeAttr(opt) + '" placeholder="输入选项内容..." style="flex:1;padding:12px 14px;border:2px solid var(--accent-color);border-radius:14px;background:#fff;color:var(--text-primary);font-size:14px;outline:none;font-family:var(--font-family);box-sizing:border-box;">'
+                + '<button type="button" class="sp-ed-opt-del" data-idx="' + i + '" style="background:none;border:none;color:#bbb;cursor:pointer;font-size:20px;padding:4px 8px;flex-shrink:0;">✕</button>'
+                + '</div>';
+        }).join('');
+    };
+
+    const applyMode = () => {
+        const isText = surveyMode === 'text';
+        const choiceSection = modal.querySelector('#sp-choice-section');
+        const optionList    = modal.querySelector('#sp-ed-options-list');
+        const addOptBtn     = modal.querySelector('#sp-ed-add-opt');
+        const hintEl        = modal.querySelector('#sp-mode-hint');
+        const langSection   = modal.querySelector('#sp-lang-section');
+        const modeBtns      = modal.querySelectorAll('.sp-mode-main');
+
+        modeBtns.forEach(function (b) {
+            const active = b.dataset.mode === surveyMode;
+            b.style.background = active ? 'var(--accent-color)' : 'transparent';
+            b.style.color      = active ? '#fff' : '#888';
+        });
+
+        if (choiceSection) choiceSection.style.display = isText ? 'none' : 'block';
+        if (optionList)    optionList.style.display    = isText ? 'none' : 'block';
+        if (addOptBtn)     addOptBtn.style.display     = isText ? 'none' : 'block';
+        if (langSection)   langSection.style.display   = isText ? 'flex' : 'none';
+
+        if (hintEl) {
+            hintEl.textContent = isText
+                ? (surveyLang === 'ja' ? '对方会用拼音打出日文，并附带中文翻译' : '对方会用拼音打字的方式，自由组字回答你')
+                : '对方会从选项中选择答案';
+        }
+    };
+
+    modal.innerHTML =
+        '<div style="background:#fff;border-radius:24px;padding:22px 20px;width:92%;max-width:420px;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(0,0,0,0.18);">'
+        + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-shrink:0;">'
+        +   '<div style="width:28px;height:28px;border-radius:50%;background:var(--accent-color);color:#fff;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;">?</div>'
+        +   '<span style="font-size:22px;font-weight:700;color:#2a2a2a;">问问你</span>'
+        +   '<div style="flex:1;"></div>'
+        +   '<button id="sp-ask-me-btn" style="background:none;border:none;color:var(--accent-color);cursor:pointer;font-size:17px;padding:4px 8px;" title="让他问我一个问题"><i class="fas fa-dice"></i></button>'
+        + '</div>'
+        + '<div style="display:flex;gap:4px;padding:3px;background:#f5f5f5;border-radius:20px;margin-bottom:10px;flex-shrink:0;">'
+        +   '<button type="button" class="sp-mode-main" data-mode="choice" style="flex:1;padding:8px 12px;border:none;border-radius:16px;background:var(--accent-color);color:#fff;font-size:12.5px;font-weight:600;cursor:pointer;font-family:var(--font-family);"><i class="fas fa-list-ul" style="margin-right:4px;"></i>选择题</button>'
+        +   '<button type="button" class="sp-mode-main" data-mode="text" style="flex:1;padding:8px 12px;border:none;border-radius:16px;background:transparent;color:#888;font-size:12.5px;font-weight:600;cursor:pointer;font-family:var(--font-family);"><i class="fas fa-keyboard" style="margin-right:4px;"></i>文字题</button>'
+        + '</div>'
+        + '<div id="sp-lang-section" style="display:none;gap:4px;padding:3px;background:#f5f5f5;border-radius:20px;margin-bottom:10px;flex-shrink:0;">'
+        +   '<button type="button" class="sp-lang-btn" data-lang="zh" style="flex:1;padding:6px 12px;border:none;border-radius:16px;background:var(--accent-color);color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-family);">中文回答</button>'
+        +   '<button type="button" class="sp-lang-btn" data-lang="ja" style="flex:1;padding:6px 12px;border:none;border-radius:16px;background:transparent;color:#888;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-family);">日文回答 (带翻译)</button>'
+        + '</div>'
+        + '<div id="sp-mode-hint" style="font-size:11px;color:#999;margin-bottom:12px;text-align:center;flex-shrink:0;">对方会从选项中选择答案</div>'
+        + '<div style="padding:4px;border:2px solid rgba(var(--accent-color-rgb), 0.4);border-radius:18px;background:#fff;margin-bottom:16px;flex-shrink:0;">'
+        +   '<textarea id="sp-question-input" placeholder="输入你想问的问题..." style="width:100%;min-height:64px;padding:12px 14px;border:none;background:transparent;color:#2a2a2a;font-size:15px;outline:none;font-family:var(--font-family);resize:none;box-sizing:border-box;line-height:1.5;"></textarea>'
+        + '</div>'
+        + '<div id="sp-choice-section" style="flex-shrink:0;">'
+        +   '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">'
+        +     '<span style="font-size:15px;font-weight:600;color:#2a2a2a;">选项</span>'
+        +     '<div style="display:flex;gap:4px;padding:3px;background:#f5f5f5;border-radius:20px;">'
+        +       '<button type="button" class="sp-mode-btn" data-mode="single" style="padding:5px 16px;border:none;border-radius:16px;background:var(--accent-color);color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-family);">单选</button>'
+        +       '<button type="button" class="sp-mode-btn" data-mode="multi" style="padding:5px 16px;border:none;border-radius:16px;background:transparent;color:#888;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-family);">多选</button>'
+        +     '</div>'
+        +   '</div>'
+        + '</div>'
+        + '<div id="sp-ed-options-list" style="flex:1;overflow-y:auto;margin-bottom:12px;max-height:40vh;">' + renderOptions() + '</div>'
+        + '<button id="sp-ed-add-opt" style="width:100%;padding:13px;border:2px dashed var(--accent-color);border-radius:14px;background:none;color:var(--accent-color);font-size:13px;cursor:pointer;font-family:var(--font-family);margin-bottom:16px;flex-shrink:0;"><i class="fas fa-plus"></i> 添加选项</button>'
+        + '<div style="display:flex;gap:10px;flex-shrink:0;">'
+        +   '<button id="sp-ed-cancel" style="flex:1;padding:14px;border:none;border-radius:14px;background:#f0f0f0;color:#666;font-size:15px;font-weight:600;cursor:pointer;font-family:var(--font-family);">取消</button>'
+        +   '<button id="sp-ed-send" style="flex:1.5;padding:14px;border:none;border-radius:14px;background:var(--accent-color);color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:var(--font-family);">发送问题</button>'
+        + '</div></div>';
+
+    document.body.appendChild(modal);
+
+    modal.querySelectorAll('.sp-mode-main').forEach(function (btn) {
+        btn.onclick = function () { surveyMode = btn.dataset.mode; applyMode(); };
+    });
+    modal.querySelectorAll('.sp-lang-btn').forEach(function (btn) {
+        btn.onclick = function () {
+            surveyLang = btn.dataset.lang;
+            modal.querySelectorAll('.sp-lang-btn').forEach(function (b) {
+                const active = b.dataset.lang === surveyLang;
+                b.style.background = active ? 'var(--accent-color)' : 'transparent';
+                b.style.color      = active ? '#fff' : '#888';
+            });
+            applyMode();
+        };
+    });
+    modal.querySelectorAll('.sp-mode-btn').forEach(function (btn) {
+        btn.onclick = function () {
+            isMulti = btn.dataset.mode === 'multi';
+            modal.querySelectorAll('.sp-mode-btn').forEach(function (b) {
+                const active = b.dataset.mode === btn.dataset.mode;
+                b.style.background = active ? 'var(--accent-color)' : 'transparent';
+                b.style.color      = active ? '#fff' : '#888';
+            });
+        };
+    });
+
+    const bindOptionEvents = function () {
+        modal.querySelectorAll('.sp-ed-opt-input').forEach(function (inp) {
+            inp.addEventListener('input', function () { editorOptions[parseInt(inp.dataset.idx)] = inp.value; });
+        });
+        modal.querySelectorAll('.sp-ed-opt-del').forEach(function (btn) {
+            btn.onclick = function () {
+                if (editorOptions.length <= 2) { showNotification('至少保留 2 个选项', 'warning'); return; }
+                editorOptions.splice(parseInt(btn.dataset.idx), 1);
+                modal.querySelector('#sp-ed-options-list').innerHTML = renderOptions();
+                bindOptionEvents();
+            };
+        });
+    };
+    bindOptionEvents();
+    modal.querySelector('#sp-ed-add-opt').onclick = function () {
+        editorOptions.push('');
+        modal.querySelector('#sp-ed-options-list').innerHTML = renderOptions();
+        bindOptionEvents();
+    };
+
+    const close = function () { modal.remove(); };
+    modal.querySelector('#sp-ed-cancel').onclick = close;
+    modal.addEventListener('click', function (e) { if (e.target === modal) close(); });
+
+    modal.querySelector('#sp-ask-me-btn').onclick = function () {
+        const choice = prompt("请选择他提问的方式：\n1. 自由组字 (中文)\n2. 自由组字 (日文带翻译)\n\n请输入 1 或 2:", "1");
+        if (choice === '1' || choice === '2') {
+            _sendPartnerQuestion(choice === '1' ? 'zh' : 'ja');
+            showNotification('他正在自由组字问你…', 'info', 2000);
+            close();
+        }
+    };
+
+    modal.querySelector('#sp-ed-send').onclick = function () {
+        const q = modal.querySelector('#sp-question-input').value.trim();
+        if (!q) { showNotification('请输入问题', 'warning'); return; }
+
+        if (surveyMode === 'text') {
+            _sendTextSurvey(q, surveyLang);
+            close();
+            showNotification('✓ 文字题已发送，等待对方回答…', 'success', 2500);
+            return;
+        }
+
+        const opts = editorOptions.map(function (o) { return (o || '').trim(); }).filter(Boolean);
+        if (opts.length < 2) { showNotification('至少填写 2 个选项', 'warning'); return; }
+        
+        // 选择题（简化版，自动回复）
+        addMessage({ id: Date.now(), sender: 'user', text: q, timestamp: new Date(), status: 'sent', type: 'survey', survey: { question: q, options: opts, multi: isMulti, answered: false, answer: [] } });
+        if (typeof playSound === 'function') playSound('send');
+        close();
+        showNotification('✓ 问卷已发送', 'success');
+
+        setTimeout(function () {
+            const myMsgId = messages[messages.length - 1].id;
+            const msg = messages.find(function(m){return m.id == myMsgId;});
+            if(msg && msg.survey && !msg.survey.answered){
+                msg.survey.answer = [msg.survey.options[Math.floor(Math.random() * msg.survey.options.length)]];
+                msg.survey.answered = true;
+                if (typeof throttledSaveData === 'function') throttledSaveData();
+                if (typeof renderMessages === 'function') renderMessages(true);
+            }
+        }, 5000 + Math.random() * 5000);
+    };
+
+    setTimeout(function () { const inp = modal.querySelector('#sp-question-input'); if (inp) inp.focus(); }, 150);
+};
+
+
+// ================== 核心引擎 ==================
+function _generateFreeText(lang) {
+    const puncs = ['。', '！', '？', '……', '~', '...', '！！', '？！'];
+    const p = () => puncs[Math.floor(Math.random() * puncs.length)];
+    const randItem = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+    if (lang === 'zh') {
+        const subjects = ['我', '你', '其实我', '感觉你', '要是你', '我们', '心里'];
+        const times = ['今天', '刚才', '最近', '突然', '一直', '昨晚', '有时候', '刚才那一瞬间'];
+        const verbs = ['想', '喜欢', '爱', '觉得', '看', '等', '梦到', '想念', '好想', '是不是'];
+        const adjectives = ['好累', '很开心', '有点难过', '好无聊', '很可爱', '有点酸', '好困', '不安', '好安静', '好想你'];
+        const objects = ['你', '你了', '抱抱', '理理我', '陪我', '在一起', '见面', '不讲话', '看着我'];
+        const particles = ['呢', '啊', '吧', '吗', '哦', ''];
+        const type = Math.random();
+        if (type < 0.25) return randItem(subjects) + randItem(verbs) + randItem(objects) + randItem(particles) + p();
+        if (type < 0.5) return randItem(times) + '，' + randItem(subjects) + randItem(['觉得', '感觉', '好像']) + randItem(adjectives) + p();
+        if (type < 0.75) return randItem(subjects) + randItem(['有点', '特别', '真的很']) + randItem(adjectives) + randItem(particles) + p();
+        return randItem(['唉', '嗯…', '那个', '其实']) + '，' + randItem(subjects) + randItem(['在干嘛呢', '吃饭了吗', '睡了吗', '有没有想我']) + p();
+    }
+
+    if (lang === 'ja') {
+        const jaTemplates = [
+            { ja: '{sub}は{act}', zh: '{sub_zh}{act_zh}' },
+            { ja: '{time}も{act}', zh: '{time_zh}也{act_zh}' },
+            { ja: '{interj}！{sub}のことが{act}', zh: '{interj_zh}！{sub_zh}的事{act_zh}' }
+        ];
+        const jaSubs = [{ ja: 'あなた', zh: '你' }, { ja: '君', zh: '你' }, { ja: '私', zh: '我' }];
+        const jaTimes = [{ ja: '今日', zh: '今天' }, { ja: 'ずっと', zh: '一直' }, { ja: '毎日', zh: '每天' }];
+        const jaActs = [{ ja: '会いたいんだ', zh: '好想见你' }, { ja: '愛してる', zh: '我爱你' }, { ja: '好きだよ', zh: '喜欢你哦' }, { ja: '何してるの', zh: '在干嘛呢' }];
+        const jaInterjs = [{ ja: 'ねえ', zh: '呐' }, { ja: 'えっと', zh: '嗯…' }];
+        const tpl = randItem(jaTemplates);
+        const sub = randItem(jaSubs), tim = randItem(jaTimes), act = randItem(jaActs), inter = randItem(jaInterjs);
+        let jaText = tpl.ja.replace('{sub}', sub.ja).replace('{time}', tim.ja).replace('{act}', act.ja).replace('{interj}', inter.ja);
+        let zhText = tpl.zh.replace('{sub_zh}', sub.zh).replace('{time_zh}', tim.zh).replace('{act_zh}', act.zh).replace('{interj_zh}', inter.zh);
+        return jaText + '（' + zhText + '）' + p();
+    }
+    return '……';
+}
+
+function _sendTextSurvey(question, lang) {
+    const msgId = Date.now() + Math.floor(Math.random() * 1000);
+    addMessage({ id: msgId, sender: 'user', text: question, timestamp: new Date(), status: 'sent', type: 'survey-text', survey: { question: question, lang: lang, answered: false, typing: false, answer: '' } });
+    if (typeof playSound === 'function') playSound('send');
+
+    setTimeout(async function () {
+        const msg = (typeof messages !== 'undefined' ? messages : []).find(function (m) { return String(m.id) === String(msgId); });
+        if (!msg || msg.type !== 'survey-text' || msg.survey.answered) return;
+        
+        const answer = _generateFreeText(msg.survey.lang);
+        msg.survey.typing = true;
+        if (typeof throttledSaveData === 'function') throttledSaveData();
+        if (typeof renderMessages === 'function') renderMessages(true);
+        
+        try { if (typeof window.simulatePartnerTypingProcess === 'function') await window.simulatePartnerTypingProcess(answer); } catch (e) {}
+        
+        msg.survey.typing = false;
+        msg.survey.answered = true;
+        msg.survey.answer = answer;
+        if (typeof throttledSaveData === 'function') throttledSaveData();
+        if (typeof renderMessages === 'function') renderMessages(true);
+    }, 5000 + Math.random() * 3000);
+}
+
+function _sendPartnerQuestion(forceLang) {
+    const partnerName = (typeof settings !== 'undefined' && settings.partnerName) ? settings.partnerName : '对方';
+    const questionText = _generateFreeText(forceLang || (Math.random() < 0.5 ? 'zh' : 'ja'));
+    addMessage({ id: Date.now() + 1, sender: partnerName, text: questionText, timestamp: new Date(), status: 'received', type: 'survey', survey: { question: questionText, options: [], isPartnerAsk: true, answered: false, answer: [] } });
+    if (typeof playSound === 'function') playSound('message');
+    return true;
+}
