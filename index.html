@@ -71,7 +71,7 @@ window.addEventListener('unhandledrejection', function(e) {
     <link rel="apple-touch-icon" href="https://file.youtochat.com/images/20260216/1771224856844_qdqqd.jpeg">
     <meta name="apple-mobile-web-app-title" content="ʚ𝑳𝑶𝑽𝑬ɞ">
 
-    <script src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js"></script>
+    <script src="https://cdn.bootcdn.net/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
     <link rel="stylesheet" href="css/styles.css">
@@ -3139,97 +3139,5 @@ document.addEventListener('click', function(e) {
     };
 })();
 </script>
-<!-- ================= 塔罗牌真实牌面终极补丁 ================= -->
-<script>
-(function() {
-    // 1. 定义极速稳定的韦特塔罗牌图片源 (国内可用)
-    const BASE = 'https://cdn.jsdelivr.net/gh/ekelen/tarot-api@main/static/cards/';
-    const MAJOR_NAMES = [
-        'm00.jpg','m01.jpg','m02.jpg','m03.jpg','m04.jpg','m05.jpg','m06.jpg','m07.jpg','m08.jpg','m09.jpg',
-        'm10.jpg','m11.jpg','m12.jpg','m13.jpg','m14.jpg','m15.jpg','m16.jpg','m17.jpg','m18.jpg','m19.jpg',
-        'm20.jpg','m21.jpg'
-    ];
-    const SUITS = { wands: 'w', cups: 'c', swords: 's', pentacles: 'p' };
-    const NUM_MAP = { 'Ace':1, '2':2, '3':3, '4':4, '5':5, '6':6, '7':7, '8':8, '9':9, '10':10, 'Page':11, 'Knight':12, 'Queen':13, 'King':14 };
-
-    function getMajorImg(i) { return BASE + MAJOR_NAMES[i]; }
-    function getMinorImg(suit, num) { 
-        const s = SUITS[suit] || 'w';
-        const n = String(NUM_MAP[num] || 1).padStart(2, '0');
-        return BASE + s + n + '.jpg'; 
-    }
-
-    // 2. 延迟执行，确保所有原文件加载完毕后再注入数据
-    setTimeout(function() {
-        // ===== 补丁 A：修复 78 张牌（运势占卜） =====
-        if (typeof window.ALL_78_TAROT_CARDS !== 'undefined') {
-            let majorIdx = 0;
-            window.ALL_78_TAROT_CARDS.forEach(c => {
-                if (c.type === 'major') c.img = getMajorImg(majorIdx++);
-                else c.img = getMinorImg(c.type, c.num);
-            });
-        }
-
-        // ===== 补丁 B：修复 7 张牌（每日塔罗） =====
-        if (typeof window.CARDS !== 'undefined') {
-            const map = { '愚人':0,'战车':7,'死神':13,'恋人':6,'星星':17,'月亮':18,'太阳':19 };
-            window.CARDS.forEach(c => {
-                if (map[c.name] !== undefined) c.img = getMajorImg(map[c.name]);
-            });
-        }
-
-        // ===== 补丁 C：修复梦向占卜（大牌） =====
-        if (typeof window.TAROT_MAJOR !== 'undefined') {
-            window.TAROT_MAJOR.forEach((c, i) => { c.img = getMajorImg(i); });
-        }
-
-        // ===== 补丁 D：强制重写梦向占卜的渲染函数 =====
-        window.buildTarotCardHTML = function(c, index, total) {
-            const positions = total === 3 ? ['过去 · 根源', '现在 · 核心', '未来 · 走向'] : ['当前', '行动'];
-            const pos = positions[index] || '';
-            const state = c.isReversed ? '逆位' : '正位';
-            const stateClass = c.isReversed ? 'reversed' : 'upright';
-            const meaning = c.isReversed ? c.reversed : c.upright;
-            
-            // 如果有图片就显示图片，如果是逆位就翻转180度，出错则显示原来emoji
-            const imgHTML = c.img
-                ? `<img src="${c.img}" style="width:100%;aspect-ratio:2/3;object-fit:cover;border-radius:8px; ${c.isReversed ? 'transform:rotate(180deg);' : ''}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
-                   <div style="display:none;font-size:44px;align-items:center;justify-content:center;height:120px;">${c.icon}</div>`
-                : `<div style="font-size:44px;display:flex;align-items:center;justify-content:center;height:120px;">${c.icon}</div>`;
-
-            return `
-            <div class="dream-card ${stateClass}">
-                <div class="dream-card-pos">${pos}</div>
-                <div style="width:100%;margin:6px 0;overflow:hidden;border-radius:8px;">${imgHTML}</div>
-                <div class="dream-card-name">${c.name}</div>
-                <div class="dream-card-eng">${c.eng || ''}</div>
-                <div class="dream-card-badge">${state}</div>
-                <div class="dream-card-keyword">「${c.keyword}」</div>
-                <div class="dream-card-meaning">${meaning}</div>
-            </div>`;
-        };
-
-        // ===== 补丁 E：强制重写每日塔罗的翻牌渲染函数 =====
-        window.renderCard = function(cardData) {
-            const backContent = document.getElementById('tarot-back-content');
-            if (!backContent) return;
-            
-            const imgHTML = cardData.img
-                ? `<img src="${cardData.img}" style="width:130px;height:200px;object-fit:cover;border-radius:8px;margin:12px auto;display:block;box-shadow:0 6px 20px rgba(0,0,0,0.25);" onerror="this.style.display='none';"><div class="card-icon" style="display:none">${cardData.icon}</div>`
-                : `<div class="card-icon">${cardData.icon}</div>`;
-                
-            backContent.innerHTML = `
-                <div class="card-name">${cardData.name}</div>
-                ${imgHTML}
-                <div class="card-desc">${cardData.desc}</div>
-                <div class="card-reading">"${cardData.reading}"</div>
-            `;
-        };
-
-        console.log('✅ 塔罗牌真实牌面补丁已生效！');
-    }, 3000); // 延迟3秒执行，等所有的 js 文件都加载完毕
-})();
-</script>
-<!-- ================= 塔罗牌补丁结束 ================= -->
 </body>
 </html>
